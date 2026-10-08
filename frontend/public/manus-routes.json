@@ -1,9 +1,0 @@
-{
-  "routes": [
-    { "path": "/", "title": "Inicio" },
-    { "path": "/login", "title": "Ingreso" },
-    { "path": "/comercial", "title": "Comercial" },
-    { "path": "/soporte", "title": "Soporte" },
-    { "path": "/administrador", "title": "Administrador del modelo" }
-  ]
-}

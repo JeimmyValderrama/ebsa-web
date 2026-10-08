@@ -1,5 +1,0 @@
--r ../api/requirements.txt
-alembic==1.16.4
-numpy==2.3.2
-pandas==2.3.2
-pyarrow==21.0.0
