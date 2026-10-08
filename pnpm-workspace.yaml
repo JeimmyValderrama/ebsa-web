@@ -1,0 +1,6 @@
+packages:
+  - frontend
+
+allowBuilds:
+  "@firebase/util": true
+  "protobufjs": true

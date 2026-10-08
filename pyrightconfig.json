@@ -1,0 +1,13 @@
+{
+  "include": ["api", "importer"],
+  "exclude": ["**/__pycache__", ".venv"],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [".", "api"]
+    }
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "basic"
+}
