@@ -6,8 +6,8 @@
 - pnpm 11.
 - Python 3.12 o compatible.
 - Git.
-- PostgreSQL se añadirá en la Fase 3.
-- Un proyecto Firebase se añadirá en la Fase 2.
+- Azure SQL Database para producción.
+- Un proyecto Firebase para usuarios y roles.
 
 ## Frontend
 
@@ -33,6 +33,8 @@ uvicorn api.index:app --reload --host 127.0.0.1 --port 8000
 ```
 
 La API estará en `http://127.0.0.1:8000` y la documentación en `http://127.0.0.1:8000/docs`.
+
+Antes de usar datos reales, configura `EBSA_DATABASE_URL` con Azure SQL o las variables `AZURE_SQL_*` y ejecuta `alembic upgrade head`.
 
 Para conectar el frontend local con esa API crea `frontend/.env.local`:
 

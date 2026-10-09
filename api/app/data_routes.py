@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/data", tags=["data"])
 
 
 def schema_error(exc: Exception) -> HTTPException:
-    return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="El esquema PostgreSQL aún no está aplicado.")
+    return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="El esquema Azure SQL aún no está aplicado o no se puede alcanzar.")
 
 
 def run_dict(run: DataRun) -> dict[str, Any]:

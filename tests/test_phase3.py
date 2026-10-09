@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-# La prueba usa una SQLite temporal para no tocar PostgreSQL ni datos reales.
+# La prueba usa una SQLite temporal para no tocar Azure SQL ni datos reales.
 TEST_DB = Path(__file__).resolve().parent / "phase3_test.db"
 os.environ["EBSA_DATABASE_URL"] = f"sqlite:///{TEST_DB.as_posix()}"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

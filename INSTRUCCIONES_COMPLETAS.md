@@ -4,10 +4,9 @@
 
 - `frontend/`: aplicación React/TypeScript.
 - `api/`: backend FastAPI para Vercel y ejecución local.
-- `database/`: modelos y migraciones PostgreSQL.
+- `database/`: modelos y migraciones Azure SQL Database.
 - `importer/`: importador independiente CSV/Parquet.
 - `scripts/seed_admin.py`: asigna el primer rol administrador en Firebase.
-- `utilidades_glosario.py`: glosario real de negocio recibido.
 - `utilidades_glosario.py`: glosario de negocio usado por el importador web.
 
 ## 2. Requisitos en Windows
@@ -18,7 +17,7 @@ Instala:
 - Node.js 20 o superior.
 - Git opcional.
 - Una cuenta Firebase.
-- Una base PostgreSQL administrada.
+- Una cuenta Azure con Azure SQL Database.
 
 No necesitas Linux ni Docker.
 
@@ -44,29 +43,33 @@ Si PowerShell bloquea la activación:
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
-## 4. Crear PostgreSQL
+## 4. Crear Azure SQL Database
 
-Crea una base PostgreSQL administrada en el proveedor que prefieras. Crea una base llamada `ebsa` y copia el DSN SSL que entrega el proveedor.
+En Azure Portal crea un **Azure SQL logical server** y una base de datos llamada `ebsa`. Configura el firewall para permitir el equipo que ejecutará las migraciones/importador y el backend desplegado. Mantén TLS habilitado.
 
-Ejemplo:
-
-```text
-postgresql+psycopg://USUARIO:CONTRASEÑA@HOST:5432/ebsa?sslmode=require
-```
-
-En PowerShell, antes de usar Alembic o el importador:
+Configura una de estas opciones:
 
 ```powershell
-$env:EBSA_DATABASE_URL="postgresql+psycopg://USUARIO:CONTRASEÑA@HOST:5432/ebsa?sslmode=require"
+$env:EBSA_DATABASE_URL="mssql+mssqlpython://USUARIO:CONTRASEÑA@SERVIDOR.database.windows.net:1433/ebsa?encrypt=yes&trustservercertificate=no"
 ```
 
-Crea las tablas:
+O variables separadas:
 
 ```powershell
+$env:AZURE_SQL_SERVER="servidor.database.windows.net"
+$env:AZURE_SQL_DATABASE="ebsa"
+$env:AZURE_SQL_USERNAME="usuario"
+$env:AZURE_SQL_PASSWORD="contraseña"
+$env:AZURE_SQL_PORT="1433"
+```
+
+Instala dependencias y crea las tablas:
+
+```powershell
+python -m pip install -r api\requirements.txt
+python -m pip install -r importer\requirements.txt
 alembic upgrade head
 ```
-
-Esto aplica las tres migraciones y crea las 14 tablas del proyecto.
 
 ## 5. Configurar Firebase Authentication
 
@@ -175,7 +178,7 @@ URLs:
 3. Mantén la raíz del repositorio como raíz del proyecto.
 4. Vercel usará `vercel.json`.
 5. Agrega en Vercel las variables backend:
-   - `EBSA_DATABASE_URL`
+   - `EBSA_DATABASE_URL` o `AZURE_SQL_SERVER`, `AZURE_SQL_DATABASE`, `AZURE_SQL_USERNAME`, `AZURE_SQL_PASSWORD`, `AZURE_SQL_PORT`
    - `EBSA_ALLOWED_ORIGINS`
    - `FIREBASE_PROJECT_ID`
    - `FIREBASE_CLIENT_EMAIL`
@@ -183,7 +186,7 @@ URLs:
 6. Agrega las variables frontend `VITE_FIREBASE_*`.
 7. Despliega.
 
-El importador no debe ejecutarse dentro de Vercel. Ejecútalo desde Windows, GitHub Actions o un worker con acceso al PostgreSQL.
+El importador no debe ejecutarse dentro de Vercel. Ejecútalo desde Windows, GitHub Actions o un worker con acceso a Azure SQL.
 
 ## 10. Comprobación final
 

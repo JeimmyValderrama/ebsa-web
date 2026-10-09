@@ -21,12 +21,12 @@ from utilidades_glosario import enriquecer_glosario
 
 
 def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description="Importa una corrida de resultados EBSA a PostgreSQL.")
+    result = argparse.ArgumentParser(description="Importa una corrida de resultados EBSA a Azure SQL Database.")
     result.add_argument("--source", required=True, type=Path, help="Carpeta raíz de resultados del pipeline.")
     result.add_argument("--periodo", required=True, help="Corte con formato YYYY-MM.")
     result.add_argument("--batch-size", type=int, default=5000)
     result.add_argument("--dry-run", action="store_true", help="Valida archivos y cuenta filas sin insertar datos.")
-    result.add_argument("--database-url", help="DSN opcional; preferiblemente postgresql+psycopg://...")
+    result.add_argument("--database-url", help="DSN opcional; use mssql+mssqlpython://...")
     return result
 
 

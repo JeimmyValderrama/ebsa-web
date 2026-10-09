@@ -2,14 +2,14 @@
 
 Aplicación web para consultar y operar los resultados precalculados del pipeline EBSA.
 
-El proyecto contiene la migración completa desde Streamlit: Firebase Authentication y RBAC, PostgreSQL/Alembic, importador CSV/Parquet, vistas Comercial/Soporte/Administrador, consultas por NIU, visitas, feedback, usuarios y configuración Vercel.
+El proyecto contiene la migración completa desde Streamlit: Firebase Authentication y RBAC, Azure SQL Database/Alembic, importador CSV/Parquet, vistas Comercial/Soporte/Administrador, consultas por NIU, visitas, feedback, usuarios y configuración Vercel.
 
 El glosario real de negocio está en [`utilidades_glosario.py`](utilidades_glosario.py) y lo utiliza el importador web. El backend completo está en [`api/`](api/): `api/index.py` es la entrada FastAPI para Vercel y `api/app/` contiene autenticación, RBAC, datos, usuarios, visitas y feedback.
 
 ## Arquitectura actual
 
 ```text
-frontend React/Vite  →  API FastAPI  →  futuras tablas PostgreSQL
+frontend React/Vite  →  API FastAPI  →  Azure SQL Database
          │                    │
          └── Vercel           └── futura verificación Firebase
 ```
@@ -92,4 +92,4 @@ No subas archivos `.env`, credenciales Firebase ni datos CSV/Parquet al reposito
 
 ## Configuración final
 
-Consulta [`docs/configuracion-final.md`](docs/configuracion-final.md). Ahí solo debes colocar las variables de Firebase, el DSN PostgreSQL y ejecutar la migración/importación desde Windows.
+Consulta [`docs/configuracion-final.md`](docs/configuracion-final.md). Ahí solo debes colocar las variables de Firebase, la conexión de Azure SQL y ejecutar la migración/importación desde Windows.

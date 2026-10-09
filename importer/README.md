@@ -1,13 +1,18 @@
 # Importador EBSA
 
-Este directorio contendrá el programa que leerá los CSV y Parquet generados por el pipeline, validará sus columnas y cargará los datos a PostgreSQL.
+Lee los CSV y Parquet producidos por el pipeline, valida el manifiesto, enriquece cada lote con `utilidades_glosario.py` y carga los datos en **Azure SQL Database** mediante SQLAlchemy y `mssql-python`.
 
-En la Fase 1 solo se reserva la estructura. No se leen datos ni se modifican archivos del pipeline.
-
-El comando objetivo será:
+No ejecuta entrenamiento ni recalcula modelos.
 
 ```powershell
+python -m importer.import_run --source "C:\Datos_Ebsa" --periodo "2026-10" --dry-run
 python -m importer.import_run --source "C:\Datos_Ebsa" --periodo "2026-10"
 ```
 
-El importador será independiente de las peticiones web para que una carga grande no dependa de los límites de una función serverless de Vercel.
+La variable `EBSA_DATABASE_URL` puede usar:
+
+```text
+mssql+mssqlpython://usuario:contraseña@servidor.database.windows.net:1433/ebsa?encrypt=yes&trustservercertificate=no
+```
+
+El importador es independiente de las peticiones web para que una carga grande no dependa de los límites de una función serverless de Vercel.

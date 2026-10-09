@@ -58,9 +58,11 @@ def health() -> dict[str, str]:
 
 @app.get("/api/status", tags=["system"])
 def status() -> dict[str, str | bool]:
+    database_configured = bool(os.getenv("EBSA_DATABASE_URL") or os.getenv("AZURE_SQL_SERVER"))
     return {
         "status": "ready",
-        "database_configured": bool(os.getenv("EBSA_DATABASE_URL")) or os.getenv("DATABASE_URL", "").startswith("postgresql"),
+        "database_configured": database_configured,
+        "database_engine": "azure-sql" if database_configured else "sqlite-local",
         "firebase_configured": firebase_is_configured(),
         "environment": os.getenv("EBSA_ENV", "development"),
     }

@@ -1,34 +1,48 @@
 # Configuración final del proyecto EBSA
 
-La aplicación ya contiene las fases de interfaz, autenticación, persistencia, importación, operación de campo y administración. Solo debes proporcionar las credenciales y el DSN de tu infraestructura.
+La aplicación usa **Azure SQL Database** para la base de datos y **Firebase Authentication** para los usuarios. Solo debes configurar las credenciales y ejecutar las migraciones/importación.
 
-## 1. Firebase
+## 1. Firebase Authentication
 
 1. Crea un proyecto Firebase.
-2. Activa Authentication → Sign-in method → Email/Password.
-3. Registra una aplicación web y copia sus seis valores en `frontend/.env.local` o en Vercel con prefijo `VITE_`.
+2. Activa **Authentication → Sign-in method → Email/Password**.
+3. Registra una aplicación web y copia sus valores en `frontend/.env.local` o en Vercel con prefijo `VITE_`.
 4. Genera una clave privada de Service Account y configura `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL` y `FIREBASE_PRIVATE_KEY` únicamente en el backend/Vercel.
-5. Crea tu usuario inicial en Firebase Authentication.
+5. Crea el usuario inicial en Firebase Authentication.
 6. Asigna el primer administrador:
 
 ```powershell
 $env:FIREBASE_PROJECT_ID="..."
-$env:FIREBASE_CLIENT_EMAIL="..."
+$env:FIREBASE_CLIENT_EMAIL="firebase-adminsdk-...@...iam.gserviceaccount.com"
 $env:FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
 python scripts/seed_admin.py administrador@empresa.com
 ```
 
 Después de asignar un claim, el usuario debe cerrar sesión y entrar de nuevo.
 
-## 2. PostgreSQL
+## 2. Azure SQL Database
 
-Crea una base PostgreSQL administrada y configura:
+Crea un **Azure SQL logical server** y una base de datos llamada `ebsa`. Configura el firewall para permitir el equipo que ejecutará las migraciones/importador y el backend desplegado. Mantén el cifrado habilitado.
+
+Puedes configurar una URL completa:
 
 ```env
-EBSA_DATABASE_URL=postgresql+psycopg://usuario:clave@host:5432/ebsa?sslmode=require
+EBSA_DATABASE_URL=mssql+mssqlpython://USUARIO:CONTRASEÑA@SERVIDOR.database.windows.net:1433/ebsa?encrypt=yes&trustservercertificate=no
 ```
 
-Ejecuta una vez:
+O, preferiblemente, separar los valores:
+
+```env
+AZURE_SQL_SERVER=servidor.database.windows.net
+AZURE_SQL_DATABASE=ebsa
+AZURE_SQL_USERNAME=usuario
+AZURE_SQL_PASSWORD=contraseña
+AZURE_SQL_PORT=1433
+```
+
+El proyecto usa el driver oficial `mssql-python`, SQLAlchemy y Alembic.
+
+## 3. Instalar y crear tablas
 
 ```powershell
 python -m pip install -r api/requirements.txt
@@ -36,9 +50,9 @@ python -m pip install -r importer/requirements.txt
 alembic upgrade head
 ```
 
-## 3. Importar resultados
+## 4. Importar resultados
 
-Conserva los CSV y Parquet fuera del repositorio, en la carpeta de resultados del pipeline. Ejecuta primero una validación:
+Conserva los CSV y Parquet fuera del repositorio. Valida primero:
 
 ```powershell
 python -m importer.import_run --source "C:\Datos_Ebsa" --periodo "2026-10" --dry-run
@@ -50,28 +64,25 @@ Si no hay errores:
 python -m importer.import_run --source "C:\Datos_Ebsa" --periodo "2026-10"
 ```
 
-## 4. Vercel
+El importador lee los archivos, usa `utilidades_glosario.py`, normaliza los datos y los guarda en Azure SQL. No entrena ni recalcula modelos.
 
-Configura estas variables en Project Settings → Environment Variables:
+## 5. Vercel
 
-- `EBSA_DATABASE_URL`
-- `EBSA_ALLOWED_ORIGINS` con el dominio exacto de producción
-- `FIREBASE_PROJECT_ID`
-- `FIREBASE_CLIENT_EMAIL`
-- `FIREBASE_PRIVATE_KEY`
-- `VITE_FIREBASE_API_KEY`
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_STORAGE_BUCKET`
-- `VITE_FIREBASE_MESSAGING_SENDER_ID`
-- `VITE_FIREBASE_APP_ID`
+Configura en Project Settings → Environment Variables:
 
-Conecta el repositorio y despliega. `vercel.json` ya define el build React y la función FastAPI.
+- `EBSA_DATABASE_URL`, o las cinco variables `AZURE_SQL_*`.
+- `EBSA_ALLOWED_ORIGINS` con el dominio exacto.
+- `FIREBASE_PROJECT_ID`.
+- `FIREBASE_CLIENT_EMAIL`.
+- `FIREBASE_PRIVATE_KEY`.
+- Todas las variables `VITE_FIREBASE_*`.
 
-## 5. Roles
+Conecta el repositorio y despliega. `vercel.json` define el build React y la función FastAPI.
+
+## 6. Roles
 
 - `COMERCIAL`: Resumen y Comercial.
 - `SOPORTE`: Resumen, Comercial y Soporte.
 - `ADMIN_MODELO`: todas las vistas, usuarios, corridas y retroalimentación.
 
-El frontend oculta navegación no permitida, pero el backend vuelve a validar el ID Token y el claim `role` en cada endpoint.
+Firebase administra la identidad; FastAPI valida el token y el claim `role` en cada endpoint.

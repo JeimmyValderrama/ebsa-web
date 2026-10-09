@@ -1,30 +1,34 @@
-# Base de datos e importador — Fase 3
+# Azure SQL Database e importador
 
 ## Motor
 
-EBSA usa PostgreSQL en producción. La variable recomendada es `EBSA_DATABASE_URL`, por ejemplo:
+EBSA usa **Azure SQL Database** en producción mediante SQLAlchemy y el driver oficial `mssql-python`:
 
 ```env
-EBSA_DATABASE_URL=postgresql+psycopg://ebsa:clave@localhost:5432/ebsa
+EBSA_DATABASE_URL=mssql+mssqlpython://usuario:contraseña@servidor.database.windows.net:1433/ebsa?encrypt=yes&trustservercertificate=no
 ```
 
-Si no existe esa variable, el proyecto usa `ebsa_local.db` SQLite únicamente para validar el código localmente. El DSN MySQL que pueda inyectar una plataforma no se usa para EBSA.
+También puedes usar variables separadas:
+
+```env
+AZURE_SQL_SERVER=servidor.database.windows.net
+AZURE_SQL_DATABASE=ebsa
+AZURE_SQL_USERNAME=usuario
+AZURE_SQL_PASSWORD=contraseña
+AZURE_SQL_PORT=1433
+```
+
+Sin una URL de producción, el proyecto usa `ebsa_local.db` SQLite únicamente para validaciones locales.
 
 ## Crear el esquema
 
 ```powershell
 .venv\Scripts\Activate.ps1
 python -m pip install -r importer/requirements.txt
-python -m database.init_db
-```
-
-Para usar migraciones:
-
-```powershell
 alembic upgrade head
 ```
 
-En producción se debe ejecutar la migración contra el PostgreSQL de producción y revisar el DSN antes de confirmar.
+Las migraciones crean las tablas de corridas, archivos, clientes, consumo, pronósticos, riesgo, ubicación, visitas, feedback y datasets genéricos.
 
 ## Validar archivos sin importar
 
@@ -35,21 +39,25 @@ python -m importer.import_run `
   --dry-run
 ```
 
-Este comando no escribe datos. Revisa los archivos del manifiesto, valida columnas obligatorias y cuenta filas por lotes.
+Este comando no escribe datos. Revisa el manifiesto, valida columnas obligatorias y cuenta filas por lotes.
 
 ## Importar
 
 ```powershell
 python -m importer.import_run `
   --source "C:\Datos_Ebsa" `
-  --periodo "2026-10" `
-  --database-url "postgresql+psycopg://ebsa:clave@localhost:5432/ebsa"
+  --periodo "2026-10"
 ```
 
-La importación no modifica los archivos originales. Registra una fila en `data_runs`, una por archivo en `data_files` y carga los datos normalizados en las tablas de negocio.
+La importación no modifica los archivos originales. Registra una fila en `data_runs`, una por archivo en `data_files` y carga los datos normalizados en Azure SQL.
 
-Una corrida ya completada no se sobrescribe automáticamente. Esto evita duplicados y obliga a revisar cualquier reimportación.
+Una corrida completada no se sobrescribe automáticamente.
 
-## Archivos reconocidos inicialmente
+## Red y seguridad
 
-El manifiesto se basa en la clase `Rutas` del Streamlit actual e incluye lista operativa, lista gerencial, riesgo de fuga, pronósticos, serie mensual, ubicación, estudio de caída, ciclo, proyección e índice de exportes.
+- Usa el puerto TCP `1433`.
+- Mantén TLS/cifrado activo.
+- Agrega reglas de firewall solo para las IP necesarias.
+- No guardes la contraseña en Git.
+- En Vercel usa variables de entorno.
+- Para producción avanzada considera Azure Key Vault o identidad administrada.
