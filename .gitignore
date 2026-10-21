@@ -25,6 +25,8 @@ streamlit_origen/
 *.parquet
 *.feather
 *.db
+*.db-journal
+*.sqlite*
 
 # IDE/OS
 .vscode/
