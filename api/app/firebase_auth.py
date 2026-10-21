@@ -7,17 +7,16 @@ from typing import Any
 import firebase_admin
 from firebase_admin import auth, credentials
 
+from firebase_admin_cert import certificado_servicio, firebase_configurado
+
 
 @lru_cache(maxsize=1)
+def _configurado_cache() -> bool:
+    return firebase_configurado()
+
+
 def firebase_is_configured() -> bool:
-    return all(
-        os.getenv(name)
-        for name in (
-            "FIREBASE_PROJECT_ID",
-            "FIREBASE_CLIENT_EMAIL",
-            "FIREBASE_PRIVATE_KEY",
-        )
-    )
+    return _configurado_cache()
 
 
 def _get_firebase_app() -> firebase_admin.App:
@@ -27,14 +26,8 @@ def _get_firebase_app() -> firebase_admin.App:
         if not firebase_is_configured():
             raise RuntimeError("Firebase Admin SDK no está configurado")
 
-        private_key = os.environ["FIREBASE_PRIVATE_KEY"].replace("\\n", "\n")
-        certificate = {
-            "project_id": os.environ["FIREBASE_PROJECT_ID"],
-            "client_email": os.environ["FIREBASE_CLIENT_EMAIL"],
-            "private_key": private_key,
-        }
         return firebase_admin.initialize_app(
-            credentials.Certificate(certificate),
+            credentials.Certificate(certificado_servicio()),
             {"projectId": os.environ["FIREBASE_PROJECT_ID"]},
         )
 

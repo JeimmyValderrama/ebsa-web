@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -18,8 +19,8 @@ from database.models import (
     OperationalManagement,
 )
 
-# Datasets con tabla normalizada propia. El importador escribe el payload completo
-# en la tabla, así que la API puede servirlos sin depender de dataset_records.
+# Datasets con tabla normalizada propia. La API los sirve directamente desde su
+# tabla; dataset_records queda para las salidas genéricas del pipeline.
 NORMALIZED: dict[str, Any] = {
     "operational": OperationalManagement,
     "churn_scores": ClientChurnRisk,
@@ -153,8 +154,18 @@ def dataset_rows_chunked(
     return rows
 
 
-def catalog(db: Session) -> list[dict[str, Any]]:
+# El catálogo cuenta las filas de cada tabla, y client_consumption_monthly tiene
+# ~28,5 millones: sin caché cada llamada tarda decenas de segundos. Los conteos
+# solo cambian cuando se importa un corte nuevo, así que se guardan un rato.
+_CATALOGO_CACHE: tuple[float, list[dict[str, Any]]] | None = None
+_CATALOGO_TTL_SEGUNDOS = 600.0
+
+
+def catalog(db: Session, forzar: bool = False) -> list[dict[str, Any]]:
     """Catálogo de datasets con su número de filas (genéricos + normalizados)."""
+    global _CATALOGO_CACHE
+    if not forzar and _CATALOGO_CACHE and time.monotonic() - _CATALOGO_CACHE[0] < _CATALOGO_TTL_SEGUNDOS:
+        return [dict(item) for item in _CATALOGO_CACHE[1]]
     items = [
         {"dataset_key": key, "rows": int(count)}
         for key, count in db.execute(
@@ -170,4 +181,6 @@ def catalog(db: Session) -> list[dict[str, Any]]:
             index[key]["rows"] = count
         else:
             items.append({"dataset_key": key, "rows": count})
-    return sorted(items, key=lambda item: item["dataset_key"])
+    items = sorted(items, key=lambda item: item["dataset_key"])
+    _CATALOGO_CACHE = (time.monotonic(), items)
+    return items
