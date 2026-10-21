@@ -188,43 +188,63 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
         raise schema_error(exc) from exc
 
 
+def locations_by_niu(db: Session, nius: list[str]) -> dict[str, dict[str, Any]]:
+    """Última ubicación conocida por NIU, consultada por lotes sobre el índice de niu."""
+    result: dict[str, dict[str, Any]] = {}
+    unique = list(dict.fromkeys(niu for niu in nius if niu))
+    for start in range(0, len(unique), 1000):
+        chunk = unique[start : start + 1000]
+        for row in db.scalars(select(ClientLocation).where(ClientLocation.niu.in_(chunk)).order_by(ClientLocation.id)).all():
+            result[row.niu] = {"municipio": row.municipio, "direccion": row.direccion, "latitud": row.latitud, "longitud": row.longitud}
+    return result
+
+
+def clients_by_niu(db: Session, nius: list[str]) -> dict[str, dict[str, Any]]:
+    """Atributos de catálogo del cliente (zona, ciclo, clase) por lote."""
+    result: dict[str, dict[str, Any]] = {}
+    unique = list(dict.fromkeys(niu for niu in nius if niu))
+    for start in range(0, len(unique), 1000):
+        chunk = unique[start : start + 1000]
+        for row in db.execute(select(Client.niu, Client.zona_regional, Client.zona_nombre, Client.ciclo_etiqueta, Client.clase_servicio_nombre).where(Client.niu.in_(chunk))).all():
+            result[row.niu] = {"zona_regional": row.zona_regional, "zona_nombre": row.zona_nombre, "ciclo_etiqueta": row.ciclo_etiqueta, "clase_servicio_nombre": row.clase_servicio_nombre}
+    return result
+
+
 @router.get("/route")
 def visit_route(cycle: int | None = None, limit: int = Query(500, ge=1, le=5000), db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles("SOPORTE", "ADMIN_MODELO"))) -> dict[str, Any]:
     """Lista de gestión por ciclo de lectura con ubicación, para las visitas de campo."""
     try:
-        latest_location = (
-            select(ClientLocation.id.label("location_id"), ClientLocation.niu.label("location_niu"), ClientLocation.municipio, ClientLocation.direccion, ClientLocation.latitud, ClientLocation.longitud)
-            .where(ClientLocation.id.in_(select(func.max(ClientLocation.id)).group_by(ClientLocation.niu)))
-            .subquery()
-        )
-        query = (
-            select(OperationalManagement, Client.zona_regional, latest_location.c.municipio, latest_location.c.direccion, latest_location.c.latitud, latest_location.c.longitud)
-            .join(Client, Client.niu == OperationalManagement.niu, isouter=True)
-            .join(latest_location, latest_location.c.location_niu == OperationalManagement.niu, isouter=True)
-        )
-        if cycle is not None:
-            query = query.where(OperationalManagement.ciclo == cycle)
         cycles = [
             {"ciclo": ciclo, "ciclo_etiqueta": etiqueta, "clientes": int(clientes)}
             for ciclo, etiqueta, clientes in db.execute(
                 select(OperationalManagement.ciclo, OperationalManagement.ciclo_etiqueta, func.count()).group_by(OperationalManagement.ciclo, OperationalManagement.ciclo_etiqueta).order_by(OperationalManagement.ciclo)
             ).all()
         ]
-        rows = db.execute(query.order_by(OperationalManagement.orden_en_ciclo.asc(), OperationalManagement.valor_riesgo_mes.desc()).limit(limit)).all()
-        items = [
-            {
-                "niu": item.niu,
-                "ciclo": item.ciclo,
-                "ciclo_etiqueta": item.ciclo_etiqueta,
-                "zona_regional": zona_regional,
-                "municipio": municipio,
-                "direccion": direccion,
-                "latitud": float(latitud) if latitud is not None else None,
-                "longitud": float(longitud) if longitud is not None else None,
-                "payload": {**(item.payload or {}), "zona_regional": zona_regional, "municipio": municipio, "direccion": direccion},
-            }
-            for item, zona_regional, municipio, direccion, latitud, longitud in rows
-        ]
+        query = select(OperationalManagement)
+        if cycle is not None:
+            query = query.where(OperationalManagement.ciclo == cycle)
+        rows = db.scalars(query.order_by(nulls_last(OperationalManagement.orden_en_ciclo.asc()), OperationalManagement.valor_riesgo_mes.desc()).limit(limit)).all()
+        nius = [row.niu for row in rows]
+        locations = locations_by_niu(db, nius)
+        clients = clients_by_niu(db, nius)
+        items = []
+        for item in rows:
+            ubicacion = locations.get(item.niu, {})
+            atributos = clients.get(item.niu, {})
+            items.append(
+                {
+                    "niu": item.niu,
+                    "ciclo": item.ciclo,
+                    "ciclo_etiqueta": item.ciclo_etiqueta,
+                    "zona_regional": atributos.get("zona_regional"),
+                    "zona_nombre": atributos.get("zona_nombre"),
+                    "municipio": ubicacion.get("municipio"),
+                    "direccion": ubicacion.get("direccion"),
+                    "latitud": float(ubicacion["latitud"]) if ubicacion.get("latitud") is not None else None,
+                    "longitud": float(ubicacion["longitud"]) if ubicacion.get("longitud") is not None else None,
+                    "payload": {**(item.payload or {}), **{key: value for key, value in atributos.items() if value}, **{key: value for key, value in ubicacion.items() if value}},
+                }
+            )
         return {"cycles": cycles, "items": items, "total": len(items), "cycle": cycle}
     except OperationalError as exc:
         raise schema_error(exc) from exc
@@ -265,13 +285,7 @@ def municipality_metrics(db: Session = Depends(get_db), _: dict[str, Any] = Depe
             }
 
         nius = list(db.scalars(select(OperationalManagement.niu).distinct())) + list(db.scalars(select(ClientChurnRisk.niu).distinct()))
-        municipio_por_niu: dict[str, str] = {}
-        unique = list(dict.fromkeys(nius))
-        for start in range(0, len(unique), 1000):
-            chunk = unique[start : start + 1000]
-            for niu, municipio in db.execute(select(ClientLocation.niu, ClientLocation.municipio).where(ClientLocation.niu.in_(chunk)).order_by(ClientLocation.id)).all():
-                if municipio:
-                    municipio_por_niu[niu] = municipio
+        municipio_por_niu = {niu: ubicacion.get("municipio") for niu, ubicacion in locations_by_niu(db, nius).items()}
 
         acumulados: dict[str, dict[str, Any]] = {}
 

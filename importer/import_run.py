@@ -100,9 +100,12 @@ def ensure_clients(db: Session, nius: list[str], records: list[dict[str, Any]] |
 
 
 def forecast_records(row: dict[str, Any], run_id: int) -> list[dict[str, Any]]:
-    """El parquet de pronóstico es ancho (pred_1m..pred_6m); se convierte a filas largas."""
+    """El parquet de pronóstico es ancho (pred_1m..pred_6m); se convierte a filas largas.
+
+    No se guarda el JSON de la fila fuente: cada fila derretida ya lleva sus columnas
+    tipadas, y el original repite las 34 columnas seis veces (≈6 GB sin aportar nada).
+    """
     niu = text(value(row, "NIU", "niu"))
-    body = payload(row)
     corte = date_value(value(row, "fecha_corte"))
     records: list[dict[str, Any]] = []
     for horizonte in HORIZONTES:
@@ -118,7 +121,6 @@ def forecast_records(row: dict[str, Any], run_id: int) -> list[dict[str, Any]]:
             "periodo_pronosticado": periodo,
             "consumo_pronosticado_kwh": consumo,
             "grupo_consumo": text(value(row, "grupo_consumo", "perfil")),
-            "payload": body,
         })
     return records
 
@@ -126,24 +128,28 @@ def forecast_records(row: dict[str, Any], run_id: int) -> list[dict[str, Any]]:
 def normalize_row(spec: DatasetSpec, row: dict[str, Any], run_id: int, min_periodo: Any = None) -> Any:
     target = spec.target
     niu = text(value(row, "NIU", "niu"))
-    body = payload(row)
     corte = date_value(value(row, "fecha_corte", "corte"))
-    common: dict[str, Any] = {"data_run_id": run_id, "niu": niu, "fecha_corte": corte, "payload": body}
-    if target == "operational":
-        return {**common, "ciclo": integer(value(row, "ciclo")), "ciclo_etiqueta": text(value(row, "ciclo_etiqueta")), "severidad": text(value(row, "severidad")), "trayectoria": text(value(row, "trayectoria")), "estado_en_lista": text(value(row, "estado_en_lista")), "prioridad_gestion": text(value(row, "prioridad_gestion")), "perdida_kwh_mes": number(value(row, "perdida_kwh_mes")), "valor_riesgo_mes": number(value(row, "valor_riesgo_mes")), "orden_en_ciclo": integer(value(row, "orden_en_ciclo"))}
-    if target == "churn":
-        return {**common, "nivel_riesgo": text(value(row, "nivel_riesgo")), "prob_fuga_6m": number(value(row, "prob_fuga_6m")), "valor_esperado_perdida_mes": number(value(row, "valor_esperado_perdida_mes")), "valor_en_riesgo_mes": number(value(row, "valor_en_riesgo_mes")), "senales": text(value(row, "senales"))}
-    if target == "drop":
-        return {**common, "veredicto": text(value(row, "veredicto")), "severidad": text(value(row, "severidad")), "consumo_anterior_kwh": number(value(row, "consumo_anterior_kwh")), "consumo_reciente_kwh": number(value(row, "consumo_reciente_kwh")), "variacion_vs_anterior_pct": number(value(row, "variacion_vs_anterior_pct")), "valor_riesgo_mes": number(value(row, "valor_riesgo_mes"))}
     if target == "forecast":
         return forecast_records(row, run_id)
     if target == "consumption":
+        # Sin payload: la serie solo se sirve por sus columnas tipadas y la tabla
+        # llega a ~28,5 millones de filas (el JSON la duplicaría de tamaño).
         periodo = date_value(value(row, "periodo"))
         if periodo is None:
             return None
         if min_periodo is not None and periodo < min_periodo:
             return None
-        return {"data_run_id": run_id, "niu": niu, "periodo": periodo, "consumo_kwh": number(value(row, "consumo_kwh_mensual", "consumo_kwh")), "es_rural": boolean(value(row, "es_rural")), "estado_mes": text(value(row, "estado_mes")), "payload": body}
+        return {"data_run_id": run_id, "niu": niu, "periodo": periodo, "consumo_kwh": number(value(row, "consumo_kwh_mensual", "consumo_kwh")), "es_rural": boolean(value(row, "es_rural")), "estado_mes": text(value(row, "estado_mes"))}
+    body = payload(row)
+    common: dict[str, Any] = {"data_run_id": run_id, "niu": niu, "fecha_corte": corte, "payload": body}
+    if target == "operational":
+        # La lista de gestión trae el ciclo en ciclo_etiqueta ("0".."38"); ciclo es opcional.
+        ciclo = integer(value(row, "ciclo")) if value(row, "ciclo") is not None else integer(value(row, "ciclo_etiqueta"))
+        return {**common, "ciclo": ciclo, "ciclo_etiqueta": text(value(row, "ciclo_etiqueta")), "severidad": text(value(row, "severidad")), "trayectoria": text(value(row, "trayectoria")), "estado_en_lista": text(value(row, "estado_en_lista")), "prioridad_gestion": text(value(row, "prioridad_gestion")), "perdida_kwh_mes": number(value(row, "perdida_kwh_mes")), "valor_riesgo_mes": number(value(row, "valor_riesgo_mes")), "orden_en_ciclo": integer(value(row, "orden_en_ciclo"))}
+    if target == "churn":
+        return {**common, "nivel_riesgo": text(value(row, "nivel_riesgo")), "prob_fuga_6m": number(value(row, "prob_fuga_6m")), "valor_esperado_perdida_mes": number(value(row, "valor_esperado_perdida_mes")), "valor_en_riesgo_mes": number(value(row, "valor_en_riesgo_mes")), "senales": text(value(row, "senales"))}
+    if target == "drop":
+        return {**common, "veredicto": text(value(row, "veredicto")), "severidad": text(value(row, "severidad")), "consumo_anterior_kwh": number(value(row, "consumo_anterior_kwh")), "consumo_reciente_kwh": number(value(row, "consumo_reciente_kwh")), "variacion_vs_anterior_pct": number(value(row, "variacion_vs_anterior_pct")), "valor_riesgo_mes": number(value(row, "valor_riesgo_mes"))}
     if target == "location":
         return {"niu": niu, "data_run_id": run_id, "municipio": text(value(row, "municipio")), "direccion": text(value(row, "direccion")), "latitud": number(value(row, "latitud")), "longitud": number(value(row, "longitud")), "coordenadas_validas": boolean(value(row, "coordenadas_validas")), "payload": body}
     return None
