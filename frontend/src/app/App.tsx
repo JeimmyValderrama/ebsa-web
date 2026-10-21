@@ -60,8 +60,6 @@ function OverviewPage() {
 
 function MetricCard({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) { return <article className={`metric-card tone-${tone}`}><div className="metric-topline"><span className="metric-label">{label}</span><span className="metric-line" /></div><div className="metric-value">{value}</div><div className="metric-detail">{detail}</div></article>; }
 
-function PlaceholderPage({ title, description }: { title: string; description: string }) { return <div className="page-content compact-page"><div className="eyebrow">MÓDULO EN CONSTRUCCIÓN</div><h1>{title}</h1><p className="page-lead">{description}</p><div className="module-placeholder"><span className="module-placeholder-mark">+</span><div><strong>Esta sección se conectará al pipeline EBSA</strong><p>La autorización de la ruta ya está definida por rol. La lógica y los datos se incorporarán en las siguientes fases.</p></div></div></div>; }
-
 export default function App() {
   return <Routes><Route path="/login" element={<LoginPage />} /><Route element={<RequireAuth />}><Route element={<ProtectedLayout />}><Route path="/" element={<OverviewPage />} /><Route path="/comercial" element={<CommercialPage />} /><Route path="/soporte" element={<SupportPage />} /><Route path="/administrador" element={<AdminPage />} /></Route></Route><Route path="*" element={<LoginPage />} /></Routes>;
 }

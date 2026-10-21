@@ -20,6 +20,7 @@ frontend/dist/
 
 # Local data and generated files
 data/
+streamlit_origen/
 *.csv
 *.parquet
 *.feather
