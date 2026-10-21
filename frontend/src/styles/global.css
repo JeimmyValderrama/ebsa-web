@@ -101,3 +101,75 @@ h2 { font-size: 24px; letter-spacing: -.04em; margin: 9px 0 0; }
 .data-module .table-card { max-height: 600px; overflow: auto; }.support-grid { margin-top: 0; }.admin-note { min-height: 150px; }
 @media (max-width: 800px) { .catalog-grid { grid-template-columns: repeat(2, 1fr); }.split-panel { grid-template-columns: 1fr; }.module-heading { flex-direction: column; }.data-toolbar { align-items: stretch; flex-direction: column; }.data-toolbar input { width: 100%; }.bar-row { grid-template-columns: 90px 1fr 48px; } }
 @media (max-width: 520px) { .catalog-grid { grid-template-columns: 1fr; }.data-module, .map-panel { padding: 18px; } }
+
+/* ===== Controles de presentación (medida, ocultar NIU, horizonte) ===== */
+.segmented-control { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.segmented-label { font-family: 'DM Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 4px; }
+.segmented-option { border: 1px solid var(--line); background: #fff; color: var(--muted); padding: 9px 14px; font-size: 12px; cursor: pointer; }
+.segmented-option + .segmented-option { margin-left: -1px; }
+.segmented-option:first-of-type { border-radius: 4px 0 0 4px; }
+.segmented-option:last-of-type { border-radius: 0 4px 4px 0; }
+.segmented-active { background: var(--navy); border-color: var(--navy); color: #fff; }
+.toggle-row { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; font-size: 12px; color: var(--navy); cursor: pointer; }
+.toggle-row input { width: 16px; height: 16px; accent-color: var(--navy); }
+.toggle-row small { grid-column: 2; color: var(--muted); line-height: 1.5; }
+
+/* ===== Barra de datos: búsqueda, filtros, paginación ===== */
+.search-input { border: 1px solid var(--line); padding: 10px 12px; min-width: min(360px, 100%); font-size: 12px; border-radius: 4px; }
+.ghost-button { border: 1px solid var(--line); background: #fff; color: var(--navy); padding: 9px 13px; font-size: 11px; cursor: pointer; border-radius: 4px; white-space: nowrap; }
+.ghost-button:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+.ghost-button:disabled { opacity: .45; cursor: not-allowed; }
+.pagination-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
+.pagination-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover td { background: #f4f8fd; }
+
+/* ===== Barras simples y gráfica de series ===== */
+.bar-track { display: block; height: 8px; background: #edf1f6; border-radius: 5px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--blue); border-radius: inherit; }
+.bar-value { text-align: right; color: var(--navy); font-family: 'DM Mono', monospace; font-size: 10px; }
+.chart-card { margin-top: 18px; background: #fff; border: 1px solid var(--line); padding: 18px; }
+.line-chart { width: 100%; height: auto; }
+.chart-axis { stroke: #d7e1e7; stroke-width: 1; }
+.chart-line { fill: none; stroke-width: 2; }
+.chart-real { stroke: var(--navy); }
+.chart-proj { stroke: var(--orange); stroke-dasharray: 5 4; }
+.chart-band { fill: rgba(235, 104, 52, .12); stroke: none; }
+.chart-footer { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11px; color: var(--muted); align-items: center; }
+.legend-item:before { content: ''; display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; }
+.legend-real:before { background: var(--navy); }
+.legend-proj:before { background: var(--orange); }
+.legend-band:before { background: rgba(235, 104, 52, .35); }
+.legend-note { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 10px; }
+.chart-axis-labels { display: flex; justify-content: space-between; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+/* ===== Años de proyección ===== */
+.year-grid { display: grid; grid-template-columns: repeat(var(--cols, 6), 1fr); gap: 10px; margin-top: 18px; }
+.year-cell { display: grid; gap: 4px; padding: 14px; background: #f8fafc; border: 1px solid var(--line); text-align: center; }
+.year-cell b { font-size: 15px; color: var(--navy); }
+.year-cell span { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--navy); }
+.year-cell small { color: var(--muted); font-size: 10px; }
+.year-projected { background: #fff6f1; border-color: #f4d3c3; }
+
+/* ===== Mapa coroplético y dispersión ===== */
+.choropleth { width: 100%; height: auto; background: #f4f8fb; border: 1px solid #d7e1e7; }
+.map-shape { stroke: #ffffff; stroke-width: 1; cursor: pointer; }
+.map-hover { stroke: var(--navy); stroke-width: 2; }
+.map-q1 { fill: #dbe9f6; }.map-q2 { fill: #b3d2ea; }.map-q3 { fill: #7fb2d9; }.map-q4 { fill: #4a8cbe; }.map-q5 { fill: #1f5f92; }
+.map-none { fill: #eef1f5; }
+.map-legend { display: flex; align-items: center; margin-top: 10px; font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.legend-swatch { display: inline-block; width: 34px; height: 12px; border: 1px solid rgba(0, 0, 0, .06); margin-right: 26px; }
+.coordinate-plot { width: 100%; height: 390px; background: linear-gradient(150deg, #eef5f7 0%, #e5eef5 46%, #f7f3e9 47%, #f2f7ed 100%); border: 1px solid #d7e1e7; margin-top: 18px; }
+.map-dot { fill: var(--orange); fill-opacity: .65; }
+.map-dot:hover { fill-opacity: 1; }
+
+/* ===== Ficha de cliente y tarjetas de cifras ===== */
+.ficha-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 16px; }
+.ficha-item { display: grid; gap: 4px; padding: 14px; border: 1px solid var(--line); background: #fbfcfe; }
+.ficha-item span { font-family: 'DM Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #7c899b; }
+.ficha-item b { font-size: 14px; color: var(--navy); word-break: break-word; }
+.ficha-note { margin-top: 14px; padding: 14px; background: #f8fafc; border-left: 3px solid var(--blue); font-size: 12px; line-height: 1.6; color: #536174; }
+.metric-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.catalog-key { color: var(--navy); font-size: 12px; }
+
+@media (max-width: 800px) { .metric-grid-4, .year-grid { grid-template-columns: repeat(2, 1fr); } }

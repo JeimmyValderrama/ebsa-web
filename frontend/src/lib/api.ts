@@ -88,12 +88,22 @@ export const api = {
   forecast: (token: string | undefined, niu: string) => request<Array<{ horizonte: number | null; periodo_pronosticado: string | null; consumo_pronosticado_kwh: number | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/forecast`, { token }),
   locations: (token: string | undefined, limit = 5000) => request<Array<Record<string, unknown>>>(`/api/data/locations${query({ limit })}`, { token }),
   catalog: (token: string | undefined) => request<Array<{ dataset_key: string; rows: number }>>("/api/data/datasets/catalog", { token }),
+  panorama: (token: string | undefined) =>
+    request<{
+      lista: { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number };
+      por_prioridad: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number }>;
+      por_severidad: Record<string, number>;
+      fuga: { clientes: number; perdida_esperada_mes: number; valor_en_riesgo_mes: number; por_nivel: Record<string, number> };
+      cero_sostenido: number;
+      otro_comercializador: number;
+      mercado_no_regulado: number;
+    }>("/api/data/panorama", { token }),
   dataset: (token: string | undefined, key: string, options: DatasetQuery = {}) => request<DatasetPage>(`/api/data/datasets/${encodeURIComponent(key)}${query({ limit: options.limit ?? 200, offset: options.offset ?? 0, search: options.search, niu: options.niu, filter: options.filters })}`, { token }),
   datasetCsv: (token: string | undefined, key: string, options: Pick<DatasetQuery, "search" | "filters"> = {}) =>
     request<Response>(`/api/data/datasets/${encodeURIComponent(key)}/csv${query({ search: options.search, filter: options.filters })}`, { token, raw: true, accept: "text/csv" }).then((response) => response.blob()),
   runs: (token: string | undefined) => request<Array<Record<string, unknown>>>("/api/data/runs", { token }),
   pipeline: (token: string | undefined) => request<{ quality_control: Array<Record<string, unknown>>; forecast_bias: Array<Record<string, unknown>>; runs: Array<Record<string, unknown>> }>("/api/data/pipeline", { token }),
-  route: (token: string | undefined, options: { cycle?: number; limit?: number } = {}) => request<{ items: Array<Record<string, unknown>>; total: number }>(`/api/data/route${query(options)}`, { token }),
+  route: (token: string | undefined, options: { cycle?: number; limit?: number } = {}) => request<{ cycles: Array<Record<string, unknown>>; items: Array<Record<string, unknown>>; total: number; cycle: number | null }>(`/api/data/route${query(options)}`, { token }),
   municipalityMetrics: (token: string | undefined) => request<{ metrics: Array<{ key: string; label: string; unidad: string }>; rows: Array<Record<string, unknown>> }>("/api/data/municipalities/metrics", { token }),
   visits: (token: string | undefined) => request<unknown[]>("/api/visits", { token }),
   createVisit: (token: string | undefined, data: { niu: string; cycle?: number; scheduled_for?: string }) => request<unknown>("/api/visits", { token, method: "POST", body: data }),
