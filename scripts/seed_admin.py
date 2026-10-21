@@ -4,7 +4,11 @@ import argparse
 import os
 
 import firebase_admin
+from dotenv import load_dotenv
 from firebase_admin import auth, credentials
+
+# En local las credenciales viven en el .env de la raíz; en un servidor se exportan.
+load_dotenv()
 
 
 def main() -> None:

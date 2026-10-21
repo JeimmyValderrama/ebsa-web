@@ -4,8 +4,14 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import URL, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+# El .env solo se usa en local; en Vercel las variables vienen de la plataforma.
+# load_dotenv no pisa variables ya definidas, así que las pruebas que fijan
+# EBSA_DATABASE_URL antes de importar siguen mandando.
+load_dotenv()
 
 
 class Base(DeclarativeBase):

@@ -3,6 +3,11 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 
+from dotenv import load_dotenv
+
+# Debe ir antes de importar los routers: database.db lee la URL de la base al importarse.
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
