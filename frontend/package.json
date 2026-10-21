@@ -12,14 +12,16 @@
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "firebase": "latest",
+    "maplibre-gl": "^6.15.0",
     "react": "latest",
     "react-dom": "latest",
-    "react-router-dom": "latest"
+    "react-router-dom": "latest",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@types/node": "latest",
     "typescript": "latest",
     "vite": "latest"
   }

@@ -6,6 +6,7 @@ import { DatasetCatalog, DatasetView, type FilterField, type Row } from "../comp
 import { MunicipalityMap } from "../components/MunicipalityMap";
 import { ProjectionView } from "../components/Projection";
 import { MeasureSelector, usePresentation } from "../app/Presentation";
+import { useSectionNav } from "../app/SectionNav";
 import { colMedida, energia, fmtN, fmtMedida, pesos, unidadMedida } from "../lib/format";
 
 type PanoramaData = Awaited<ReturnType<typeof api.panorama>>;
@@ -22,6 +23,27 @@ const sections = [
 
 type Section = (typeof sections)[number][0];
 
+/** Grupos del menú lateral (misma organización que GRUPOS_MENU del Streamlit). */
+const GRUPOS: Array<{ nombre: string; items: Array<{ clave: Section; etiqueta: string }> }> = [
+  { nombre: "Resumen", items: [{ clave: "panorama", etiqueta: "Panorama" }] },
+  {
+    nombre: "Listas",
+    items: [
+      { clave: "caidas", etiqueta: "Caídas de consumo" },
+      { clave: "sin_consumo", etiqueta: "Clientes sin consumo" },
+      { clave: "fuga", etiqueta: "Probabilidad de fuga" },
+      { clave: "salidas", etiqueta: "Clientes que ya se fueron" },
+    ],
+  },
+  {
+    nombre: "Planeación",
+    items: [
+      { clave: "proyeccion", etiqueta: "Proyección de consumo" },
+      { clave: "descargas", etiqueta: "Descargas" },
+    ],
+  },
+];
+
 const FILTROS_CAIDAS: FilterField[] = [{ key: "veredicto", label: "Veredicto" }, { key: "severidad", label: "Gravedad" }, { key: "zona", label: "Zona" }];
 const FILTROS_FUGA: FilterField[] = [{ key: "nivel_riesgo", label: "Nivel de riesgo" }, { key: "perfil", label: "Perfil" }];
 const COLUMNAS_LISTA = ["NIU", "zona_nombre", "clase_servicio_nombre", "gravedad", "trayectoria", "prioridad_gestion", "valor_riesgo_mes"];
@@ -29,6 +51,7 @@ const COLUMNAS_LISTA = ["NIU", "zona_nombre", "clase_servicio_nombre", "gravedad
 export default function CommercialPage() {
   const { idToken, currentUser } = useAuth();
   const [section, setSection] = useState<Section>("panorama");
+  useSectionNav(GRUPOS, section, setSection);
   const navigate = useNavigate();
   // La ficha por NIU vive en Soporte; solo se ofrece a los roles que pueden abrirla.
   const puedeFichas = (currentUser?.role ?? "COMERCIAL") !== "COMERCIAL";
@@ -48,16 +71,8 @@ export default function CommercialPage() {
           <h1>Todo el panorama comercial.</h1>
           <p>Las mismas listas, cortes, pronósticos y salidas del pipeline, organizados para decidir a quién llamar y qué gestionar.</p>
         </div>
-        <MeasureSelector />
+        {section === "panorama" && <MeasureSelector />}
       </section>
-
-      <div className="admin-tabs">
-        {sections.map(([key, label]) => (
-          <button key={key} className={section === key ? "admin-tab active" : "admin-tab"} onClick={() => setSection(key)}>
-            {label}
-          </button>
-        ))}
-      </div>
 
       {section === "panorama" && <Panorama token={idToken} onOpenClient={abrirFicha} onGoProjection={() => setSection("proyeccion")} puedeFichas={puedeFichas} />}
       {section === "caidas" && (

@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { api, type DatasetPage } from "../lib/api";
 import { DatasetView } from "../components/DataExplorer";
 import { Sensitive } from "../app/Presentation";
+import { useSectionNav } from "../app/SectionNav";
 import { energia, fechaCo, fmtN, limpiarNiu, mesCorto, pesos, queRevisar } from "../lib/format";
 
 const sections = [
@@ -14,6 +15,24 @@ const sections = [
 ] as const;
 
 type Section = (typeof sections)[number][0];
+
+/** Grupos del menú lateral (GRUPOS_MENU["Soporte"] del Streamlit). */
+const GRUPOS: Array<{ nombre: string; items: Array<{ clave: Section; etiqueta: string }> }> = [
+  {
+    nombre: "Clientes",
+    items: [
+      { clave: "cliente", etiqueta: "Consultar un cliente" },
+      { clave: "caidas", etiqueta: "Caídas de consumo" },
+    ],
+  },
+  {
+    nombre: "Trabajo de campo",
+    items: [
+      { clave: "visitas", etiqueta: "Visitas por ciclo" },
+      { clave: "resultados", etiqueta: "Resultado de visitas" },
+    ],
+  },
+];
 
 type Ficha = {
   cliente: Record<string, unknown> | null;
@@ -66,6 +85,7 @@ function ConsumoChart({ puntos }: { puntos: Array<{ periodo: string; valor: numb
 export default function SupportPage() {
   const { idToken } = useAuth();
   const [section, setSection] = useState<Section>("cliente");
+  useSectionNav(GRUPOS, section, setSection);
   const [searchParams] = useSearchParams();
   const niuInicial = searchParams.get("niu") ?? "";
 
@@ -82,14 +102,6 @@ export default function SupportPage() {
           <p>Consulta una cuenta, mira qué pasó con su consumo y prepara la visita con la sugerencia del modelo.</p>
         </div>
       </section>
-
-      <div className="admin-tabs">
-        {sections.map(([key, label]) => (
-          <button key={key} className={section === key ? "admin-tab active" : "admin-tab"} onClick={() => setSection(key)}>
-            {label}
-          </button>
-        ))}
-      </div>
 
       {section === "cliente" && <ClientLookup token={idToken} initialNiu={niuInicial} />}
       {section === "visitas" && <VisitasPorCiclo token={idToken} />}

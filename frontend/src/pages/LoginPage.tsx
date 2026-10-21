@@ -12,7 +12,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const destination = (location.state as { from?: string } | null)?.from ?? "/";
 
-  if (loading) return <div className="auth-page"><div className="auth-card"><span className="eyebrow">EBSA / AUTENTICACIÓN</span><h1>Comprobando sesión…</h1></div></div>;
+  if (loading) return (
+    <div className="auth-page">
+      <div className="topbar"><div className="marca"><i /><div><b>Analítica de consumo</b><small>Proyecto académico UPTC · no oficial de EBSA</small></div></div></div>
+      <div className="auth-card"><span className="eyebrow">EBSA / AUTENTICACIÓN</span><h1>Comprobando sesión…</h1></div>
+    </div>
+  );
   if (currentUser) return <Navigate to={destination} replace />;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -30,12 +35,12 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
+      <div className="topbar"><div className="marca"><i /><div><b>Analítica de consumo</b><small>Proyecto académico UPTC · no oficial de EBSA</small></div></div></div>
       <div className="auth-decoration" aria-hidden="true"><span>EBSA</span><b>⚡</b></div>
       <section className="auth-card">
-        <div className="brand-lockup auth-brand"><div className="brand-mark">⚡</div><div><div className="brand-name">EBSA</div><div className="brand-subtitle">Consumo de clientes</div></div></div>
         <div className="eyebrow accent-eyebrow">ACCESO SEGURO</div>
-        <h1>Ingresa a tu centro de decisiones.</h1>
-        <p className="auth-intro">Usa la cuenta individual habilitada para consultar la información de EBSA.</p>
+        <h1>Analítica de consumo de clientes</h1>
+        <p className="auth-intro">Caídas de consumo, probabilidad de fuga y proyección de consumo en Boyacá. Usa la cuenta individual habilitada para consultar la información de EBSA.</p>
         {!configured && <div className="notice notice-warning">Firebase todavía no está configurado. En la siguiente entrega se agregarán las variables del proyecto y podrás iniciar sesión.</div>}
         {authError && <div className="notice notice-error">{authError}</div>}
         {error && <div className="notice notice-error">{error}</div>}
@@ -44,7 +49,7 @@ export default function LoginPage() {
           <label>Contraseña<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required disabled={!isFirebaseConfigured || submitting} /></label>
           <button className="primary-button auth-submit" type="submit" disabled={!isFirebaseConfigured || submitting}>{submitting ? "Validando…" : "Ingresar"}<span>→</span></button>
         </form>
-        <div className="auth-footnote">La autorización de cada módulo se valida también en el backend.</div>
+        <div className="auth-footnote">Proyecto académico (UPTC) aplicado a datos de EBSA. No es un producto oficial de la empresa. La autorización de cada módulo se valida también en el backend.</div>
       </section>
     </div>
   );

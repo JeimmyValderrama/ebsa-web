@@ -154,17 +154,26 @@ export function ProjectionView({ token, showZoneFilter = true }: { token?: strin
     };
   }, [token]);
 
-  const zonas = useMemo(() => Array.from(new Set(mensual.map((row) => row.zona_regional ?? "").filter(Boolean))).sort(), [mensual]);
+  // Como en el Streamlit: la zona por defecto es el agregado que empieza con TOTAL
+  // (sin esa fila, "todas las zonas" duplicaría cada año en las tarjetas).
+  const zonas = useMemo(() => {
+    const distintas = Array.from(new Set(mensual.map((row) => row.zona_regional ?? "").filter(Boolean)));
+    const total = distintas.filter((zona) => zona.startsWith("TOTAL"));
+    const resto = distintas.filter((zona) => !zona.startsWith("TOTAL")).sort();
+    return [...total, ...resto];
+  }, [mensual]);
+  const zonaTotal = zonas.find((zona) => zona.startsWith("TOTAL")) ?? "";
   const escenarios = useMemo(() => Array.from(new Set([...mensual.map((row) => row.escenario ?? "BASE"), ...anual.map((row) => row.escenario ?? "BASE")])).sort(), [anual, mensual]);
 
   const filtrada = useMemo(() => {
+    const zonaSel = zona || zonaTotal;
     const coincide = (row: { zona_regional?: string; escenario?: string }) =>
-      (!zona || row.zona_regional === zona) && (!escenario || (row.escenario ?? "BASE") === escenario);
+      (!zonaSel || row.zona_regional === zonaSel) && (!escenario || (row.escenario ?? "BASE") === escenario);
     return {
       mensual: mensual.filter(coincide),
       anual: anual.filter(coincide),
     };
-  }, [anual, escenario, mensual, zona]);
+  }, [anual, escenario, mensual, zona, zonaTotal]);
 
   const recorte = useMemo(() => recortarProyeccion(filtrada.mensual, filtrada.anual, horizonte), [filtrada, horizonte]);
   const anuales = recorte.anual.slice(-6);
@@ -186,12 +195,14 @@ export function ProjectionView({ token, showZoneFilter = true }: { token?: strin
       <div className="data-toolbar">
         {showZoneFilter && (
           <select className="filter-select" value={zona} onChange={(event) => setZona(event.target.value)} aria-label="Zona regional">
-            <option value="">Zona regional: total</option>
-            {zonas.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
+            <option value="">{zonaTotal ? `Zona regional: ${zonaTotal}` : "Zona regional: total"}</option>
+            {zonas
+              .filter((option) => !option.startsWith("TOTAL"))
+              .map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
           </select>
         )}
         <select className="filter-select" value={escenario} onChange={(event) => setEscenario(event.target.value)} aria-label="Escenario">

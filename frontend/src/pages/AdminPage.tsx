@@ -5,7 +5,8 @@ import { api } from "../lib/api";
 import { DatasetCatalog, DatasetTable, DatasetView, MiniBars, type Row } from "../components/DataExplorer";
 import { MunicipalityMap } from "../components/MunicipalityMap";
 import { ProjectionView } from "../components/Projection";
-import { HideIdsToggle, Sensitive, usePresentation } from "../app/Presentation";
+import { Sensitive, usePresentation } from "../app/Presentation";
+import { useSectionNav } from "../app/SectionNav";
 import { fechaCo, fmtN, limpiarNiu, mesCorto } from "../lib/format";
 
 type AdminUser = { uid: string; email?: string; disabled: boolean; email_verified: boolean; role?: string };
@@ -31,10 +32,49 @@ const tabs = [
 
 type Tab = (typeof tabs)[number][0];
 
+/** Grupos del menú lateral (GRUPOS_MENU["Administrador del modelo"] del Streamlit). */
+const GRUPOS: Array<{ nombre: string; items: Array<{ clave: Tab; etiqueta: string }> }> = [
+  { nombre: "Resumen", items: [{ clave: "resumen", etiqueta: "Resumen" }] },
+  {
+    nombre: "Listas y gestión",
+    items: [
+      { clave: "gestion", etiqueta: "Gestión por ciclo" },
+      { clave: "ranking", etiqueta: "Ranking gerencial" },
+      { clave: "fuga", etiqueta: "Riesgo de fuga" },
+      { clave: "cortes", etiqueta: "Cortes" },
+      { clave: "mapa", etiqueta: "Mapa" },
+      { clave: "buscar", etiqueta: "Buscar cliente" },
+    ],
+  },
+  {
+    nombre: "Modelos",
+    items: [
+      { clave: "pronostico", etiqueta: "Pronóstico 6 meses" },
+      { clave: "proyeccion", etiqueta: "Proyección de consumo" },
+      { clave: "seguimiento", etiqueta: "Seguimiento" },
+      { clave: "feedback", etiqueta: "Retroalimentación" },
+    ],
+  },
+  {
+    nombre: "Operación",
+    items: [
+      { clave: "pipeline", etiqueta: "Estado del pipeline" },
+      { clave: "descargas", etiqueta: "Descargas por grupo" },
+      { clave: "datasets", etiqueta: "Todas las salidas" },
+    ],
+  },
+  { nombre: "Sistema", items: [{ clave: "usuarios", etiqueta: "Usuarios y roles" }] },
+];
+
 export default function AdminPage() {
   const { idToken } = useAuth();
   const [tab, setTab] = useState<Tab>("resumen");
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
+  const elegirTab = useCallback((clave: Tab) => {
+    setTab(clave);
+    if (clave !== "datasets") setSelectedDataset(null);
+  }, []);
+  useSectionNav(GRUPOS, tab, elegirTab);
   const [summary, setSummary] = useState<{ latest_run?: Run | null; counts: Record<string, number> } | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -82,28 +122,9 @@ export default function AdminPage() {
           <h1>El pipeline, de punta a punta.</h1>
           <p>Controla corridas, calidad, modelos, listas, retroalimentación y usuarios desde las salidas importadas.</p>
         </div>
-        <div className="stack">
-          <MeasureSelectorCompact />
-          <HideIdsToggle />
-        </div>
       </section>
 
       {message && <div className="notice notice-warning">{message}</div>}
-
-      <div className="admin-tabs">
-        {tabs.map(([key, label]) => (
-          <button
-            key={key}
-            className={tab === key ? "admin-tab active" : "admin-tab"}
-            onClick={() => {
-              setTab(key);
-              if (key !== "datasets") setSelectedDataset(null);
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
 
       {tab === "resumen" && <Resumen summary={summary} runs={runs} />}
       {tab === "gestion" && (
@@ -189,20 +210,6 @@ export default function AdminPage() {
           Corte vigente: {summary.latest_run.period} · {fmtN(summary.latest_run.rows_imported)} filas importadas {measure === "Consumo" ? "" : "(las cifras de energía se muestran en su unidad original)"}.
         </p>
       )}
-    </div>
-  );
-}
-
-function MeasureSelectorCompact() {
-  const { measure, setMeasure } = usePresentation();
-  return (
-    <div className="segmented-control" role="radiogroup" aria-label="Cómo medir las cifras">
-      <span className="segmented-label">Medir en</span>
-      {(["Consumo", "Facturación"] as const).map((option) => (
-        <button key={option} type="button" role="radio" aria-checked={measure === option} className={measure === option ? "segmented-option segmented-active" : "segmented-option"} onClick={() => setMeasure(option)}>
-          {option}
-        </button>
-      ))}
     </div>
   );
 }
