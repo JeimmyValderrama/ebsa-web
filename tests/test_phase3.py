@@ -34,6 +34,7 @@ def run() -> None:
     assert client.get("/api/data/clients/TEST-001").status_code == 200
     assert client.get("/api/data/clients/MISSING").status_code == 404
     app.dependency_overrides.clear()
+    engine.dispose()
     TEST_DB.unlink(missing_ok=True)
     print("Fase 3: pruebas de esquema y endpoints OK")
 

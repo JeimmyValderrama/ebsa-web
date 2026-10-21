@@ -60,6 +60,6 @@ export async function signOutCurrentUser(): Promise<void> {
   if (auth) await signOut(auth);
 }
 
-export async function getIdToken(user: User): Promise<string> {
-  return user.getIdToken();
+export async function getIdToken(user: User, forceRefresh = false): Promise<string> {
+  return user.getIdToken(forceRefresh);
 }

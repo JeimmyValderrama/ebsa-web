@@ -1,4 +1,4 @@
-import { NavLink, Outlet, Route, Routes } from "react-router-dom";
+import { NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { isFirebaseConfigured } from "../lib/firebase";
@@ -7,7 +7,7 @@ import LoginPage from "../pages/LoginPage";
 import CommercialPage from "../pages/CommercialPage";
 import SupportPage from "../pages/SupportPage";
 import AdminPage from "../pages/AdminPage";
-import RequireAuth from "./RequireAuth";
+import RequireAuth, { RoleRoute } from "./RequireAuth";
 
 type ApiState = "loading" | "ready" | "error";
 
@@ -61,5 +61,5 @@ function OverviewPage() {
 function MetricCard({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) { return <article className={`metric-card tone-${tone}`}><div className="metric-topline"><span className="metric-label">{label}</span><span className="metric-line" /></div><div className="metric-value">{value}</div><div className="metric-detail">{detail}</div></article>; }
 
 export default function App() {
-  return <Routes><Route path="/login" element={<LoginPage />} /><Route element={<RequireAuth />}><Route element={<ProtectedLayout />}><Route path="/" element={<OverviewPage />} /><Route path="/comercial" element={<CommercialPage />} /><Route path="/soporte" element={<SupportPage />} /><Route path="/administrador" element={<AdminPage />} /></Route></Route><Route path="*" element={<LoginPage />} /></Routes>;
+  return <Routes><Route path="/login" element={<LoginPage />} /><Route element={<RequireAuth />}><Route element={<ProtectedLayout />}><Route path="/" element={<OverviewPage />} /><Route path="/comercial" element={<RoleRoute roles={["COMERCIAL", "SOPORTE", "ADMIN_MODELO"]}><CommercialPage /></RoleRoute>} /><Route path="/soporte" element={<RoleRoute roles={["SOPORTE", "ADMIN_MODELO"]}><SupportPage /></RoleRoute>} /><Route path="/administrador" element={<RoleRoute roles={["ADMIN_MODELO"]}><AdminPage /></RoleRoute>} /></Route></Route><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
 }

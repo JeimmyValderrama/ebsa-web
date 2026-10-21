@@ -1,37 +1,104 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
-export async function apiGet<T>(path: string, token?: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, { headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
-  if (!response.ok) throw new Error(`La API respondió ${response.status}`);
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+type RequestOptions = {
+  token?: string;
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  body?: unknown;
+  accept?: string;
+  raw?: boolean;
+};
+
+type TokenProvider = (forceRefresh?: boolean) => Promise<string>;
+
+let tokenProvider: TokenProvider | null = null;
+let unauthorizedHandler: (() => void) | null = null;
+
+/** AuthProvider registra cómo obtener el token y qué hacer cuando la sesión caduca. */
+export function configureApi(options: { getToken?: TokenProvider; onUnauthorized?: () => void }): void {
+  if (options.getToken) tokenProvider = options.getToken;
+  if (options.onUnauthorized) unauthorizedHandler = options.onUnauthorized;
+}
+
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const send = (token?: string) =>
+    fetch(`${API_BASE_URL}${path}`, {
+      method: options.method ?? "GET",
+      headers: {
+        Accept: options.accept ?? "application/json",
+        ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    });
+
+  let token = options.token ?? (tokenProvider ? await tokenProvider() : undefined);
+  let response = await send(token);
+
+  if (response.status === 401 && tokenProvider && !options.token) {
+    // El token pudo caducar en una sesión larga: se renueva una vez y se reintenta.
+    token = await tokenProvider(true);
+    response = await send(token);
+  }
+
+  if (response.status === 401) {
+    unauthorizedHandler?.();
+    throw new ApiError(401, "La sesión expiró. Vuelve a iniciar sesión.");
+  }
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { detail?: unknown } | null;
+    const detail = typeof payload?.detail === "string" ? payload.detail : undefined;
+    throw new ApiError(response.status, detail ?? `La API respondió ${response.status}.`);
+  }
+  if (options.raw) return response as unknown as T;
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
-export const api = {
-  health: () => apiGet<{ status: string; service: string; timestamp: string }>("/api/health"),
-  status: () => apiGet<{ status: string; database_configured: boolean; database_engine: string; firebase_configured: boolean }>("/api/status"),
-  summary: (token: string) => apiGet<{ latest_run: { period: string; rows_imported: number; completed_at?: string } | null; counts: Record<string, number> }>("/api/data/summary", token),
-  risks: (token: string, limit = 200, offset = 0, severity = "") => apiGet<{ items: unknown[]; limit: number; offset: number }>(`/api/data/risks?limit=${limit}&offset=${offset}${severity ? `&severity=${encodeURIComponent(severity)}` : ""}`, token),
-  client: (token: string, niu: string) => apiGet<unknown>(`/api/data/clients/${encodeURIComponent(niu)}`, token),
-  consumption: (token: string, niu: string) => apiGet<unknown[]>(`/api/data/clients/${encodeURIComponent(niu)}/consumption`, token),
-  forecast: (token: string, niu: string) => apiGet<unknown[]>(`/api/data/clients/${encodeURIComponent(niu)}/forecast`, token),
-  locations: (token: string, limit = 5000) => apiGet<unknown[]>(`/api/data/locations?limit=${limit}`, token),
-  catalog: (token: string) => apiGet<Array<{ dataset_key: string; rows: number }>>("/api/data/datasets/catalog", token),
-  dataset: (token: string, key: string, limit = 500, offset = 0, search = "") => apiGet<{ dataset_key: string; items: Array<{ id: number; niu?: string; payload: Record<string, unknown> }>; limit: number; offset: number; returned: number }>(`/api/data/datasets/${encodeURIComponent(key)}?limit=${limit}&offset=${offset}${search ? `&search=${encodeURIComponent(search)}` : ""}`, token),
-  datasetCsv: async (token: string, key: string) => {
-    const response = await fetch(`${API_BASE_URL}/api/data/datasets/${encodeURIComponent(key)}/csv`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) throw new Error(`La API respondió ${response.status}`);
-    return response.blob();
-  },
-  runs: (token: string) => apiGet<unknown[]>("/api/data/runs", token),
-  visits: (token: string) => apiGet<unknown[]>("/api/visits", token),
-  createVisit: (token: string, data: { niu: string; cycle?: number; scheduled_for?: string }) => fetch(`${API_BASE_URL}/api/visits`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(data) }).then(parseResponse),
-  recordVisitResult: (token: string, id: number, result: string, notes: string) => fetch(`${API_BASE_URL}/api/visits/${id}/result`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ result, notes }) }).then(parseResponse),
-  adminUsers: (token: string) => apiGet<unknown[]>("/api/admin/users", token),
-  updateAdminUser: (token: string, uid: string, change: { role?: string; disabled?: boolean }) => fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(uid)}`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(change) }).then(parseResponse),
-  feedback: (token: string) => apiGet<unknown[]>("/api/visits/feedback", token),
-};
-
-async function parseResponse(response: Response): Promise<unknown> {
-  if (!response.ok) throw new Error(`La API respondió ${response.status}`);
-  return response.json();
+function query(params: Record<string, string | number | undefined | string[]>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === "") continue;
+    if (Array.isArray(value)) value.forEach((item) => search.append(key, item));
+    else search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `?${text}` : "";
 }
+
+export type DatasetQuery = { limit?: number; offset?: number; search?: string; niu?: string; filters?: string[] };
+export type DatasetPage = { dataset_key: string; items: Array<{ id: number | string; niu?: string | null; payload: Record<string, unknown> }>; limit: number; offset: number; returned: number; total: number };
+
+export const api = {
+  health: () => request<{ status: string; service: string; timestamp: string }>("/api/health"),
+  status: () => request<{ status: string; database_configured: boolean; database_engine: string; firebase_configured: boolean }>("/api/status"),
+  summary: (token?: string) => request<{ latest_run: { period: string; rows_imported: number; completed_at?: string } | null; counts: Record<string, number> }>("/api/data/summary", { token }),
+  risks: (token: string | undefined, limit = 200, offset = 0, severity = "", prioridad = "") => request<{ items: Array<Record<string, unknown>>; limit: number; offset: number; total: number }>(`/api/data/risks${query({ limit, offset, severity, prioridad })}`, { token }),
+  client: (token: string | undefined, niu: string) => request<Record<string, any>>(`/api/data/clients/${encodeURIComponent(niu)}`, { token }),
+  consumption: (token: string | undefined, niu: string) => request<Array<{ periodo: string; consumo_kwh: number | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/consumption`, { token }),
+  forecast: (token: string | undefined, niu: string) => request<Array<{ horizonte: number | null; periodo_pronosticado: string | null; consumo_pronosticado_kwh: number | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/forecast`, { token }),
+  locations: (token: string | undefined, limit = 5000) => request<Array<Record<string, unknown>>>(`/api/data/locations${query({ limit })}`, { token }),
+  catalog: (token: string | undefined) => request<Array<{ dataset_key: string; rows: number }>>("/api/data/datasets/catalog", { token }),
+  dataset: (token: string | undefined, key: string, options: DatasetQuery = {}) => request<DatasetPage>(`/api/data/datasets/${encodeURIComponent(key)}${query({ limit: options.limit ?? 200, offset: options.offset ?? 0, search: options.search, niu: options.niu, filter: options.filters })}`, { token }),
+  datasetCsv: (token: string | undefined, key: string, options: Pick<DatasetQuery, "search" | "filters"> = {}) =>
+    request<Response>(`/api/data/datasets/${encodeURIComponent(key)}/csv${query({ search: options.search, filter: options.filters })}`, { token, raw: true, accept: "text/csv" }).then((response) => response.blob()),
+  runs: (token: string | undefined) => request<Array<Record<string, unknown>>>("/api/data/runs", { token }),
+  pipeline: (token: string | undefined) => request<{ quality_control: Array<Record<string, unknown>>; forecast_bias: Array<Record<string, unknown>>; runs: Array<Record<string, unknown>> }>("/api/data/pipeline", { token }),
+  route: (token: string | undefined, options: { cycle?: number; limit?: number } = {}) => request<{ items: Array<Record<string, unknown>>; total: number }>(`/api/data/route${query(options)}`, { token }),
+  municipalityMetrics: (token: string | undefined) => request<{ metrics: Array<{ key: string; label: string; unidad: string }>; rows: Array<Record<string, unknown>> }>("/api/data/municipalities/metrics", { token }),
+  visits: (token: string | undefined) => request<unknown[]>("/api/visits", { token }),
+  createVisit: (token: string | undefined, data: { niu: string; cycle?: number; scheduled_for?: string }) => request<unknown>("/api/visits", { token, method: "POST", body: data }),
+  recordVisitResult: (token: string | undefined, id: number, result: string, notes: string) => request<unknown>(`/api/visits/${id}/result`, { token, method: "POST", body: { result, notes } }),
+  adminUsers: (token: string | undefined) => request<unknown[]>("/api/admin/users", { token }),
+  updateAdminUser: (token: string | undefined, uid: string, change: { role?: string; disabled?: boolean }) => request<unknown>(`/api/admin/users/${encodeURIComponent(uid)}`, { token, method: "PATCH", body: change }),
+  feedback: (token: string | undefined) => request<unknown[]>("/api/visits/feedback", { token }),
+};

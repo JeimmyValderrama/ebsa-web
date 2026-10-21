@@ -59,7 +59,16 @@ DATASETS: tuple[DatasetSpec, ...] = (
     DatasetSpec("autogenerators", "03_serie_modelado/nius_autogeneradores_excluidos.parquet", "parquet", False, ("NIU",), None),
     DatasetSpec("locations", "13_ubicacion_clientes/ubicacion_clientes.parquet", "parquet", False, ("NIU",), "location"),
     DatasetSpec("municipalities", "13_ubicacion_clientes/municipios_zona.csv", "csv", False, (), None),
+    DatasetSpec("forecast_naive_comparison", "04_pronostico/modelo_final/comparacion_ingenuos_backtest.csv", "csv", False, (), None),
+    DatasetSpec("model_versions", "12_versiones_modelos/registro_versiones.csv", "csv", False, (), None),
+    DatasetSpec("model_usage", "12_versiones_modelos/registro_uso.csv", "csv", False, (), None),
+    DatasetSpec("projection_model_comparison", "14_proyeccion_anual/comparacion_modelos_por_zona.csv", "csv", False, (), None),
+    DatasetSpec("forecast_bias", "07_gestion_caida/diagnostico_sesgo_pronostico.csv", "csv", False, (), None),
 )
+
+# Claves del manifiesto que además se normalizan en tablas propias. El importador
+# escribe ambas copias y la API las sirve desde la tabla normalizada.
+NORMALIZED_KEYS = frozenset({"operational", "churn_scores", "drop_analysis", "forecast", "consumption", "locations", "cycle_by_niu"})
 
 
 def discover(source: Path) -> tuple[list[tuple[DatasetSpec, Path]], list[DatasetSpec]]:

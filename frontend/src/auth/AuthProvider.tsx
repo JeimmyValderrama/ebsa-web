@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { User } from "firebase/auth";
-import { getIdToken, isFirebaseConfigured, subscribeToAuth, signOutCurrentUser } from "../lib/firebase";
+import { configureApi } from "../lib/api";
+import { getIdToken, isFirebaseConfigured, signOutCurrentUser, subscribeToAuth } from "../lib/firebase";
 
 export type UserRole = "COMERCIAL" | "SOPORTE" | "ADMIN_MODELO";
 
@@ -15,6 +16,7 @@ type BackendUser = {
 type AuthContextValue = {
   firebaseUser: User | null;
   currentUser: BackendUser | null;
+  idToken: string | null;
   loading: boolean;
   configured: boolean;
   authError: string | null;
@@ -24,14 +26,16 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const SESSION_EXPIRED = "Tu sesión expiró. Vuelve a iniciar sesión.";
+
 async function loadBackendUser(user: User): Promise<BackendUser> {
   const token = await getIdToken(user);
   const response = await fetch("/api/me", {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
   });
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.detail ?? "No fue posible validar la sesión en el backend.");
+    const payload = (await response.json().catch(() => null)) as { detail?: unknown } | null;
+    throw new Error(typeof payload?.detail === "string" ? payload.detail : "No fue posible validar la sesión en el backend.");
   }
   return response.json() as Promise<BackendUser>;
 }
@@ -39,8 +43,32 @@ async function loadBackendUser(user: User): Promise<BackendUser> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [currentUser, setCurrentUser] = useState<BackendUser | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const userRef = useRef<User | null>(null);
+
+  useEffect(() => {
+    userRef.current = firebaseUser;
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    configureApi({
+      getToken: async (forceRefresh?: boolean) => {
+        const user = userRef.current;
+        if (!user) throw new Error(SESSION_EXPIRED);
+        const token = await getIdToken(user, forceRefresh ?? false);
+        setIdToken(token);
+        return token;
+      },
+      onUnauthorized: () => {
+        setAuthError(SESSION_EXPIRED);
+        setCurrentUser(null);
+        setIdToken(null);
+        void signOutCurrentUser();
+      },
+    });
+  }, []);
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -52,15 +80,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFirebaseUser(user);
       setLoading(Boolean(user));
       setAuthError(null);
-      if (!user) setCurrentUser(null);
+      if (!user) {
+        setCurrentUser(null);
+        setIdToken(null);
+      }
     });
   }, []);
 
   useEffect(() => {
     if (!firebaseUser) return;
-    loadBackendUser(firebaseUser)
-      .then((user) => {
+    Promise.all([loadBackendUser(firebaseUser), getIdToken(firebaseUser)])
+      .then(([user, token]) => {
         setCurrentUser(user);
+        setIdToken(token);
         setAuthError(null);
         setLoading(false);
       })
@@ -71,23 +103,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, [firebaseUser]);
 
-  const value = useMemo<AuthContextValue>(() => ({
-    firebaseUser,
-    currentUser,
-    loading,
-    configured: isFirebaseConfigured,
-    authError,
-    refreshBackendUser: async () => {
-      if (!firebaseUser) return;
-      setCurrentUser(await loadBackendUser(firebaseUser));
-    },
-    logout: async () => {
-      await signOutCurrentUser();
-      setFirebaseUser(null);
-      setCurrentUser(null);
-      setAuthError(null);
-    },
-  }), [authError, currentUser, firebaseUser, loading]);
+  const refreshBackendUser = useCallback(async () => {
+    if (!userRef.current) return;
+    const token = await getIdToken(userRef.current, true);
+    setIdToken(token);
+    setCurrentUser(await loadBackendUser(userRef.current));
+  }, []);
+
+  const logout = useCallback(async () => {
+    await signOutCurrentUser();
+    setFirebaseUser(null);
+    setCurrentUser(null);
+    setIdToken(null);
+    setAuthError(null);
+  }, []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({ firebaseUser, currentUser, idToken, loading, configured: isFirebaseConfigured, authError, refreshBackendUser, logout }),
+    [authError, currentUser, firebaseUser, idToken, loading, logout, refreshBackendUser],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

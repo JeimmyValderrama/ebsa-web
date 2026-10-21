@@ -1,17 +1,19 @@
 import { useState, type FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { isFirebaseConfigured, signIn } from "../lib/firebase";
 import { useAuth } from "../auth/AuthProvider";
 
 export default function LoginPage() {
   const { currentUser, loading, configured, authError } = useAuth();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const destination = (location.state as { from?: string } | null)?.from ?? "/";
 
   if (loading) return <div className="auth-page"><div className="auth-card"><span className="eyebrow">EBSA / AUTENTICACIÓN</span><h1>Comprobando sesión…</h1></div></div>;
-  if (currentUser) return <Navigate to="/" replace />;
+  if (currentUser) return <Navigate to={destination} replace />;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

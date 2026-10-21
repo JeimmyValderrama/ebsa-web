@@ -177,6 +177,19 @@ class VisitResult(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
 
+class PipelineRun(Base):
+    """Corrida del pipeline registrada en 09_registro_corridas/<corrida>/resumen_corrida.txt."""
+
+    __tablename__ = "pipeline_runs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    data_run_id: Mapped[int | None] = mapped_column(ForeignKey("data_runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    folder_name: Mapped[str] = mapped_column(String(160), unique=True, index=True)
+    action: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    summary_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
 class PipelineFeedback(Base):
     __tablename__ = "pipeline_feedback"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -189,5 +202,5 @@ class PipelineFeedback(Base):
 
 __all__ = [
     "Base", "Client", "ClientChurnRisk", "ClientConsumptionMonthly", "ClientDropAnalysis", "ClientForecast",
-    "ClientLocation", "DataFile", "DataRun", "DatasetRecord", "OperationalManagement", "PipelineFeedback", "Visit", "VisitResult",
+    "ClientLocation", "DataFile", "DataRun", "DatasetRecord", "OperationalManagement", "PipelineFeedback", "PipelineRun", "Visit", "VisitResult",
 ]
