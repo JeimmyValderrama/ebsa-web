@@ -27,13 +27,18 @@ const FILTROS_FUGA: FilterField[] = [{ key: "nivel_riesgo", label: "Nivel de rie
 const COLUMNAS_LISTA = ["NIU", "zona_nombre", "clase_servicio_nombre", "gravedad", "trayectoria", "prioridad_gestion", "valor_riesgo_mes"];
 
 export default function CommercialPage() {
-  const { idToken } = useAuth();
+  const { idToken, currentUser } = useAuth();
   const [section, setSection] = useState<Section>("panorama");
   const navigate = useNavigate();
-  const abrirFicha = useCallback((row: Row) => {
-    const niu = row.niu ?? String(row.payload?.NIU ?? "");
-    if (niu) navigate(`/soporte?niu=${encodeURIComponent(niu)}`);
-  }, [navigate]);
+  // La ficha por NIU vive en Soporte; solo se ofrece a los roles que pueden abrirla.
+  const puedeFichas = (currentUser?.role ?? "COMERCIAL") !== "COMERCIAL";
+  const abrirFicha = useCallback(
+    (row: Row) => {
+      const niu = row.niu ?? String(row.payload?.NIU ?? "");
+      if (niu && puedeFichas) navigate(`/soporte?niu=${encodeURIComponent(niu)}`);
+    },
+    [navigate, puedeFichas],
+  );
 
   return (
     <div className="page-content">
@@ -54,7 +59,7 @@ export default function CommercialPage() {
         ))}
       </div>
 
-      {section === "panorama" && <Panorama token={idToken} onOpenClient={abrirFicha} onGoProjection={() => setSection("proyeccion")} />}
+      {section === "panorama" && <Panorama token={idToken} onOpenClient={abrirFicha} onGoProjection={() => setSection("proyeccion")} puedeFichas={puedeFichas} />}
       {section === "caidas" && (
         <DatasetView
           token={idToken}
@@ -63,7 +68,7 @@ export default function CommercialPage() {
           description="Estudio de caída de consumo por cliente: veredicto, gravedad, consumo anterior y reciente, y variación contra el periodo anterior."
           filters={FILTROS_CAIDAS}
           prioritarias={["NIU", "veredicto", "severidad", "consumo_anterior_kwh", "consumo_reciente_kwh", "variacion_vs_anterior_pct"]}
-          action={abrirFicha}
+          action={puedeFichas ? abrirFicha : undefined}
           actionLabel="Ver ficha"
         />
       )}
@@ -75,7 +80,7 @@ export default function CommercialPage() {
           description="Clientes con consumo en cero durante varios meses consecutivos; la mayoría vuelve, por eso se separan de la lista de caída."
           filters={[{ key: "grupo_consumo", label: "Grupo" }, { key: "zona_nombre", label: "Zona" }]}
           prioritarias={["NIU", "meses_en_cero", "meses_en_cero_consecutivos", "grupo_consumo", "zona_nombre"]}
-          action={abrirFicha}
+          action={puedeFichas ? abrirFicha : undefined}
           actionLabel="Ver ficha"
         />
       )}
@@ -87,7 +92,7 @@ export default function CommercialPage() {
           description="Probabilidad de salida a 6 meses, valor esperado de pérdida y señales del modelo de fuga."
           filters={FILTROS_FUGA}
           prioritarias={["NIU", "nivel_riesgo", "prob_fuga_6m", "valor_esperado_perdida_mes", "valor_en_riesgo_mes"]}
-          action={abrirFicha}
+          action={puedeFichas ? abrirFicha : undefined}
           actionLabel="Ver ficha"
         />
       )}
@@ -99,7 +104,7 @@ export default function CommercialPage() {
             title="Clientes que ya se fueron a otro comercializador"
             description="Cruce de la base con la historia de consumo para ver su tamaño y antigüedad."
             prioritarias={["NIU", "zona_nombre", "grupo_consumo", "meses_desde_salida", "consumo_prom_semestral_kwh"]}
-            action={abrirFicha}
+            action={puedeFichas ? abrirFicha : undefined}
             actionLabel="Ver ficha"
           />
           <DatasetView token={idToken} datasetKey="churn_non_regulated" title="Vigilancia de mercado no regulado" description="Clientes con señales de haber migrado a mercado no regulado." />
@@ -121,7 +126,7 @@ function Kpi({ label, value, detail }: { label: string; value: string; detail?: 
   );
 }
 
-function Panorama({ token, onOpenClient, onGoProjection }: { token?: string | null; onOpenClient: (row: Row) => void; onGoProjection: () => void }) {
+function Panorama({ token, onOpenClient, onGoProjection, puedeFichas }: { token?: string | null; onOpenClient: (row: Row) => void; onGoProjection: () => void; puedeFichas: boolean }) {
   const { measure } = usePresentation();
   const [data, setData] = useState<PanoramaData | null>(null);
   const [risks, setRisks] = useState<{ items: Row[]; total: number } | null>(null);
@@ -266,12 +271,12 @@ function Panorama({ token, onOpenClient, onGoProjection }: { token?: string | nu
                   <th>Trayectoria</th>
                   <th>Prioridad</th>
                   <th>{measure === "Consumo" ? "Caída (kWh/mes)" : "Valor en riesgo ($/mes)"}</th>
-                  <th>Ficha</th>
+                  {puedeFichas && <th>Ficha</th>}
                 </tr>
               </thead>
               <tbody>
                 {risks.items.map((row) => (
-                  <tr key={String(row.id)} className="clickable-row" onClick={() => onOpenClient(row)}>
+                  <tr key={String(row.id)} className={puedeFichas ? "clickable-row" : undefined} onClick={() => puedeFichas && onOpenClient(row)}>
                     <td>{String(row.payload?.NIU ?? row.niu ?? "—")}</td>
                     <td>{String(row.payload?.zona_nombre ?? "—")}</td>
                     <td>{String(row.payload?.clase_servicio_nombre ?? "—")}</td>
@@ -281,11 +286,13 @@ function Panorama({ token, onOpenClient, onGoProjection }: { token?: string | nu
                     <td>{String(row.payload?.trayectoria ?? "—")}</td>
                     <td>{String(row.payload?.prioridad_gestion ?? "—")}</td>
                     <td>{fmtMedida(measure === "Consumo" ? Number(row.payload?.perdida_kwh_mes ?? 0) : Number(row.payload?.valor_riesgo_mes ?? 0), measure)}</td>
-                    <td>
-                      <button type="button" className="table-action" onClick={() => onOpenClient(row)}>
-                        Ver ficha
-                      </button>
-                    </td>
+                    {puedeFichas && (
+                      <td>
+                        <button type="button" className="table-action" onClick={() => onOpenClient(row)}>
+                          Ver ficha
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

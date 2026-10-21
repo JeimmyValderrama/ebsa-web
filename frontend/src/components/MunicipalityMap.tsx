@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
-import { fmtN, fmtMedidaCorto } from "../lib/format";
+import { energia, fmtN, pesos, type Measure } from "../lib/format";
 import { usePresentation } from "../app/Presentation";
 
 /**
@@ -22,12 +22,22 @@ type MetricRow = Record<string, unknown> & {
 
 const PALETA = ["map-q1", "map-q2", "map-q3", "map-q4", "map-q5"];
 
+/** Métrica por defecto del mapa según la medida activa (kWh <-> pesos). */
+const METRICA_POR_MEDIDA: Record<Measure, string> = { Consumo: "caida_kwh_mes", "Facturación": "caida_valor_mes" };
+
 function nombreClave(value: unknown): string {
   return String(value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase();
+}
+
+/** Formato según la unidad de la métrica elegida: $/mes, kWh/mes o clientes. */
+function fmtMetrica(value: number, unidad: string): string {
+  if (unidad.startsWith("$")) return pesos(value);
+  if (unidad.toLowerCase().startsWith("kwh")) return energia(value);
+  return fmtN(value);
 }
 
 function ringPath(ring: number[][], project: (lon: number, lat: number) => string): string {
@@ -76,8 +86,17 @@ export function MunicipalityMap({ token, onRowClick }: { token?: string | null; 
   const [metrics, setMetrics] = useState<MetricInfo[]>([]);
   const [rows, setRows] = useState<MetricRow[]>([]);
   const [metric, setMetric] = useState("");
+  const [metricElegido, setMetricElegido] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
+
+  // La métrica del mapa sigue la medida global (Consumo -> kWh, Facturación -> $),
+  // salvo que quien la use elija otra manualmente.
+  useEffect(() => {
+    if (metricElegido) return;
+    const sugerida = METRICA_POR_MEDIDA[measure];
+    if (sugerida) setMetric(sugerida);
+  }, [measure, metricElegido]);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,7 +178,15 @@ export function MunicipalityMap({ token, onRowClick }: { token?: string | null; 
       </header>
 
       <div className="data-toolbar">
-        <select className="filter-select" value={metric} onChange={(event) => setMetric(event.target.value)} aria-label="Métrica del mapa">
+        <select
+          className="filter-select"
+          value={metric}
+          onChange={(event) => {
+            setMetricElegido(true);
+            setMetric(event.target.value);
+          }}
+          aria-label="Métrica del mapa"
+        >
           {metrics.map((item) => (
             <option key={item.key} value={item.key}>
               {item.label}
@@ -167,7 +194,7 @@ export function MunicipalityMap({ token, onRowClick }: { token?: string | null; 
           ))}
         </select>
         <span className="section-status">
-          {info ? `${info.label} (${info.unidad})` : ""} · máximo {fmtMedidaCorto(maximo, measure)}
+          {info ? `${info.label} (${info.unidad})` : ""} · máximo {fmtMetrica(maximo, info?.unidad ?? "")}
         </span>
       </div>
 
@@ -184,7 +211,7 @@ export function MunicipalityMap({ token, onRowClick }: { token?: string | null; 
                 onClick={() => shape.row && onRowClick?.(shape.row)}
               >
                 <title>
-                  {shape.nombre}: {info ? `${fmtN(shape.value)} ${info.unidad}` : fmtN(shape.value)}
+                  {shape.nombre}: {fmtMetrica(shape.value, info?.unidad ?? "")}
                 </title>
               </path>
             ))}
@@ -214,7 +241,7 @@ export function MunicipalityMap({ token, onRowClick }: { token?: string | null; 
                   <tr key={String(row.clave ?? row.municipio)} onClick={() => onRowClick?.(row)} className="clickable-row">
                     <td>{String(row.municipio ?? "—")}</td>
                     <td>{String(row.zona_ebsa ?? row.zona_regional ?? "—")}</td>
-                    <td>{`${fmtN(Number(row[metric] ?? 0))} ${info?.unidad ?? ""}`}</td>
+                    <td>{fmtMetrica(Number(row[metric] ?? 0), info?.unidad ?? "")}</td>
                   </tr>
                 ))}
               </tbody>
