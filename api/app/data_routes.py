@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 import io
 import os
-import time
 from pathlib import Path
 from typing import Any
 
@@ -34,9 +33,27 @@ router = APIRouter(prefix="/api/data", tags=["data"])
 ALL_ROLES = ("COMERCIAL", "SOPORTE", "ADMIN_MODELO")
 TECHNICAL_ROLES = ("ADMIN_MODELO",)
 
-# El mapa agrega ~650.000 clientes; se memoriza un rato para no recomputarlo en cada clic (como st.cache_data).
-_METRICAS_MUNICIPIO: dict[str, Any] = {"ts": 0.0, "valor": None}
-_METRICAS_MUNICIPIO_TTL = 60.0
+# Cachés por corte (data_run_id): al importar un corte nuevo la clave cambia y se invalidan
+# solas, igual que _FUGA_CACHE y _MUNICIPIOS_LISTA. Guardan la lista COMPLETA sin filtros;
+# cada petición filtra o suma su parte en memoria (lo lento es leer la lista, no usarla).
+_METRICAS_MUNICIPIO_CACHE: dict[int, dict[str, Any]] = {}
+_PANORAMA_CACHE: dict[int, dict[str, Any]] = {}
+_DROPS_CACHE: dict[int, dict[str, Any]] = {}
+_ZERO_CACHE: dict[int, list[dict[str, Any]]] = {}
+_CERO_RESUMEN_CACHE: dict[int, dict[str, Any]] = {}
+
+
+def _memoiza_corte(cache: dict[int, Any], corte_id: int, valor: Any) -> Any:
+    """Memoriza por corte y deja solo los dos más recientes, para no crecer sin límite."""
+    while len(cache) >= 2:
+        cache.pop(next(iter(cache)))
+    cache[corte_id] = valor
+    return valor
+
+
+def _corte_operativo(db: Session) -> int:
+    """Corte vigente de la lista de gestión (la misma clave que usan las demás secciones)."""
+    return int(db.scalar(select(func.max(OperationalManagement.data_run_id))) or 0)
 
 
 def schema_error(exc: Exception) -> HTTPException:
@@ -182,7 +199,20 @@ def _gravedad(severidad: Any, veredicto: Any) -> str:
 
 
 def _resumen_cero_sostenido(db: Session) -> dict[str, Any]:
-    """Clientes sin consumo: cuántos son y cuánto consumían/facturaban antes de quedarse en cero."""
+    """Clientes sin consumo: cuántos son y cuánto consumían/facturaban antes de quedarse en cero.
+
+    Memorizado por corte: recorrer los ~8.400 registros con payload cada vez costaba
+    varios cientos de ms en cada visita de Panorama y de Caídas.
+    """
+    corte = int(
+        db.scalar(
+            select(func.max(DatasetRecord.data_run_id)).where(DatasetRecord.dataset_key == "zero_sustained")
+        )
+        or 0
+    )
+    cache = _CERO_RESUMEN_CACHE.get(corte)
+    if cache is not None:
+        return cache
     filas = db.scalars(select(DatasetRecord).where(DatasetRecord.dataset_key == "zero_sustained")).all()
     consumo, valor = 0.0, 0.0
     for fila in filas:
@@ -195,13 +225,18 @@ def _resumen_cero_sostenido(db: Session) -> dict[str, Any]:
             valor += float(p.get("valor_facturaba_antes_mes") or 0)
         except (TypeError, ValueError):
             pass
-    return {"clientes": len(filas), "consumo_referencia_kwh": consumo, "valor_facturaba_antes_mes": valor}
+    resumen = {"clientes": len(filas), "consumo_referencia_kwh": consumo, "valor_facturaba_antes_mes": valor}
+    return _memoiza_corte(_CERO_RESUMEN_CACHE, corte, resumen)
 
 
 @router.get("/panorama")
 def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
     """KPIs agregados del panorama comercial: lista, prioridades, gravedad de negocio, zonas, clases, fuga y cortes."""
     try:
+        corte_id = _corte_operativo(db)
+        cache = _PANORAMA_CACHE.get(corte_id)
+        if cache is not None:
+            return cache
         operational = OperationalManagement
         churn = ClientChurnRisk
         total = db.execute(select(func.count(), func.sum(operational.perdida_kwh_mes), func.sum(operational.valor_riesgo_mes))).one()
@@ -257,7 +292,7 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
             for payload in db.execute(select(DatasetRecord.payload).where(DatasetRecord.dataset_key == "zone_cuts")).all()
         }
 
-        return {
+        valor = {
             "lista": {"clientes": int(total[0] or 0), "perdida_kwh_mes": float(total[1] or 0), "valor_riesgo_mes": float(total[2] or 0)},
             "por_prioridad": por_prioridad,
             "por_severidad": por_severidad,
@@ -280,6 +315,7 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
             "mercado_no_regulado": dataset_count(db, "churn_non_regulated"),
             "cortes_zona": cortes_zona,
         }
+        return _memoiza_corte(_PANORAMA_CACHE, corte_id, valor)
     except OperationalError as exc:
         raise schema_error(exc) from exc
 
@@ -316,6 +352,66 @@ def _municipios_de_la_lista(db: Session, clave: str, nius: list[str]) -> dict[st
     return mapa
 
 
+def _drops_lista(db: Session, corte_id: int) -> dict[str, Any]:
+    """Lista COMPLETA de caída (sin filtros), memorizada por corte: registros con municipio,
+    gravedad por zona y las opciones de cada filtro. La consulta filtra por petición."""
+    registros: list[dict[str, Any]] = []
+    gravedad_zona: dict[str, dict[str, int]] = {}
+    for niu, severidad, trayectoria, estado, prioridad, perdida, valor, payload in db.execute(
+        select(
+            OperationalManagement.niu,
+            OperationalManagement.severidad,
+            OperationalManagement.trayectoria,
+            OperationalManagement.estado_en_lista,
+            OperationalManagement.prioridad_gestion,
+            OperationalManagement.perdida_kwh_mes,
+            OperationalManagement.valor_riesgo_mes,
+            OperationalManagement.payload,
+        )
+    ).all():
+        p = payload or {}
+        gravedad = _gravedad(severidad, p.get("veredicto"))
+        zona = str(p.get("zona_regional") or "SIN ZONA")
+        gravedad_zona.setdefault(zona, {})
+        gravedad_zona[zona][gravedad] = gravedad_zona[zona].get(gravedad, 0) + 1
+        registros.append(
+            {
+                "niu": str(niu).strip(),
+                "veredicto": str(p.get("veredicto") or ""),
+                "gravedad": gravedad,
+                "zona_regional": zona,
+                "ciclo": str(p.get("zona_nombre") or ""),
+                "clase": str(p.get("clase_servicio_nombre") or p.get("clase_servicio") or "SIN CLASIFICAR"),
+                "tamano": str(p.get("grupo_consumo") or p.get("tramo_consumo") or "—"),
+                "trayectoria": str(trayectoria or ""),
+                "prioridad": str(prioridad or ""),
+                "situacion": str(estado or ""),
+                "consumo_reciente_kwh": float(p.get("consumo_reciente_kwh") or 0),
+                "consumo_anterior_kwh": float(p.get("consumo_anterior_kwh") or 0),
+                "perdida_kwh_mes": float(perdida or 0),
+                "valor_riesgo_mes": float(valor or 0),
+                "tarifa_kwh": float(p.get("tarifa_kwh") or 0),
+            }
+        )
+    # Cruce con el TC1 para el municipio; el mapa queda memorizado por corte (se repite en cada consulta).
+    municipios = _municipios_de_la_lista(db, str(corte_id), [registro["niu"] for registro in registros])
+    opciones_municipios: dict[str, set[str]] = {}
+    for registro in registros:
+        registro["municipio"] = municipios.get(registro["niu"], "")
+        if registro["municipio"]:
+            opciones_municipios.setdefault(registro["municipio"], set()).add(registro["zona_regional"])
+    zonas_lista = {registro["zona_regional"] for registro in registros}
+    tamanos_lista = {registro["tamano"] for registro in registros}
+    return {
+        "registros": registros,
+        "gravedad_zona": gravedad_zona,
+        "zonas": [zona for zona in ZONAS_REGIONALES if zona in zonas_lista] + sorted(zonas_lista - set(ZONAS_REGIONALES)),
+        "municipios": [{"municipio": nombre, "zonas": sorted(zonas)} for nombre, zonas in sorted(opciones_municipios.items())],
+        "clases": sorted({registro["clase"] for registro in registros}),
+        "tamanos": [grupo for grupo in GRUPOS_CONSUMO_ORDEN if grupo in tamanos_lista] + sorted(tamanos_lista - set(GRUPOS_CONSUMO_ORDEN)),
+    }
+
+
 @router.get("/drops")
 def drops(
     medida: str = "Consumo",
@@ -345,53 +441,14 @@ def drops(
         sel_zon, sel_mun, sel_cla, sel_tam = _elegidos(zon), _elegidos(mun), _elegidos(cla), _elegidos(tam)
         col_op = "valor_riesgo_mes" if medida == "Facturación" else "perdida_kwh_mes"
 
-        registros: list[dict[str, Any]] = []
-        gravedad_zona: dict[str, dict[str, int]] = {}
-        for niu, severidad, trayectoria, estado, prioridad, perdida, valor, payload in db.execute(
-            select(
-                OperationalManagement.niu,
-                OperationalManagement.severidad,
-                OperationalManagement.trayectoria,
-                OperationalManagement.estado_en_lista,
-                OperationalManagement.prioridad_gestion,
-                OperationalManagement.perdida_kwh_mes,
-                OperationalManagement.valor_riesgo_mes,
-                OperationalManagement.payload,
-            )
-        ).all():
-            p = payload or {}
-            gravedad = _gravedad(severidad, p.get("veredicto"))
-            zona = str(p.get("zona_regional") or "SIN ZONA")
-            gravedad_zona.setdefault(zona, {})
-            gravedad_zona[zona][gravedad] = gravedad_zona[zona].get(gravedad, 0) + 1
-            registros.append(
-                {
-                    "niu": str(niu).strip(),
-                    "veredicto": str(p.get("veredicto") or ""),
-                    "gravedad": gravedad,
-                    "zona_regional": zona,
-                    "ciclo": str(p.get("zona_nombre") or ""),
-                    "clase": str(p.get("clase_servicio_nombre") or p.get("clase_servicio") or "SIN CLASIFICAR"),
-                    "tamano": str(p.get("grupo_consumo") or p.get("tramo_consumo") or "—"),
-                    "trayectoria": str(trayectoria or ""),
-                    "prioridad": str(prioridad or ""),
-                    "situacion": str(estado or ""),
-                    "consumo_reciente_kwh": float(p.get("consumo_reciente_kwh") or 0),
-                    "consumo_anterior_kwh": float(p.get("consumo_anterior_kwh") or 0),
-                    "perdida_kwh_mes": float(perdida or 0),
-                    "valor_riesgo_mes": float(valor or 0),
-                    "tarifa_kwh": float(p.get("tarifa_kwh") or 0),
-                }
-            )
-        # Cruce con el TC1 para el municipio; el mapa queda memorizado por corte (se repite en cada consulta).
-        corte_id = db.scalar(select(func.max(OperationalManagement.data_run_id))) or 0
-        municipios = _municipios_de_la_lista(db, str(corte_id), [registro["niu"] for registro in registros])
-
-        opciones_municipios: dict[str, set[str]] = {}
-        for registro in registros:
-            registro["municipio"] = municipios.get(registro["niu"], "")
-            if registro["municipio"]:
-                opciones_municipios.setdefault(registro["municipio"], set()).add(registro["zona_regional"])
+        # La lista completa (29.000+ filas con payload) se memoriza por corte; cada petición
+        # solo filtra y ordena su parte en memoria (cambiar un filtro ya no vuelve a leer la BD).
+        corte_id = _corte_operativo(db)
+        cache = _DROPS_CACHE.get(corte_id)
+        if cache is None:
+            cache = _memoiza_corte(_DROPS_CACHE, corte_id, _drops_lista(db, corte_id))
+        registros = cache["registros"]
+        gravedad_zona = cache["gravedad_zona"]
 
         seleccionados = [
             registro
@@ -429,8 +486,6 @@ def drops(
                 }
             )
 
-        zonas_lista = {registro["zona_regional"] for registro in registros}
-        tamanos_lista = {registro["tamano"] for registro in registros}
         return {
             "total_lista": len(registros),
             "evaluados": int(db.scalar(select(func.count(func.distinct(ClientDropAnalysis.niu)))) or 0),
@@ -440,15 +495,53 @@ def drops(
             "gravedad_zona": gravedad_zona,
             "cero_sostenido": _resumen_cero_sostenido(db),
             "opciones": {
-                "zonas": [zona for zona in ZONAS_REGIONALES if zona in zonas_lista] + sorted(zonas_lista - set(ZONAS_REGIONALES)),
-                "municipios": [{"municipio": nombre, "zonas": sorted(zonas)} for nombre, zonas in sorted(opciones_municipios.items())],
-                "clases": sorted({registro["clase"] for registro in registros}),
-                "tamanos": [grupo for grupo in GRUPOS_CONSUMO_ORDEN if grupo in tamanos_lista] + sorted(tamanos_lista - set(GRUPOS_CONSUMO_ORDEN)),
+                "zonas": cache["zonas"],
+                "municipios": cache["municipios"],
+                "clases": cache["clases"],
+                "tamanos": cache["tamanos"],
             },
         }
-        return {"total": len(registros), "items": registros}
     except OperationalError as exc:
         raise schema_error(exc) from exc
+
+
+def _zero_lista(db: Session, ultimo_corte: int) -> list[dict[str, Any]]:
+    """Lista completa de clientes en cero sostenido, memorizada por corte (zero_sustained)."""
+    registros: list[dict[str, Any]] = []
+    for registro in db.scalars(
+        select(DatasetRecord).where(
+            DatasetRecord.dataset_key == "zero_sustained",
+            DatasetRecord.data_run_id == ultimo_corte,
+        )
+    ).all():
+        payload = registro.payload or {}
+        niu = str(registro.niu or payload.get("NIU") or "").strip()
+        if niu.endswith(".0"):
+            niu = niu[:-2]
+        meses = _numero(payload, "meses_en_cero", "meses_en_cero_min")
+        ultimo_mes = str(payload.get("ultimo_mes_con_consumo") or "")
+        if ultimo_mes.endswith(".0"):
+            ultimo_mes = ultimo_mes[:-2]
+        registros.append(
+            {
+                "niu": niu,
+                "municipio": "",
+                "zona_regional": str(payload.get("zona_regional") or "SIN ZONA"),
+                "clase": str(payload.get("clase_servicio_nombre") or payload.get("clase_servicio") or "SIN CLASIFICAR"),
+                "consumo_referencia_kwh": _numero(payload, "consumo_referencia_kwh", "consumo_anterior_kwh") or 0.0,
+                "consumo_reciente_kwh": _numero(payload, "consumo_reciente_kwh") or 0.0,
+                "valor_facturaba_antes_mes": _numero(payload, "valor_facturaba_antes_mes") or 0.0,
+                "tarifa_kwh": _numero(payload, "tarifa_kwh") or 0.0,
+                "ultimo_mes_con_consumo": ultimo_mes,
+                "meses_en_cero": None if meses is None else int(meses),
+            }
+        )
+    # Cruce con el TC1 para el municipio, memorizado por corte (agregar_municipio).
+    municipios = _municipios_de_la_lista(db, f"cero:{ultimo_corte}", [registro["niu"] for registro in registros])
+    for registro in registros:
+        registro["municipio"] = municipios.get(registro["niu"], "")
+    registros.sort(key=lambda registro: registro["niu"])
+    return registros
 
 
 @router.get("/zero")
@@ -462,46 +555,16 @@ def zero(
     se calculan en la web sobre estas filas, igual que el Streamlit sobre su CSV.
     """
     try:
-        ultimo_corte = db.scalar(
-            select(func.max(DatasetRecord.data_run_id)).where(DatasetRecord.dataset_key == "zero_sustained")
+        ultimo_corte = int(
+            db.scalar(
+                select(func.max(DatasetRecord.data_run_id)).where(DatasetRecord.dataset_key == "zero_sustained")
+            )
+            or 0
         )
-
-        registros: list[dict[str, Any]] = []
-        for registro in db.scalars(
-            select(DatasetRecord).where(
-                DatasetRecord.dataset_key == "zero_sustained",
-                DatasetRecord.data_run_id == ultimo_corte,
-            )
-        ).all():
-            payload = registro.payload or {}
-            niu = str(registro.niu or payload.get("NIU") or "").strip()
-            if niu.endswith(".0"):
-                niu = niu[:-2]
-            meses = _numero(payload, "meses_en_cero", "meses_en_cero_min")
-            ultimo_mes = str(payload.get("ultimo_mes_con_consumo") or "")
-            if ultimo_mes.endswith(".0"):
-                ultimo_mes = ultimo_mes[:-2]
-            registros.append(
-                {
-                    "niu": niu,
-                    "municipio": "",
-                    "zona_regional": str(payload.get("zona_regional") or "SIN ZONA"),
-                    "clase": str(payload.get("clase_servicio_nombre") or payload.get("clase_servicio") or "SIN CLASIFICAR"),
-                    "consumo_referencia_kwh": _numero(payload, "consumo_referencia_kwh", "consumo_anterior_kwh") or 0.0,
-                    "consumo_reciente_kwh": _numero(payload, "consumo_reciente_kwh") or 0.0,
-                    "valor_facturaba_antes_mes": _numero(payload, "valor_facturaba_antes_mes") or 0.0,
-                    "tarifa_kwh": _numero(payload, "tarifa_kwh") or 0.0,
-                    "ultimo_mes_con_consumo": ultimo_mes,
-                    "meses_en_cero": None if meses is None else int(meses),
-                }
-            )
-
-        # Cruce con el TC1 para el municipio, memorizado por corte (agregar_municipio).
-        municipios = _municipios_de_la_lista(db, f"cero:{ultimo_corte or 0}", [registro["niu"] for registro in registros])
-        for registro in registros:
-            registro["municipio"] = municipios.get(registro["niu"], "")
-        registros.sort(key=lambda registro: registro["niu"])
-        return {"total": len(registros), "items": registros}
+        cache = _ZERO_CACHE.get(ultimo_corte)
+        if cache is None:
+            cache = _memoiza_corte(_ZERO_CACHE, ultimo_corte, _zero_lista(db, ultimo_corte))
+        return {"total": len(cache), "items": cache}
     except OperationalError as exc:
         raise schema_error(exc) from exc
 
@@ -1013,16 +1076,14 @@ def _normalize_name(value: Any) -> str:
 def municipality_metrics(db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> dict[str, Any]:
     """Métricas agregadas por municipio para el mapa y las tablas de zonas.
     Réplica de metricas_municipio()/_metricas_municipio_cache() del Streamlit: una fila por municipio con clientes,
-    lista de caída, riesgo de fuga y centro geográfico."""
-    ahora = time.time()
-    cache = _METRICAS_MUNICIPIO.get("valor")
-    if cache is not None and ahora - float(_METRICAS_MUNICIPIO.get("ts", 0.0)) < _METRICAS_MUNICIPIO_TTL:
-        return cache
+    lista de caída, riesgo de fuga y centro geográfico. Memorizado por corte: el TTL de 60 s obligaba a
+    recomputar ~9 s cada minuto justo cuando alguien abría el mapa."""
     try:
-        valor = _metricas_municipio(db)
-        _METRICAS_MUNICIPIO["ts"] = ahora
-        _METRICAS_MUNICIPIO["valor"] = valor
-        return valor
+        corte_id = _corte_operativo(db)
+        cache = _METRICAS_MUNICIPIO_CACHE.get(corte_id)
+        if cache is not None:
+            return cache
+        return _memoiza_corte(_METRICAS_MUNICIPIO_CACHE, corte_id, _metricas_municipio(db))
     except OperationalError as exc:
         raise schema_error(exc) from exc
 
@@ -1115,3 +1176,16 @@ def _metricas_municipio(db: Session) -> dict[str, Any]:
     if not boyaca:    # si el catálogo no trae departamento, no se filtra por ubicación
         boyaca = [f for f in rows if f.get("lat_centro") is not None and f.get("lon_centro") is not None]
     return {"metrics": list(MAP_METRICS), "rows": boyaca}
+
+def precalentar(db: Session) -> None:
+    """Rellena en segundo plano las cachés de las secciones más pesadas (panorama, caídas,
+    cero, métricas del mapa y fuga) para que la primera visita no espere al primer cálculo.
+    Se lanza en un hilo desde el arranque de uvicorn; cualquier fallo es inocuo."""
+    try:
+        panorama(db=db, _={})
+        drops(medida="Consumo", n=200, db=db, _={})
+        zero(db=db, _={})
+        municipality_metrics(db=db, _={})
+        _fuga_lista(db, _corte_operativo(db))
+    except Exception:  # noqa: BLE001 - el precalentamiento nunca debe tumbar el arranque
+        pass
