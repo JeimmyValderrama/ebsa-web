@@ -43,7 +43,7 @@ function StatusPill({ state }: { state: ApiState }) {
 }
 
 /** Menú de secciones agrupado (como ui.menu_lateral): grupos publicados por la página activa. */
-function SectionMenu() {
+function SectionMenu({ alElegir }: { alElegir?: () => void }) {
   const registro = useSectionState();
   if (!registro) return null;
   return (
@@ -56,7 +56,10 @@ function SectionMenu() {
               key={item.clave}
               type="button"
               className={`side-item${registro.actual === item.clave ? " activo" : ""}`}
-              onClick={() => registro.elegir(item.clave)}
+              onClick={() => {
+                registro.elegir(item.clave);
+                alElegir?.();
+              }}
             >
               {item.etiqueta}
             </button>
@@ -70,6 +73,12 @@ function SectionMenu() {
 /** Las mismas secciones en una franja inferior deslizable (solo celular). */
 function BottomMenu() {
   const registro = useSectionState();
+  const actual = registro?.actual;
+  // La pestaña activa se centra al cambiar de sección (block:"nearest" para no mover el scroll vertical).
+  useEffect(() => {
+    const activo = document.querySelector<HTMLElement>(".bottom-item.activo");
+    activo?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [actual]);
   if (!registro) return null;
   return (
     <nav className="bottom-menu" aria-label="Secciones">
@@ -92,6 +101,7 @@ function ProtectedLayout() {
   const [apiState, setApiState] = useState<ApiState>("loading");
   const [corte, setCorte] = useState("");
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [lateralAbierto, setLateralAbierto] = useState(false);
   const usuarioRef = useRef<HTMLDivElement | null>(null);
   const role = currentUser?.role ?? "COMERCIAL";
   const visibleItems = navItems.filter((item) => item.roles.includes(role));
@@ -127,10 +137,32 @@ function ProtectedLayout() {
     };
   }, [menuAbierto]);
 
+  // Esc también cierra el drawer lateral (celular).
+  useEffect(() => {
+    if (!lateralAbierto) return;
+    const alEscDrawer = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setLateralAbierto(false);
+    };
+    document.addEventListener("keydown", alEscDrawer);
+    return () => document.removeEventListener("keydown", alEscDrawer);
+  }, [lateralAbierto]);
+
   return (
     <SectionNavProvider>
       <div className="app-shell">
         <header className="topbar">
+          <button
+            type="button"
+            className="menu-lateral"
+            aria-expanded={lateralAbierto}
+            aria-controls="menu-lateral-panel"
+            aria-label={lateralAbierto ? "Cerrar el menú de secciones" : "Abrir el menú de secciones"}
+            onClick={() => setLateralAbierto((abierto) => !abierto)}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+              <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
           <div className="marca">
             <i />
             <div>
@@ -145,6 +177,7 @@ function ProtectedLayout() {
                 to={item.to}
                 end={item.to === "/"}
                 className={({ isActive }) => `vista-tab${isActive ? " activa" : ""}`}
+                onClick={() => setLateralAbierto(false)}
               >
                 {item.label}
               </NavLink>
@@ -188,9 +221,9 @@ function ProtectedLayout() {
           </div>
         </header>
 
-        <aside className="sidebar">
+        <aside id="menu-lateral-panel" className={`sidebar${lateralAbierto ? " abierta" : ""}`}>
           <div className="side-scroll">
-            <SectionMenu />
+            <SectionMenu alElegir={() => setLateralAbierto(false)} />
             <div className="side-bottom">
               <span className="side-group">Sesión</span>
               <div className="side-user">{nombre}</div>
@@ -204,6 +237,10 @@ function ProtectedLayout() {
             </div>
           </div>
         </aside>
+
+        {lateralAbierto && (
+          <button type="button" className="side-velo" aria-label="Cerrar el menú de secciones" onClick={() => setLateralAbierto(false)} />
+        )}
 
         <main className="main-content">
           <Outlet />

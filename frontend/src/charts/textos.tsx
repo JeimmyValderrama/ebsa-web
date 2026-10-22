@@ -90,9 +90,9 @@ export function Conteo({
 
 /** ¿La pantalla es de celular? (en el Streamlit se decides por el User-Agent; aquí por el ancho). */
 export function useEsMovil(): boolean {
-  const [movil, setMovil] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
+  const [movil, setMovil] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches);
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 767px)");
+    const media = window.matchMedia("(max-width: 768px)");
     const alCambiar = (): void => setMovil(media.matches);
     media.addEventListener("change", alCambiar);
     return () => media.removeEventListener("change", alCambiar);

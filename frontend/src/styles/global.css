@@ -108,6 +108,8 @@ p { margin: 0; }
 .marca i { display: block; width: 10px; height: 34px; background: var(--marca); border-radius: 2px; }
 .marca b { display: block; font-family: var(--disp); font-weight: 600; font-size: 19px; line-height: 1.1; letter-spacing: .2px; }
 .marca small { display: block; font-size: 12px; color: #c9cbc3; line-height: 1.25; }
+/* Hamburguesa del drawer lateral: se ve solo en celular (como stSidebarCollapsedControl). */
+.menu-lateral { display: none; }
 
 .vistas { display: flex; align-items: stretch; height: var(--alto-barra); margin-left: 26px; gap: 4px; }
 .vista-tab {
@@ -232,6 +234,9 @@ p { margin: 0; }
 .status-loading .status-dot { background: #e0a100; }
 .status-error .status-dot { background: var(--alerta); }
 
+/* Fondo oscurecido del drawer lateral (solo celular). */
+.side-velo { display: none; }
+
 /* franja inferior de secciones (solo celular, como menu_inferior) */
 .bottom-menu { display: none; }
 @media (max-width: 768px) {
@@ -252,6 +257,9 @@ p { margin: 0; }
 }
 .bottom-item {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   background: transparent;
   border: 0;
   border-top: 4px solid transparent;
@@ -623,13 +631,15 @@ textarea.search-input {
 }
 .v2-ay:hover::after, .v2-ay:focus::after { opacity: 1; visibility: visible; }
 
-/* ---------- banda de prioridades (v2-banda del Streamlit) ---------- */
-.v2-banda { display: flex; gap: 8px; margin-top: 14px; }
-.v2-seg { display: grid; gap: 1px; border-radius: 6px; padding: 10px 12px 9px; color: #fff; min-width: 0; overflow: hidden; }
-.v2-seg-n { font-size: 13px; font-weight: 600; opacity: .95; }
-.v2-seg-v { font-family: var(--disp); font-weight: 600; font-size: 24px; line-height: 1.1; }
-.v2-seg-v small { font-size: 14px; font-weight: 600; opacity: .92; }
-.v2-seg-c { font-size: 13px; opacity: .96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ---------- banda de prioridades (v2-banda del Streamlit, componentes_v2.py:301-307) ---------- */
+.v2-banda { display: flex; gap: 3px; margin-top: 14px; }
+.v2-seg { min-width: 0; padding: 9px 16px; color: #fff; display: flex; flex-direction: column; gap: 0; overflow: hidden; }
+.v2-seg:first-child { border-radius: 6px 0 0 6px; }
+.v2-seg:last-child { border-radius: 0 6px 6px 0; }
+.v2-seg-n { font-weight: 600; font-size: 14.5px; line-height: 1.25; }
+.v2-seg-v { font-family: var(--disp); font-weight: 600; font-size: 38px; line-height: 1.02; white-space: nowrap; }
+.v2-seg-v small { font-size: 16px; font-weight: 600; opacity: .92; }
+.v2-seg-c { font-size: 14px; opacity: .96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- avisos (v2-aviso del Streamlit) ---------- */
 .v2-aviso {
@@ -670,6 +680,9 @@ textarea.search-input {
 @media (max-width: 1080px) {
   .v2-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fila-3-2, .fila-1-1, .v2-fila-medida, .split-panel { grid-template-columns: minmax(0, 1fr); }
+  /* La banda nunca se aplasta: mínimo 150 px por segmento y, si no caben, salta a otra fila. */
+  .v2-banda { flex-wrap: wrap; }
+  .v2-seg { min-width: min(150px, 100%); }
 }
 @media (max-width: 768px) {
   .v2-ph h1 { font-size: 27px; }
@@ -680,7 +693,7 @@ textarea.search-input {
   .v2-hero-h p { font-size: 14.5px; }
   .v2-ch h3 { font-size: 18.5px; }
   .v2-banda { flex-direction: column; }
-  .v2-seg { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; padding: 7px 13px 8px; }
+  .v2-seg { flex: none !important; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 10px; border-radius: 6px; padding: 7px 13px 8px; }
   .v2-seg-n { width: 100%; }
   .v2-seg-v { font-size: 29px; }
   .v2-aviso { flex-direction: column; gap: 5px; }
@@ -1021,15 +1034,38 @@ textarea.search-input {
 
 @media (max-width: 768px) {
   :root { --alto-barra: 52px; --lateral: 0px; }
-  .sidebar { display: none; }
   .main-content { margin-left: 0; }
+  /* El sidebar pasa a drawer superpuesto (como en el Streamlit móvil: min(300px,86vw)). */
+  .menu-lateral {
+    display: grid; place-items: center; flex: 0 0 auto; width: 44px;
+    background: transparent; border: 0; border-right: 1px solid rgba(255, 255, 255, .14); color: #fff;
+  }
+  .menu-lateral:hover { background: var(--carbon2); }
+  .sidebar {
+    width: min(300px, 86vw);
+    transform: translateX(-101%);
+    visibility: hidden;
+    transition: transform .22s ease, visibility 0s .22s;
+    z-index: 970;
+  }
+  .sidebar.abierta {
+    transform: none;
+    visibility: visible;
+    transition: transform .22s ease, visibility 0s 0s;
+    box-shadow: 10px 0 30px rgba(35, 35, 34, .28);
+  }
+  .side-velo {
+    display: block; position: fixed; inset: var(--alto-barra) 0 0; z-index: 960;
+    padding: 0; border: 0; background: rgba(35, 35, 34, .4); cursor: pointer;
+  }
   .page-content { padding: calc(var(--alto-barra) + 16px) 14px 92px; }
   .marca { padding: 0 12px; gap: 9px; }
   .marca small { display: none; }
   .marca i { width: 8px; height: 26px; }
   .marca b { font-size: 16px; max-width: 92px; white-space: normal; line-height: 1.02; }
-  .vistas { margin-left: auto; gap: 0; }
-  .vista-tab { padding: 0 8px; font-size: 14px; }
+  .vistas { flex: 1 1 auto; min-width: 0; margin-left: 8px; gap: 0; overflow-x: auto; scrollbar-width: none; }
+  .vistas::-webkit-scrollbar { display: none; }
+  .vista-tab { flex: 0 0 auto; padding: 0 8px; font-size: 14px; }
   .topbar-right { padding: 0 8px; gap: 8px; }
   .user-pill .usuario-nombre { display: none; }
   .page-intro { display: block; }
@@ -1044,9 +1080,31 @@ textarea.search-input {
   .bar-row { grid-template-columns: 90px 1fr 52px; }
   .hero-orbit { right: -90px; opacity: .35; }
   .data-module, .map-panel, .mini-chart, .filter-card, .admin-note, .chart-card { padding: 13px 13px 11px; }
+  .mapa-controles { grid-template-columns: minmax(0, 1fr); }
+  /* Objetivos táctiles: lo mínimo cómodo para el dedo. */
+  .v2-ms-btn { min-width: 36px; min-height: 36px; padding: 4px 8px; }
+  .ojo-pass { width: 36px; height: 36px; }
+  .chip-x { padding: 6px; margin: -6px -4px -6px -4px; }
 }
 
 @media (max-width: 520px) {
   .catalog-grid { grid-template-columns: 1fr; }
   .metric-grid { grid-template-columns: 1fr; }
+  .pagination-row { flex-wrap: wrap; gap: 10px; }
+  .section-heading { flex-wrap: wrap; gap: 10px; }
+  .next-step-panel { flex-wrap: wrap; gap: 12px; }
+  .auth-page { padding: 20px; }
+  .auth-card { padding: 22px 20px; }
+  .auth-card h1 { font-size: 26px; }
+  .auth-decoration { display: none; }
+}
+
+@media (max-width: 420px) {
+  .marca { padding: 0 10px; gap: 7px; }
+  .marca b { font-size: 14.5px; max-width: 76px; }
+  .vista-tab { padding: 0 7px; font-size: 13.5px; }
+  .topbar-right { padding: 0 6px; gap: 6px; }
+  .v2-kpis { grid-template-columns: minmax(0, 1fr); }
+  .v2-kpis.compacto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .year-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
