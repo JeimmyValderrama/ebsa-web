@@ -54,6 +54,15 @@ export const ZONAS_REGIONALES = ["CENTRO", "TUNDAMA", "SUGAMUXI", "OCCIDENTE", "
 
 export const GRUPOS_CONSUMO_ORDEN = ["Grande", "Mediano", "Pequeño", "Intermitente", "Sin historia suficiente"];
 
+/** Qué define a cada grupo de consumo (GRUPO_CONSUMO_DESCRIPCION del glosario). */
+export const GRUPO_CONSUMO_DESCRIPCION: Record<string, string> = {
+  Intermitente: "Mediana de 12 meses ≤ 10 kWh o la mitad o más de los meses en cero",
+  Pequeño: "Mediana de 12 meses entre 10 y 500 kWh/mes",
+  Mediano: "Mediana de 12 meses entre 500 y 5.000 kWh/mes",
+  Grande: "Mediana de 12 meses de 5.000 kWh/mes o más",
+  "Sin historia suficiente": "Menos de 6 meses válidos en el último año (no se pronostica)",
+};
+
 export const AYUDA_MUNICIPIO = "Si hay una zona regional elegida, aquí solo aparecen los municipios de esa zona.";
 export const AYUDA_ZONA_REGIONAL = "Agrupa el ciclo urbano, el rural y los seccionales de una misma dirección regional";
 

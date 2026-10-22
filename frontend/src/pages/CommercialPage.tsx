@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
-import { DatasetCatalog, DatasetView, type Row } from "../components/DataExplorer";
+import type { Row } from "../components/DataExplorer";
+import { Descargas } from "../components/Descargas";
 import { MapaBoyaca, type InfoMapa } from "../components/MapaBoyaca";
 import { ListaCaida } from "../components/ListaCaida";
 import { SinConsumo } from "../components/SinConsumo";
@@ -80,7 +81,7 @@ export default function CommercialPage() {
       {section === "fuga" && <Fuga token={idToken} />}
       {section === "salidas" && <Salidas token={idToken} />}
       {section === "proyeccion" && <Proyeccion token={idToken} />}
-      {section === "descargas" && <DownloadHub token={idToken} />}
+      {section === "descargas" && <Descargas token={idToken} />}
     </div>
   );
 }
@@ -513,19 +514,3 @@ function TablaEntradasSalidas({ filas }: { filas: Row[] }) {
   );
 }
 
-function DownloadHub({ token }: { token?: string | null }) {
-  const [selected, setSelected] = useState("operational");
-  return (
-    <section className="data-module">
-      <header className="module-heading">
-        <div>
-          <div className="eyebrow">EXPORTACIONES</div>
-          <h2>Descargas completas del pipeline</h2>
-          <p>Selecciona cualquier salida importada. La vista previa se puede filtrar y descargar tal como se ve en pantalla.</p>
-        </div>
-      </header>
-      <DatasetCatalog token={token} onSelect={setSelected} />
-      <DatasetView token={token} datasetKey={selected} title={`Vista previa: ${selected}`} pageSize={25} />
-    </section>
-  );
-}

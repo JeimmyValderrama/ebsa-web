@@ -6,6 +6,7 @@ import { DatasetCatalog, DatasetTable, DatasetView, MiniBars, type Row } from ".
 import { MapaBoyaca } from "../components/MapaBoyaca";
 import { useCorte } from "../lib/useCorte";
 import { Proyeccion } from "../components/Projection";
+import { Descargas } from "../components/Descargas";
 import { Sensitive, usePresentation } from "../app/Presentation";
 import { useSectionNav } from "../app/SectionNav";
 import { fechaCo, fmtN, limpiarNiu, mesCorto } from "../lib/format";
@@ -180,19 +181,7 @@ export default function AdminPage() {
       )}
       {tab === "feedback" && <Retroalimentacion token={idToken} />}
       {tab === "pipeline" && <Pipeline token={idToken} runs={runs} />}
-      {tab === "descargas" && (
-        <section className="data-module">
-          <header className="module-heading">
-            <div>
-              <div className="eyebrow">EXPORTACIONES</div>
-              <h2>Descargas por grupo</h2>
-              <p>Cualquier salida del pipeline, con filtros y formato listo para Excel (punto de miles y coma decimal).</p>
-            </div>
-          </header>
-          <DatasetCatalog token={idToken} onSelect={setSelectedDataset} />
-          {selectedDataset && <DatasetView token={idToken} datasetKey={selectedDataset} title={`Vista previa: ${selectedDataset}`} pageSize={25} />}
-        </section>
-      )}
+      {tab === "descargas" && <Descargas token={idToken} />}
       {tab === "datasets" && (
         <section className="data-module">
           <header className="module-heading">

@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import csv
 import io
+import os
 import time
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func, nulls_last, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
@@ -877,6 +880,73 @@ def clients_by_niu(db: Session, nius: list[str]) -> dict[str, dict[str, Any]]:
         for row in db.execute(select(Client.niu, Client.zona_regional, Client.zona_nombre, Client.ciclo_etiqueta, Client.clase_servicio_nombre).where(Client.niu.in_(chunk))).all():
             result[row.niu] = {"zona_regional": row.zona_regional, "zona_nombre": row.zona_nombre, "ciclo_etiqueta": row.ciclo_etiqueta, "clase_servicio_nombre": row.clase_servicio_nombre}
     return result
+
+
+def _directorio_datos() -> Path:
+    """Carpeta raíz de resultados del pipeline. En local es streamlit_origen/datos; si existe EBSA_DATA_DIR, esa manda."""
+    configurada = os.getenv("EBSA_DATA_DIR")
+    if configurada and Path(configurada).is_dir():
+        return Path(configurada)
+    return Path(__file__).resolve().parents[2] / "streamlit_origen" / "datos"
+
+
+def _dentro_de(ruta: Path, base: Path) -> bool:
+    """Ninguna ruta puede salirse de la carpeta de datos (defensa contra ../)."""
+    try:
+        return ruta.resolve().is_relative_to(base.resolve())
+    except OSError:
+        return False
+
+
+@router.get("/exportes")
+def listar_exportes(db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> dict[str, Any]:
+    """Índice de exportes del negocio (11_exportes_negocio) agrupado por producto, con el estado y el
+    tamaño reales de cada archivo en disco. Solo se lee el índice: los CSV pesan hasta ~145 MB."""
+    try:
+        items, total = dataset_service.query_dataset(db, "exports_index", 500, 0)
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+    base = _directorio_datos()
+    productos: dict[str, list[dict[str, Any]]] = {}
+    for item in items:
+        fila = item.get("payload") or {}
+        relativa = str(fila.get("archivo") or "").replace("\\", "/")
+        ruta = (base / relativa) if relativa else None
+        existe = bool(ruta and ruta.is_file() and _dentro_de(ruta, base))
+        clientes = fila.get("clientes")
+        productos.setdefault(str(fila.get("producto") or "otros"), []).append({
+            "grupo_consumo": fila.get("grupo_consumo"),
+            "clientes": int(float(clientes)) if clientes not in (None, "") else 0,
+            "fecha_corte": fila.get("fecha_corte"),
+            "archivo": Path(relativa).name,
+            "ruta": relativa,
+            "tamano_mb": round(ruta.stat().st_size / 1e6, 1) if existe else None,
+            "estado": "disponible" if existe else "no encontrado",
+        })
+    return {"productos": [{"producto": producto, "filas": filas} for producto, filas in productos.items()], "total": total, "directorio": base.name}
+
+
+@router.get("/exportes/archivo")
+def descargar_exporte(
+    archivo: str = Query(..., description="Ruta relativa tal como aparece en el índice de exportes"),
+    db: Session = Depends(get_db),
+    _: dict[str, Any] = Depends(require_roles(*ALL_ROLES)),
+) -> Response:
+    """Descarga un archivo de 11_exportes_negocio tal como está en disco. Solo se sirven las rutas que
+    están en el índice (y dentro de la carpeta de datos); el archivo va por streaming."""
+    try:
+        items, _ = dataset_service.query_dataset(db, "exports_index", 500, 0)
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+    permitidas = {str((item.get("payload") or {}).get("archivo") or "").replace("\\", "/") for item in items}
+    relativa = archivo.replace("\\", "/").strip()
+    if relativa not in permitidas:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ese archivo no está en el índice de exportes.")
+    base = _directorio_datos()
+    ruta = base / relativa
+    if not _dentro_de(ruta, base) or not ruta.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El archivo no existe en disco en este equipo. Corre el pipeline (paso 15) y vuelve a intentarlo.")
+    return FileResponse(ruta, media_type="text/csv; charset=utf-8", filename=ruta.name)
 
 
 @router.get("/route")

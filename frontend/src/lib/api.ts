@@ -222,6 +222,24 @@ export type DropsData = {
   };
 };
 
+/** Fila del índice de exportes (11_exportes_negocio/indice_exportes.csv) con su estado real en disco. */
+export type ExporteFila = {
+  grupo_consumo: string | null;
+  clientes: number;
+  fecha_corte: string | null;
+  archivo: string;
+  ruta: string;
+  tamano_mb: number | null;
+  estado: string;
+};
+
+/** Descargas por grupo: una tabla por producto (pronóstico, caída y fuga), en el orden del índice. */
+export type ExportesData = {
+  productos: Array<{ producto: string; filas: ExporteFila[] }>;
+  total: number;
+  directorio: string;
+};
+
 export const api = {
   health: () => request<{ status: string; service: string; timestamp: string }>("/api/health"),
   status: () => request<{ status: string; database_configured: boolean; database_engine: string; firebase_configured: boolean }>("/api/status"),
@@ -303,6 +321,11 @@ export const api = {
   },
   /** Clientes que ya están con otro comercializador, con su perfil; los filtros se aplican en la web. */
   salidas: (token: string | undefined) => request<SalidasData>("/api/data/salidas", { token }),
+  /** Índice de exportes por grupo: qué archivos dejó el pipeline y si están en disco. */
+  exportes: (token: string | undefined) => request<ExportesData>("/api/data/exportes", { token }),
+  /** Un archivo de exportes tal cual está en disco (los grandes pesan ~145 MB). */
+  exporteArchivo: (token: string | undefined, ruta: string) =>
+    request<Response>(`/api/data/exportes/archivo${query({ archivo: ruta })}`, { token, raw: true, accept: "text/csv" }).then((response) => response.blob()),
   dataset: (token: string | undefined, key: string, options: DatasetQuery = {}) => request<DatasetPage>(`/api/data/datasets/${encodeURIComponent(key)}${query({ limit: options.limit ?? 200, offset: options.offset ?? 0, search: options.search, niu: options.niu, filter: options.filters })}`, { token }),
   datasetCsv: (token: string | undefined, key: string, options: Pick<DatasetQuery, "search" | "filters"> = {}) =>
     request<Response>(`/api/data/datasets/${encodeURIComponent(key)}/csv${query({ search: options.search, filter: options.filters })}`, { token, raw: true, accept: "text/csv" }).then((response) => response.blob()),
