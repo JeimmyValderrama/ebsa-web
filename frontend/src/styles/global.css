@@ -237,40 +237,6 @@ p { margin: 0; }
 /* Fondo oscurecido del drawer lateral (solo celular). */
 .side-velo { display: none; }
 
-/* franja inferior de secciones (solo celular, como menu_inferior) */
-.bottom-menu { display: none; }
-@media (max-width: 768px) {
-  .bottom-menu {
-    display: flex;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 950;
-    background: var(--sup);
-    border-top: 1px solid var(--linea);
-    padding: 0 4px env(safe-area-inset-bottom);
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .bottom-menu::-webkit-scrollbar { display: none; }
-}
-.bottom-item {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  background: transparent;
-  border: 0;
-  border-top: 4px solid transparent;
-  padding: 9px 12px 10px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ink3);
-  white-space: nowrap;
-}
-.bottom-item.activo { border-top-color: var(--marca); color: var(--ink); }
-
 /* ---------- contenido ---------- */
 .main-content { margin-left: var(--lateral); min-width: 0; }
 .page-content { max-width: var(--ancho); margin: 0 auto; padding: calc(var(--alto-barra) + 24px) 32px 56px; }
@@ -1058,7 +1024,7 @@ textarea.search-input {
     display: block; position: fixed; inset: var(--alto-barra) 0 0; z-index: 960;
     padding: 0; border: 0; background: rgba(35, 35, 34, .4); cursor: pointer;
   }
-  .page-content { padding: calc(var(--alto-barra) + 16px) 14px 92px; }
+  .page-content { padding: calc(var(--alto-barra) + 16px) 14px calc(40px + env(safe-area-inset-bottom)); }
   .marca { padding: 0 12px; gap: 9px; }
   .marca small { display: none; }
   .marca i { width: 8px; height: 26px; }

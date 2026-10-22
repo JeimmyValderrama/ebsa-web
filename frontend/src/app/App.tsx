@@ -70,32 +70,6 @@ function SectionMenu({ alElegir }: { alElegir?: () => void }) {
   );
 }
 
-/** Las mismas secciones en una franja inferior deslizable (solo celular). */
-function BottomMenu() {
-  const registro = useSectionState();
-  const actual = registro?.actual;
-  // La pestaña activa se centra al cambiar de sección (block:"nearest" para no mover el scroll vertical).
-  useEffect(() => {
-    const activo = document.querySelector<HTMLElement>(".bottom-item.activo");
-    activo?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, [actual]);
-  if (!registro) return null;
-  return (
-    <nav className="bottom-menu" aria-label="Secciones">
-      {registro.grupos.flatMap((grupo) => grupo.items).map((item) => (
-        <button
-          key={item.clave}
-          type="button"
-          className={`bottom-item${registro.actual === item.clave ? " activo" : ""}`}
-          onClick={() => registro.elegir(item.clave)}
-        >
-          {item.etiqueta}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
 function ProtectedLayout() {
   const { currentUser, idToken, logout } = useAuth();
   const [apiState, setApiState] = useState<ApiState>("loading");
@@ -245,8 +219,6 @@ function ProtectedLayout() {
         <main className="main-content">
           <Outlet />
         </main>
-
-        <BottomMenu />
       </div>
     </SectionNavProvider>
   );
