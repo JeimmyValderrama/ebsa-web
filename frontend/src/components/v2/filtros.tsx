@@ -162,6 +162,7 @@ export function PanelFiltros({
   extra,
   alRestablecer,
   movil,
+  porFila = 4,
 }: {
   campos: CampoFiltro[];
   valores: Record<string, string[]>;
@@ -169,6 +170,8 @@ export function PanelFiltros({
   extra?: ReactNode;
   alRestablecer?: () => void;
   movil?: boolean;
+  /** Cuántos filtros entran por fila (por_fila del Streamlit). */
+  porFila?: number;
 }) {
   const visibles = campos.filter((campo) => campo.visible !== false && campo.opciones.length > 0);
   const activos = visibles.filter((campo) => (valores[campo.key] ?? []).length > 0);
@@ -186,7 +189,7 @@ export function PanelFiltros({
           Filtros · {activos.length ? `${activos.length} activo${activos.length === 1 ? "" : "s"}` : "ninguno activo"}
         </summary>
         <div className="v2-exp-cuerpo">
-          <div className="filtros-grid">
+          <div className={porFila > 4 ? "filtros-grid filtros-5" : "filtros-grid"}>
             {visibles.map((campo) => (
               <Multiselect
                 key={campo.key}

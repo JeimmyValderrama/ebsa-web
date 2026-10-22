@@ -42,10 +42,45 @@ export const NIVEL_FUGA_SIMPLE: Record<string, string> = {
   BAJO: "Bajo",
 };
 
+export const ZONAS_REGIONALES = ["CENTRO", "TUNDAMA", "SUGAMUXI", "OCCIDENTE", "ORIENTE", "NORTE", "RICAURTE", "PUERTO BOYACA"];
+
 export const GRUPOS_CONSUMO_ORDEN = ["Grande", "Mediano", "Pequeño", "Intermitente", "Sin historia suficiente"];
 
 export const AYUDA_MUNICIPIO = "Si hay una zona regional elegida, aquí solo aparecen los municipios de esa zona.";
 export const AYUDA_ZONA_REGIONAL = "Agrupa el ciclo urbano, el rural y los seccionales de una misma dirección regional";
+
+/* ---------- Clientes sin consumo (sección "Clientes sin consumo") ---------- */
+
+export const SITUACION_CERO = ["En cero", "Casi cero"];
+
+export const TRAMOS_CERO = ["Hasta 6 meses", "7 a 12 meses", "Más de 12 meses"];
+
+/** Qué hacer según cuánto tiempo lleve sin consumo (np.select de la sección del Streamlit). */
+export const QUE_HACER_CERO: Record<string, string> = {
+  "Hasta 6 meses": "Confirmar: suspensión o predio desocupado que puede volver",
+  "7 a 12 meses": "Verificar el estado del servicio y si procede la reconexión",
+  "Más de 12 meses": "Retiro de hecho: depurar catastro o gestionar reconexión",
+};
+
+/** Tramo de tiempo sin consumo; sin meses (nunca consumió en la serie) cuenta como más de 12 meses. */
+export function tramoCero(meses: number | null | undefined): string {
+  if (meses === null || meses === undefined || Number.isNaN(meses)) return "Más de 12 meses";
+  if (meses <= 6) return "Hasta 6 meses";
+  if (meses <= 12) return "7 a 12 meses";
+  return "Más de 12 meses";
+}
+
+/** Tamaño por lo que consumía antes: 5.000 kWh o más es grande, 500 o más mediano. */
+export function tamanoPorConsumo(referenciaKwh: number): string {
+  if (referenciaKwh >= 5000) return "Grande";
+  if (referenciaKwh >= 500) return "Mediano";
+  return "Pequeño";
+}
+
+/** Situación en la ventana reciente: en cero si no consumió nada; si no, casi cero. */
+export function situacionCero(consumoRecienteKwh: number): string {
+  return consumoRecienteKwh <= 0 ? "En cero" : "Casi cero";
+}
 
 /** Traduce un código a su etiqueta de negocio (si no hay traducción, se queda el código). */
 export function etiqueta(mapa: Record<string, string>, valor: unknown): string {

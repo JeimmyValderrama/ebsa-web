@@ -434,6 +434,69 @@ def drops(
                 "tamanos": [grupo for grupo in GRUPOS_CONSUMO_ORDEN if grupo in tamanos_lista] + sorted(tamanos_lista - set(GRUPOS_CONSUMO_ORDEN)),
             },
         }
+        return {"total": len(registros), "items": registros}
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+
+
+@router.get("/zero")
+def zero(
+    db: Session = Depends(get_db),
+    _: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    """Clientes en cero o casi cero sostenido (sección "Clientes sin consumo") con su municipio del TC1.
+
+    Devuelve la lista completa: la situación, el tiempo sin consumo, el tamaño, los filtros y el orden
+    se calculan en la web sobre estas filas, igual que el Streamlit sobre su CSV.
+    """
+    try:
+        ultimo_corte = db.scalar(
+            select(func.max(DatasetRecord.data_run_id)).where(DatasetRecord.dataset_key == "zero_sustained")
+        )
+
+        def _numero(payload: dict[str, Any], *claves: str) -> float | None:
+            for clave in claves:
+                valor = payload.get(clave)
+                if isinstance(valor, (int, float)) and not isinstance(valor, bool) and valor == valor:
+                    return float(valor)
+            return None
+
+        registros: list[dict[str, Any]] = []
+        for registro in db.scalars(
+            select(DatasetRecord).where(
+                DatasetRecord.dataset_key == "zero_sustained",
+                DatasetRecord.data_run_id == ultimo_corte,
+            )
+        ).all():
+            payload = registro.payload or {}
+            niu = str(registro.niu or payload.get("NIU") or "").strip()
+            if niu.endswith(".0"):
+                niu = niu[:-2]
+            meses = _numero(payload, "meses_en_cero", "meses_en_cero_min")
+            ultimo_mes = str(payload.get("ultimo_mes_con_consumo") or "")
+            if ultimo_mes.endswith(".0"):
+                ultimo_mes = ultimo_mes[:-2]
+            registros.append(
+                {
+                    "niu": niu,
+                    "municipio": "",
+                    "zona_regional": str(payload.get("zona_regional") or "SIN ZONA"),
+                    "clase": str(payload.get("clase_servicio_nombre") or payload.get("clase_servicio") or "SIN CLASIFICAR"),
+                    "consumo_referencia_kwh": _numero(payload, "consumo_referencia_kwh", "consumo_anterior_kwh") or 0.0,
+                    "consumo_reciente_kwh": _numero(payload, "consumo_reciente_kwh") or 0.0,
+                    "valor_facturaba_antes_mes": _numero(payload, "valor_facturaba_antes_mes") or 0.0,
+                    "tarifa_kwh": _numero(payload, "tarifa_kwh") or 0.0,
+                    "ultimo_mes_con_consumo": ultimo_mes,
+                    "meses_en_cero": None if meses is None else int(meses),
+                }
+            )
+
+        # Cruce con el TC1 para el municipio, memorizado por corte (agregar_municipio).
+        municipios = _municipios_de_la_lista(db, f"cero:{ultimo_corte or 0}", [registro["niu"] for registro in registros])
+        for registro in registros:
+            registro["municipio"] = municipios.get(registro["niu"], "")
+        registros.sort(key=lambda registro: registro["niu"])
+        return {"total": len(registros), "items": registros}
     except OperationalError as exc:
         raise schema_error(exc) from exc
 

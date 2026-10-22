@@ -159,6 +159,49 @@ export function formatCelda(value: unknown, columnName: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Tablas del Streamlit (formato_tabla y csv_es): mismas pistas de columnas.
+// ---------------------------------------------------------------------------
+
+const PISTAS_KWH = ["kwh", "consumo"];
+const PISTAS_PESOS = ["valor", "perdida", "pérdida", "factura", "$", "pesos", "tarifa_kwh"];
+
+/**
+ * Formato de celda de las tablas de trabajo, idéntico a formato_tabla del Streamlit: la tarifa con un decimal,
+ * las columnas de energía en kWh con punto de miles y las de pesos con $; el resto es número local.
+ * Los decimales de energía se deciden mirando la columna entera (si todos sus valores son enteros, sin decimales).
+ */
+export function formatoTabla(
+  filas: Array<Record<string, unknown>>,
+  columnas: string[],
+): (valor: unknown, columna: string) => string {
+  const decimales: Record<string, number> = {};
+  for (const columna of columnas) {
+    const nombre = columna.toLowerCase();
+    if (!PISTAS_KWH.some((pista) => nombre.includes(pista)) || nombre.includes("$")) continue;
+    const numeros = filas.map((fila) => Number(fila[columna])).filter((numero) => Number.isFinite(numero));
+    decimales[columna] = numeros.length > 0 && numeros.every((numero) => Number.isInteger(numero)) ? 0 : 1;
+  }
+  return (valor, columna) => {
+    if (valor === null || valor === undefined) return "—";
+    if (typeof valor === "number" && Number.isFinite(valor)) {
+      const nombre = columna.toLowerCase();
+      if (nombre.includes("tarifa")) return `$${fmtN(valor, 1)}`;
+      if (PISTAS_KWH.some((pista) => nombre.includes(pista)) && !nombre.includes("$")) return fmtN(valor, decimales[columna] ?? 0);
+      if (PISTAS_PESOS.some((pista) => nombre.includes(pista))) return `$${fmtN(valor)}`;
+      return fmtN(valor);
+    }
+    return String(valor);
+  };
+}
+
+/** Celda de un CSV para Excel en español (csv_es): separador ';' y coma decimal, sin punto de miles. */
+export function csvCelda(valor: unknown): string {
+  if (valor === null || valor === undefined) return "";
+  if (typeof valor === "number") return String(valor).replace(".", ",");
+  return String(valor);
+}
+
+// ---------------------------------------------------------------------------
 // Regla de negocio: "Qué revisar" (sugerencia en lenguaje simple para soporte).
 // ---------------------------------------------------------------------------
 

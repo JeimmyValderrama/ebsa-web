@@ -106,6 +106,22 @@ export type DropsItem = {
   caida_pct: number | null;
 };
 
+/** Clientes sin consumo (cero sostenido): fila con lo que consumía, lo que factura y cuánto lleva así. */
+export type CeroItem = {
+  niu: string;
+  municipio: string;
+  zona_regional: string;
+  clase: string;
+  consumo_referencia_kwh: number;
+  consumo_reciente_kwh: number;
+  valor_facturaba_antes_mes: number;
+  tarifa_kwh: number;
+  ultimo_mes_con_consumo: string;
+  meses_en_cero: number | null;
+};
+
+export type CeroData = { total: number; items: CeroItem[] };
+
 export type DropsData = {
   total_lista: number;
   evaluados: number;
@@ -168,6 +184,8 @@ export const api = {
       { token },
     );
   },
+  /** Lista completa de clientes en cero sostenido; los filtros se aplican en la web. */
+  zero: (token: string | undefined) => request<CeroData>("/api/data/zero", { token }),
   dataset: (token: string | undefined, key: string, options: DatasetQuery = {}) => request<DatasetPage>(`/api/data/datasets/${encodeURIComponent(key)}${query({ limit: options.limit ?? 200, offset: options.offset ?? 0, search: options.search, niu: options.niu, filter: options.filters })}`, { token }),
   datasetCsv: (token: string | undefined, key: string, options: Pick<DatasetQuery, "search" | "filters"> = {}) =>
     request<Response>(`/api/data/datasets/${encodeURIComponent(key)}/csv${query({ search: options.search, filter: options.filters })}`, { token, raw: true, accept: "text/csv" }).then((response) => response.blob()),

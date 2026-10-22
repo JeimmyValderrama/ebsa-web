@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { DatasetCatalog, DatasetView, type FilterField, type Row } from "../components/DataExplorer";
 import { MapaBoyaca, type InfoMapa } from "../components/MapaBoyaca";
 import { ListaCaida } from "../components/ListaCaida";
+import { SinConsumo } from "../components/SinConsumo";
 import { ProjectionView, recortarProyeccion, type Anual, type Mensual } from "../components/Projection";
 import { Aviso, Banda, ComoLeer, Kpis, Tarjeta, TituloPagina, type ItemKpi } from "../components/v2/ui";
 import { NOTA_CERO_SOSTENIDO, NOTA_REGLAS_LISTA, QUE_ES_ESTO, periodoTexto } from "../components/v2/textos";
@@ -74,18 +75,7 @@ export default function CommercialPage() {
     <div className="page-content">
       {section === "panorama" && <Panorama token={idToken} />}
       {section === "caidas" && <ListaCaida token={idToken} />}
-      {section === "sin_consumo" && (
-        <DatasetView
-          token={idToken}
-          datasetKey="zero_sustained"
-          title="Clientes sin consumo (en cero o casi cero)"
-          description="Clientes con consumo en cero durante varios meses consecutivos; la mayoría vuelve, por eso se separan de la lista de caída."
-          filters={[{ key: "grupo_consumo", label: "Grupo" }, { key: "zona_nombre", label: "Zona" }]}
-          prioritarias={["NIU", "meses_en_cero", "meses_en_cero_consecutivos", "grupo_consumo", "zona_nombre"]}
-          action={puedeFichas ? abrirFicha : undefined}
-          actionLabel="Ver ficha"
-        />
-      )}
+      {section === "sin_consumo" && <SinConsumo token={idToken} />}
       {section === "fuga" && (
         <DatasetView
           token={idToken}

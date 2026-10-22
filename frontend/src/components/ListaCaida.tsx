@@ -9,7 +9,7 @@ import { FichaCliente } from "./v2/FichaCliente";
 import { Conteo, Leyenda, md, useEsMovil } from "../charts/textos";
 import { BarrasApiladas } from "../charts/Graficas";
 import { C, COLOR_GRAVEDAD, SEVERIDAD_SIMPLE } from "../charts/paleta";
-import { energia, fmtMedida, fmtN, mesLargo, pesos, tituloPropio } from "../lib/format";
+import { csvCelda, energia, fmtMedida, fmtN, formatoTabla, mesLargo, pesos, tituloPropio } from "../lib/format";
 import {
   AYUDA_MUNICIPIO,
   AYUDA_ZONA_REGIONAL,
@@ -48,12 +48,6 @@ const COLUMNAS = [
   "Prioridad",
   "Situación",
 ];
-
-/** Celda del CSV de Excel en español: separador ';' y separador decimal ','. */
-function csvCelda(valor: unknown, columna: string): string {
-  if (typeof valor === "number") return columna === "Tarifa ($/kWh)" ? fmtN(valor, 1) : fmtN(valor);
-  return String(valor ?? "");
-}
 
 export function ListaCaida({ token }: { token?: string | null }) {
   const { measure } = usePresentation();
@@ -227,13 +221,8 @@ export function ListaCaida({ token }: { token?: string | null }) {
     Situación: item.situacion ? etiqueta(ESTADO_LISTA_SIMPLE, item.situacion) : "",
   }));
 
-  const formato = (valor: unknown, columna: string): string => {
-    if (valor === null || valor === undefined) return "—";
-    if (typeof valor !== "number") return String(valor);
-    if (columna === "Tarifa ($/kWh)") return `$${fmtN(valor, 1)}`;
-    if (columna === "Facturación que se pierde ($/mes)") return `$${fmtN(valor)}`;
-    return fmtN(valor);
-  };
+  // Formato de celda igual que formato_tabla del Streamlit (tarifa, kWh y pesos según el nombre de la columna).
+  const formato = formatoTabla(filas, COLUMNAS);
 
   // La caída se guarda como texto ("-45 %"), así que para ordenarla se usa el número de debajo (orden_claves).
   const ordenNumerico = { "Caída": datos.items.map((item) => item.caida_pct ?? Number.NEGATIVE_INFINITY) };
@@ -242,7 +231,7 @@ export function ListaCaida({ token }: { token?: string | null }) {
     ? {
         nombre: "Descargar esta lista (CSV)",
         archivo: `caidas_consumo_${corte || ""}.csv`,
-        csv: [COLUMNAS.join(";"), ...filas.map((fila) => COLUMNAS.map((columna) => csvCelda(fila[columna], columna)).join(";"))].join("\r\n"),
+        csv: [COLUMNAS.join(";"), ...filas.map((fila) => COLUMNAS.map((columna) => csvCelda(fila[columna])).join(";"))].join("\r\n"),
       }
     : null;
 
