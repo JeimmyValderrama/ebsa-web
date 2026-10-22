@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
 import { DatasetCatalog, DatasetTable, DatasetView, MiniBars, type Row } from "../components/DataExplorer";
-import { MunicipalityMap } from "../components/MunicipalityMap";
+import { MapaBoyaca } from "../components/MapaBoyaca";
+import { useCorte } from "../lib/useCorte";
 import { ProjectionView } from "../components/Projection";
 import { Sensitive, usePresentation } from "../app/Presentation";
 import { useSectionNav } from "../app/SectionNav";
@@ -81,6 +82,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState<string | null>(null);
   const navigate = useNavigate();
   const { measure } = usePresentation();
+  const corte = useCorte(idToken);
 
   useEffect(() => {
     if (!idToken) return;
@@ -150,7 +152,15 @@ export default function AdminPage() {
           <DatasetView token={idToken} datasetKey="list_entries_exits" title="Entradas y salidas de la lista" />
         </div>
       )}
-      {tab === "mapa" && <MunicipalityMap token={idToken} onRowClick={() => navigate("/comercial")} />}
+      {tab === "mapa" && (
+        <section className="data-module">
+          <header className="module-heading">
+            <h2>Mapa de riesgo por municipio</h2>
+            <p>Las mismas cifras del mapa comercial, con las métricas técnicas del modelo (caída y fuga por municipio).</p>
+          </header>
+          <MapaBoyaca token={idToken} modo="tecnico" altura={600} corte={corte} />
+        </section>
+      )}
       {tab === "buscar" && <BuscarCliente token={idToken} />}
       {tab === "pronostico" && (
         <div className="stack">

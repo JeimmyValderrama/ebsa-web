@@ -12,11 +12,13 @@
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "firebase": "latest",
-    "maplibre-gl": "^6.15.0",
+    "plotly.js-dist-min": "^4.1.2",
     "react": "latest",
     "react-dom": "latest",
     "react-router-dom": "latest",
-    "recharts": "^3.10.1"
+    "vega": "^6.4.0",
+    "vega-embed": "^7.3.0",
+    "vega-lite": "^6.5.0"
   },
   "devDependencies": {
     "@types/node": "latest",

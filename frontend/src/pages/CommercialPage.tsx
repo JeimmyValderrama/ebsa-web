@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
 import { DatasetCatalog, DatasetView, type FilterField, type Row } from "../components/DataExplorer";
-import { MunicipalityMap } from "../components/MunicipalityMap";
+import { MapaBoyaca } from "../components/MapaBoyaca";
 import { ProjectionView } from "../components/Projection";
+import { useCorte } from "../lib/useCorte";
 import { MeasureSelector, usePresentation } from "../app/Presentation";
 import { useSectionNav } from "../app/SectionNav";
 import { colMedida, energia, fmtN, fmtMedida, pesos, unidadMedida } from "../lib/format";
@@ -252,7 +253,7 @@ function Panorama({ token, onOpenClient, onGoProjection, puedeFichas }: { token?
         )}
       </section>
 
-      <MunicipalityMap token={token} onRowClick={() => undefined} />
+      <MapaBoyaca token={token} corte={useCorte(token)} />
 
       <section className="data-module">
         <header className="module-heading">

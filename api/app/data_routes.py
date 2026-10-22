@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -29,6 +30,10 @@ from .security import current_user, require_roles
 router = APIRouter(prefix="/api/data", tags=["data"])
 ALL_ROLES = ("COMERCIAL", "SOPORTE", "ADMIN_MODELO")
 TECHNICAL_ROLES = ("ADMIN_MODELO",)
+
+# El mapa agrega ~650.000 clientes; se memoriza un rato para no recomputarlo en cada clic (como st.cache_data).
+_METRICAS_MUNICIPIO: dict[str, Any] = {"ts": 0.0, "valor": None}
+_METRICAS_MUNICIPIO_TTL = 60.0
 
 
 def schema_error(exc: Exception) -> HTTPException:
@@ -251,12 +256,18 @@ def visit_route(cycle: int | None = None, limit: int = Query(500, ge=1, le=5000)
 
 
 MAP_METRICS = (
-    {"key": "caida_valor_mes", "label": "Valor en riesgo por caída", "unidad": "$/mes"},
-    {"key": "caida_kwh_mes", "label": "Caída de consumo", "unidad": "kWh/mes"},
-    {"key": "caidas", "label": "Clientes en caída", "unidad": "clientes"},
-    {"key": "fuga_perdida_esperada_mes", "label": "Pérdida esperada por fuga", "unidad": "$/mes"},
-    {"key": "fuga_alto_medio", "label": "Riesgo de fuga ALTO/MEDIO", "unidad": "clientes"},
-    {"key": "clientes_lista", "label": "Clientes en la lista", "unidad": "clientes"},
+    {"key": "caida_kwh_mes", "label": "Consumo que se está perdiendo por caída de consumo (kWh/mes)", "unidad": "kWh"},
+    {"key": "caida_clientes", "label": "Clientes con caída de consumo para revisar", "unidad": "clientes"},
+    {"key": "caida_criticos", "label": "Clientes con caída grave reciente", "unidad": "clientes"},
+    {"key": "fuga_alto_medio", "label": "Clientes con probabilidad de fuga alta o media", "unidad": "clientes"},
+    {"key": "fuga_consumo_alto_medio_kwh_mes", "label": "Consumo de los clientes con probabilidad de fuga alta o media (kWh/mes)", "unidad": "kWh"},
+    {"key": "clientes_tc1", "label": "Clientes de EBSA en el municipio", "unidad": "clientes"},
+    {"key": "caida_valor_mes", "label": "Facturación que se está perdiendo por caída de consumo ($/mes)", "unidad": "$"},
+    {"key": "fuga_perdida_esperada_mes", "label": "Pérdida esperada por probabilidad de fuga ($/mes)", "unidad": "$"},
+    {"key": "clientes_en_serie", "label": "Clientes en la serie de modelado", "unidad": "clientes"},
+    {"key": "caida_pct_clientes", "label": "Caída: % de los clientes del municipio en la lista", "unidad": "%"},
+    {"key": "caida_acelerando", "label": "Caída: clientes con caída acelerando", "unidad": "clientes"},
+    {"key": "fuga_alto", "label": "Fuga: clientes ALTO", "unidad": "clientes"},
 )
 
 
@@ -266,53 +277,107 @@ def _normalize_name(value: Any) -> str:
 
 @router.get("/municipalities/metrics")
 def municipality_metrics(db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> dict[str, Any]:
-    """Métricas agregadas por municipio para el mapa y las tablas de zonas."""
+    """Métricas agregadas por municipio para el mapa y las tablas de zonas.
+    Réplica de metricas_municipio()/_metricas_municipio_cache() del Streamlit: una fila por municipio con clientes,
+    lista de caída, riesgo de fuga y centro geográfico."""
+    ahora = time.time()
+    cache = _METRICAS_MUNICIPIO.get("valor")
+    if cache is not None and ahora - float(_METRICAS_MUNICIPIO.get("ts", 0.0)) < _METRICAS_MUNICIPIO_TTL:
+        return cache
     try:
-        catalog_rows, _ = dataset_service.query_dataset(db, "municipalities", 1000, 0)
-        catalog: dict[str, dict[str, Any]] = {}
-        for row in catalog_rows:
-            payload = row["payload"]
-            key = _normalize_name(payload.get("municipio"))
-            if not key:
-                continue
-            catalog[key] = {
-                "municipio": payload.get("municipio"),
-                "codigo_municipio": payload.get("codigo_municipio"),
-                "zona_ebsa": payload.get("zona_ebsa"),
-                "clientes_tc1": payload.get("clientes_tc1"),
-                "lat_centro": payload.get("lat_centro"),
-                "lon_centro": payload.get("lon_centro"),
-            }
-
-        nius = list(db.scalars(select(OperationalManagement.niu).distinct())) + list(db.scalars(select(ClientChurnRisk.niu).distinct()))
-        municipio_por_niu = {niu: ubicacion.get("municipio") for niu, ubicacion in locations_by_niu(db, nius).items()}
-
-        acumulados: dict[str, dict[str, Any]] = {}
-
-        def bucket(niu: str) -> dict[str, Any]:
-            key = _normalize_name(municipio_por_niu.get(niu)) or "sin municipio"
-            if key not in acumulados:
-                acumulados[key] = {"municipio": municipio_por_niu.get(niu) or "Sin municipio", "caidas": 0, "caida_kwh_mes": 0.0, "caida_valor_mes": 0.0, "clientes_lista": 0, "fuga_alto_medio": 0, "fuga_perdida_esperada_mes": 0.0}
-            return acumulados[key]
-
-        for niu, perdida, valor in db.execute(select(OperationalManagement.niu, OperationalManagement.perdida_kwh_mes, OperationalManagement.valor_riesgo_mes)).all():
-            item = bucket(niu)
-            item["clientes_lista"] += 1
-            item["caidas"] += 1
-            item["caida_kwh_mes"] += float(perdida or 0)
-            item["caida_valor_mes"] += float(valor or 0)
-
-        for niu, nivel, perdida in db.execute(select(ClientChurnRisk.niu, ClientChurnRisk.nivel_riesgo, ClientChurnRisk.valor_esperado_perdida_mes).where(ClientChurnRisk.nivel_riesgo.in_(("ALTO", "MEDIO")))).all():
-            item = bucket(niu)
-            item["fuga_alto_medio"] += 1
-            item["fuga_perdida_esperada_mes"] += float(perdida or 0)
-            del nivel
-
-        rows = []
-        for key, item in acumulados.items():
-            info = catalog.get(key, {})
-            rows.append({**info, **item, "clave": key})
-        rows.sort(key=lambda item: item["caida_valor_mes"], reverse=True)
-        return {"metrics": list(MAP_METRICS), "rows": rows}
+        valor = _metricas_municipio(db)
+        _METRICAS_MUNICIPIO["ts"] = ahora
+        _METRICAS_MUNICIPIO["valor"] = valor
+        return valor
     except OperationalError as exc:
         raise schema_error(exc) from exc
+
+
+def _metricas_municipio(db: Session) -> dict[str, Any]:
+    catalog_rows, _ = dataset_service.query_dataset(db, "municipalities", 1000, 0)
+    catalog: dict[str, dict[str, Any]] = {}
+    for row in catalog_rows:
+        payload = row["payload"]
+        key = _normalize_name(payload.get("municipio"))
+        if not key:
+            continue
+        catalog[key] = {
+            "municipio": payload.get("municipio"),
+            "codigo_municipio": str(payload.get("codigo_municipio") or ""),
+            "provincia": payload.get("provincia"),
+            "departamento": payload.get("departamento"),
+            "zona_ebsa": payload.get("zona_ebsa"),
+            "clientes_tc1": payload.get("clientes_tc1"),
+            "clientes_en_serie": payload.get("clientes_en_serie"),
+            "lat_centro": payload.get("lat_centro"),
+            "lon_centro": payload.get("lon_centro"),
+        }
+
+    nius = list(db.scalars(select(OperationalManagement.niu).distinct())) + list(db.scalars(select(ClientChurnRisk.niu).distinct()))
+    municipio_por_niu = {niu: ubicacion.get("municipio") for niu, ubicacion in locations_by_niu(db, nius).items()}
+
+    acumulados: dict[str, dict[str, Any]] = {}
+
+    def bucket(niu: str) -> dict[str, Any]:
+        key = _normalize_name(municipio_por_niu.get(niu)) or "sin municipio"
+        if key not in acumulados:
+            acumulados[key] = {
+                "municipio": municipio_por_niu.get(niu) or "Sin municipio",
+                "caida_clientes": 0, "caida_criticos": 0, "caida_acelerando": 0,
+                "caida_kwh_mes": 0.0, "caida_valor_mes": 0.0,
+                "fuga_alto": 0, "fuga_medio": 0, "fuga_consumo_alto_medio_kwh_mes": 0.0,
+                "fuga_perdida_esperada_mes": 0.0,
+            }
+        return acumulados[key]
+
+    for niu, severidad, trayectoria, perdida, valor in db.execute(
+        select(OperationalManagement.niu, OperationalManagement.severidad, OperationalManagement.trayectoria,
+               OperationalManagement.perdida_kwh_mes, OperationalManagement.valor_riesgo_mes)
+    ).all():
+        item = bucket(niu)
+        item["caida_clientes"] += 1
+        if str(severidad or "").strip().upper() == "CRITICA":
+            item["caida_criticos"] += 1
+        if str(trayectoria or "").strip().upper() == "CAIDA_ACELERANDO":
+            item["caida_acelerando"] += 1
+        item["caida_kwh_mes"] += float(perdida or 0)
+        item["caida_valor_mes"] += float(valor or 0)
+
+    for niu, nivel, perdida, payload in db.execute(
+        select(ClientChurnRisk.niu, ClientChurnRisk.nivel_riesgo, ClientChurnRisk.valor_esperado_perdida_mes, ClientChurnRisk.payload).where(
+            ClientChurnRisk.nivel_riesgo.in_(("ALTO", "MEDIO"))
+        )
+    ).all():
+        item = bucket(niu)
+        nivel_ = str(nivel or "").strip().upper()
+        if nivel_ == "ALTO":
+            item["fuga_alto"] += 1
+        elif nivel_ == "MEDIO":
+            item["fuga_medio"] += 1
+        item["fuga_perdida_esperada_mes"] += float(perdida or 0)
+        try:
+            item["fuga_consumo_alto_medio_kwh_mes"] += float((payload or {}).get("consumo_prom_6m_kwh") or 0)
+        except (TypeError, ValueError):
+            pass
+
+    rows: list[dict[str, Any]] = []
+    for key, item in acumulados.items():
+        info = catalog.get(key, {})
+        fila: dict[str, Any] = {**info, **item, "clave": key}
+        fila["fuga_alto_medio"] = item["fuga_alto"] + item["fuga_medio"]
+        try:
+            serie = float(fila.get("clientes_en_serie") or 0)
+        except (TypeError, ValueError):
+            serie = 0.0
+        fila["caida_pct_clientes"] = round(item["caida_clientes"] / serie * 100, 2) if serie > 0 else None
+        fila["caidas"] = item["caida_clientes"]            # compatibilidad con la versión anterior
+        fila["clientes_lista"] = item["caida_clientes"]
+        rows.append(fila)
+    rows.sort(key=lambda fila: (-float(fila.get("caida_valor_mes") or 0), _normalize_name(fila.get("municipio"))))
+
+    # Solo Boyacá: los municipios vecinos (Santander, Cundinamarca, Casanare) quedan fuera del mapa.
+    boyaca = [f for f in rows
+              if "boyac" in _normalize_name(f.get("departamento")) and f.get("lat_centro") is not None and f.get("lon_centro") is not None]
+    if not boyaca:    # si el catálogo no trae departamento, no se filtra por ubicación
+        boyaca = [f for f in rows if f.get("lat_centro") is not None and f.get("lon_centro") is not None]
+    return {"metrics": list(MAP_METRICS), "rows": boyaca}
