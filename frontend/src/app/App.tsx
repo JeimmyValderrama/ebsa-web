@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { api } from "../lib/api";
-import { isFirebaseConfigured } from "../lib/firebase";
 import { useAuth, type UserRole } from "../auth/AuthProvider";
 import { HideIdsToggle, MeasureSelector } from "./Presentation";
 import { SectionNavProvider, useSectionState } from "./SectionNav";
@@ -21,7 +20,6 @@ import RequireAuth, { RoleRoute } from "./RequireAuth";
 type ApiState = "loading" | "ready" | "error";
 
 const navItems: Array<{ to: string; label: string; roles: UserRole[] }> = [
-  { to: "/", label: "Resumen", roles: ["COMERCIAL", "SOPORTE", "ADMIN_MODELO"] },
   { to: "/comercial", label: "Comercial", roles: ["COMERCIAL", "SOPORTE", "ADMIN_MODELO"] },
   { to: "/soporte", label: "Soporte", roles: ["SOPORTE", "ADMIN_MODELO"] },
   { to: "/administrador", label: "Administrador", roles: ["ADMIN_MODELO"] },
@@ -217,13 +215,6 @@ function ProtectedLayout() {
   );
 }
 
-function OverviewPage() {
-  const { currentUser } = useAuth();
-  return <div className="page-content"><section className="hero-panel"><div className="hero-copy"><div className="eyebrow accent-eyebrow">SESIÓN VERIFICADA</div><h1>Una nueva forma de leer el consumo.</h1><p>Bienvenido{currentUser?.name ? `, ${currentUser.name}` : ""}. La plataforma convierte los resultados precalculados del pipeline en decisiones comerciales, operación de campo y control del modelo.</p><div className="hero-actions"><NavLink className="primary-button" to="/comercial">Explorar Comercial <span>→</span></NavLink><span className="quiet-note">Identidad validada con Firebase</span></div></div><div className="hero-orbit" aria-hidden="true"><div className="orbit-ring orbit-ring-one" /><div className="orbit-ring orbit-ring-two" /><div className="orbit-core"><span>EBSA</span><small>07</small></div><div className="orbit-node node-a">KPI</div><div className="orbit-node node-b">NIU</div><div className="orbit-node node-c">6M</div></div></section><section className="section-heading"><div><div className="eyebrow">IDENTIDAD Y ACCESO</div><h2>Sesión lista para operar</h2></div><span className="section-status"><span className="status-dot" /> {currentUser?.email}</span></section><section className="metric-grid"><MetricCard label="Usuario" value={currentUser?.name ?? "Cuenta EBSA"} detail={currentUser?.email ?? "Correo verificado por Firebase"} tone="blue" /><MetricCard label="Rol" value={currentUser?.role ? roleLabel(currentUser.role) : "Pendiente"} detail="Permisos RBAC activos" tone="orange" /><MetricCard label="Identidad" value="Firebase Auth" detail={isFirebaseConfigured ? "Token verificado" : "Configuración pendiente"} tone="purple" /><MetricCard label="Datos" value="Azure SQL" detail="Importador y consultas listos" tone="green" /></section><section className="next-step-panel"><div className="next-step-number">OK</div><div className="next-step-copy"><div className="eyebrow">CONFIGURACIÓN DEL PROPIETARIO</div><h3>Conecta tus servicios y carga el primer corte</h3><p>Las credenciales viven en los archivos .env (ignorados por Git). El importador local ya deja la base lista para publicar.</p></div><div className="next-step-arrow">✓</div></section></div>;
-}
-
-function MetricCard({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: string }) { return <article className={`metric-card tone-${tone}`}><div className="metric-topline"><span className="metric-label">{label}</span><span className="metric-line" /></div><div className="metric-value">{value}</div><div className="metric-detail">{detail}</div></article>; }
-
 export default function App() {
-  return <Routes><Route path="/login" element={<LoginPage />} /><Route element={<RequireAuth />}><Route element={<ProtectedLayout />}><Route path="/" element={<OverviewPage />} /><Route path="/comercial" element={<RoleRoute roles={["COMERCIAL", "SOPORTE", "ADMIN_MODELO"]}><CommercialPage /></RoleRoute>} /><Route path="/soporte" element={<RoleRoute roles={["SOPORTE", "ADMIN_MODELO"]}><SupportPage /></RoleRoute>} /><Route path="/administrador" element={<RoleRoute roles={["ADMIN_MODELO"]}><AdminPage /></RoleRoute>} /></Route></Route><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
+  return <Routes><Route path="/login" element={<LoginPage />} /><Route element={<RequireAuth />}><Route element={<ProtectedLayout />}><Route path="/" element={<Navigate to="/comercial" replace />} /><Route path="/comercial" element={<RoleRoute roles={["COMERCIAL", "SOPORTE", "ADMIN_MODELO"]}><CommercialPage /></RoleRoute>} /><Route path="/soporte" element={<RoleRoute roles={["SOPORTE", "ADMIN_MODELO"]}><SupportPage /></RoleRoute>} /><Route path="/administrador" element={<RoleRoute roles={["ADMIN_MODELO"]}><AdminPage /></RoleRoute>} /></Route></Route><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
 }

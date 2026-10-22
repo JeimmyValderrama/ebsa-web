@@ -34,10 +34,19 @@ export function VegaLite({ spec, className, ariaLabel }: { spec: Spec | null; cl
     if (!node || !spec) return;
     let cancelado = false;
     let observador: ResizeObserver | null = null;
+    // Réplica de st.vega_lite_chart(..., **ANCHO) del Streamlit: sin "width" Vega-Lite fija
+    // 300 px de ancho; con "container" la figura ocupa toda la tarjeta (autosize fit-x)
+    // y se redimensiona con ella. Un ancho explícito en el spec se respeta.
+    const specCrudo = spec as Record<string, unknown>;
+    const specConAncho = {
+      autosize: { type: "fit-x", contains: "padding" },
+      ...specCrudo,
+      width: specCrudo.width ?? "container",
+    } as VisualizationSpec;
     cargarVegaEmbed()
       .then((embed) => {
         if (cancelado) return;
-        return embed(node, spec as VisualizationSpec, { actions: false, renderer: "svg" }).then((resultado) => {
+        return embed(node, specConAncho, { actions: false, renderer: "svg" }).then((resultado) => {
           if (cancelado) {
             resultado.view.finalize();
             return;

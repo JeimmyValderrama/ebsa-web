@@ -842,13 +842,26 @@ textarea.search-input {
 
 /* ---------- controles de la tabla de trabajo (ui.tabla_pro) ---------- */
 .tabla-pro { display: grid; gap: 8px; margin-top: 12px; }
+/* Resultados de la lista: misma separación que .stack pero sin su margen, para poder
+   atarearlos (aviso "Actualizando…") mientras el servidor vuelve con los filtros nuevos. */
+.resultados { display: grid; gap: 16px; }
+.atareado { opacity: .5; transition: opacity .15s ease; pointer-events: none; }
+.actualizando { color: var(--carbon); font-weight: 600; }
 .ctl-fila { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; align-items: center; }
 .ctl-fila > *:last-child { justify-self: end; min-width: 170px; }
-.v2-pop summary { list-style: none; margin: 0; }
+/* "Ordenar y columnas": el menú flota sobre la tabla (menú emergente) en vez de empujarla. */
+.v2-pop { position: relative; justify-self: end; }
+.v2-pop summary { list-style: none; margin: 0; cursor: pointer; }
 .v2-pop summary::-webkit-details-marker { display: none; }
 .v2-pop summary::after { content: " ▾"; color: var(--ink3); }
 .v2-pop[open] summary { color: var(--carbon); }
-.v2-pop-cuerpo { display: grid; gap: 10px; padding: 12px 14px 14px; border-top: 1px solid var(--linea2); }
+.v2-pop-cuerpo {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+  min-width: 264px; max-width: min(360px, 92vw); max-height: min(64vh, 440px); overflow: auto;
+  display: grid; gap: 10px; padding: 12px 14px 14px;
+  background: var(--sup); border: 1px solid var(--linea); border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(18, 22, 28, .18);
+}
 .tabla-pie { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; }
 .table-card th.destacada, .table-card td.destacada { background: var(--neutro-f); font-weight: 700; }
 .table-card tr.fila-sel td { background: var(--plano); }
@@ -949,6 +962,17 @@ textarea.search-input {
 }
 .auth-form input:focus { border-color: var(--carbon); box-shadow: 0 0 0 3px rgba(255, 198, 41, .35); }
 .auth-form input:disabled { opacity: .58; }
+/* Ojo de la contraseña: se ve/oculta el texto del mismo campo, sin cambiar de formulario. */
+.campo-pass { position: relative; display: block; }
+.campo-pass input { padding-right: 42px; }
+.ojo-pass {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border: 0; background: transparent; color: var(--ink3);
+  border-radius: 6px; cursor: pointer;
+}
+.ojo-pass:hover, .ojo-pass[aria-pressed="true"] { color: var(--carbon); background: var(--neutro-f); }
+.ojo-pass:disabled { opacity: .58; cursor: default; }
 .auth-submit { justify-content: space-between; width: 100%; margin-top: 6px; }
 .auth-submit:disabled { cursor: not-allowed; }
 .auth-footnote { color: var(--ink3); border-top: 1px solid var(--linea); margin-top: 22px; padding-top: 14px; font-size: 12.5px; line-height: 1.55; }

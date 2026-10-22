@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fmtN } from "../../lib/format";
 import { Sensitive } from "../../app/Presentation";
 import { useEsMovil } from "../../charts/textos";
@@ -54,6 +54,26 @@ export function TablaPro({
   const [pag, setPag] = useState(1);
   const [todas, setTodas] = useState(false);
   const [elegido, setElegido] = useState<string | null>(null);
+  // El menú "Ordenar y columnas" flota sobre la tabla (no empuja el contenido) y se
+  // cierra al pulsar fuera o con Esc, como cualquier desplegable.
+  const [popAbierto, setPopAbierto] = useState(false);
+  const popRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    if (!popAbierto) return;
+    const alPulsarFuera = (evento: MouseEvent): void => {
+      if (popRef.current && !popRef.current.contains(evento.target as Node)) setPopAbierto(false);
+    };
+    const alEsc = (evento: KeyboardEvent): void => {
+      if (evento.key === "Escape") setPopAbierto(false);
+    };
+    document.addEventListener("mousedown", alPulsarFuera);
+    document.addEventListener("keydown", alEsc);
+    return () => {
+      document.removeEventListener("mousedown", alPulsarFuera);
+      document.removeEventListener("keydown", alEsc);
+    };
+  }, [popAbierto]);
 
   const total = filas.length;
   const hayMasColumnas = (prioritarias ?? columnas).length < columnas.length;
@@ -137,7 +157,14 @@ export function TablaPro({
             aria-label="Buscar en la tabla"
           />
         ) : null}</div>
-        <details className="v2-pop">
+        <details
+          className="v2-pop"
+          ref={popRef}
+          open={popAbierto}
+          onClick={(evento) => {
+            if ((evento.target as HTMLElement).closest("summary")) setPopAbierto((abierto) => !abierto);
+          }}
+        >
           <summary className="ghost-button">Ordenar y columnas</summary>
           <div className="v2-pop-cuerpo">
             <label className="campo">

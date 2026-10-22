@@ -6,6 +6,7 @@ import { VegaLite } from "../charts/VegaLite";
 import { COLOR_ZONA_SIN_ZONA, GRIS_FUERA, RAMPA_MAPA, ZONA_MAPA_COLOR } from "../charts/paleta";
 import { colorRampa, mapaLimitesSpec, type Feature, type FilaMapa } from "../charts/vegaSpec";
 import { Leyenda, Pie, md, useEsMovil } from "../charts/textos";
+import { Multiselect } from "./v2/filtros";
 
 /**
  * Mapa de Boyacá por municipio: réplica exacta de dibujar_mapa() + _mapa_limites() del Streamlit.
@@ -361,11 +362,6 @@ export function MapaBoyaca({
   if (error) return <div className="empty-state">{error}</div>;
   if (!filas || !calculo || !spec || !tablas) return <div className="empty-state">Cargando mapa…</div>;
 
-  const cambiaZona = (zona: string): void => {
-    setMetElegida(true);
-    setZonasSel((actual) => (actual.includes(zona) ? actual.filter((item) => item !== zona) : [...actual, zona].sort()));
-  };
-
   return (
     <div className="mapa-v2">
       <div className="mapa-controles">
@@ -386,23 +382,17 @@ export function MapaBoyaca({
             ))}
           </select>
         </label>
-        <div className="campo">
-          <span>Zona</span>
-          <div className="v2-multiselect">
-            {zonasDisp.length === 0 && <em>Sin zonas</em>}
-            {zonasDisp.map((zona) => (
-              <button
-                key={zona}
-                type="button"
-                className={`v2-chip ${zonasSel.includes(zona) ? "activo" : ""}`}
-                onClick={() => cambiaZona(zona)}
-                aria-pressed={zonasSel.includes(zona)}
-              >
-                {tituloPropio(zona)}
-              </button>
-            ))}
-          </div>
-        </div>
+        <Multiselect
+          etiqueta="Zona"
+          opciones={zonasDisp}
+          valor={zonasSel}
+          onChange={(valor) => {
+            setMetElegida(true);
+            setZonasSel(valor);
+          }}
+          vacio="Todas las zonas"
+          formato={tituloPropio}
+        />
       </div>
 
       {calculo.puedeProporcion && (

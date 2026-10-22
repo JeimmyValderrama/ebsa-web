@@ -58,15 +58,23 @@ export function ListaCaida({ token }: { token?: string | null }) {
 
   const [valores, setValores] = useState<Record<string, string[]>>({ ...DEFECTO });
   const [n, setN] = useState(200);
+  // El deslizador espera 300 ms de calma antes de consultar (como st.slider del Streamlit):
+  // arrastrarlo de 25 a 2000 debe ser UNA consulta, no una por tick del ratón.
+  const [nConsulta, setNConsulta] = useState(200);
   const [datos, setDatos] = useState<DropsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
+    const temporizador = window.setTimeout(() => setNConsulta(n), 300);
+    return () => window.clearTimeout(temporizador);
+  }, [n]);
+
+  useEffect(() => {
     let cancelled = false;
     setCargando(true);
     api
-      .drops(token ?? undefined, { medida: measure, n, ...valores })
+      .drops(token ?? undefined, { medida: measure, n: nConsulta, ...valores })
       .then((respuesta) => {
         if (cancelled) return;
         setDatos(respuesta);
@@ -81,7 +89,7 @@ export function ListaCaida({ token }: { token?: string | null }) {
     return () => {
       cancelled = true;
     };
-  }, [measure, n, token, valores]);
+  }, [measure, nConsulta, token, valores]);
 
   // Municipios según la zona elegida (filtro_municipio_opciones: si hay zona, solo sus municipios).
   const permitidos = useMemo(() => {
@@ -260,41 +268,49 @@ export function ListaCaida({ token }: { token?: string | null }) {
 
       {panel}
 
-      {resumen.clientes === 0 ? (
-        <Aviso
-          texto={
-            "Ningún cliente cumple estos filtros. Prueba a quitar alguno: por ejemplo, las caídas que llevan meses así están en la "
-            + "prioridad *Seguimiento*, no en *Gestionar*."
-          }
-        />
-      ) : (
-        <>
-          <Kpis items={kpis} columnas={3} />
-          <Conteo
-            mostrados={datos.top.clientes}
-            filtrados={resumen.clientes}
-            enLista={datos.total_lista}
-            universo={datos.evaluados}
-            que="clientes con caída"
-            queLista="en toda la lista de caída"
-            queUniverso="clientes evaluados por el detector"
-          />
-          <TablaPro
-            filas={filas}
-            columnas={COLUMNAS}
-            formato={formato}
-            prioritarias={["Puesto", "NIU", "Municipio", "Clase", "Consumía (kWh/mes)", "Consume ahora (kWh/mes)", "Caída", colVis, "Gravedad", "Tendencia"]}
-            movil={["NIU", "Municipio", colVis, "Caída", "Gravedad", "Tendencia"]}
-            destacada={colVis}
-            que="clientes con caída"
-            columnaId="NIU"
-            ordenNumerico={ordenNumerico}
-            sensibles={["NIU"]}
-            descargar={descarga}
-            ficha={(niu) => <FichaCliente token={token} niu={niu} />}
-          />
-        </>
+      {cargando && datos && (
+        <p className="v2-caption actualizando" role="status">
+          Actualizando la lista con los filtros y la medida actuales…
+        </p>
       )}
+
+      <div className={cargando && datos ? "resultados atareado" : "resultados"}>
+        {resumen.clientes === 0 ? (
+          <Aviso
+            texto={
+              "Ningún cliente cumple estos filtros. Prueba a quitar alguno: por ejemplo, las caídas que llevan meses así están en la "
+              + "prioridad *Seguimiento*, no en *Gestionar*."
+            }
+          />
+        ) : (
+          <>
+            <Kpis items={kpis} columnas={3} />
+            <Conteo
+              mostrados={datos.top.clientes}
+              filtrados={resumen.clientes}
+              enLista={datos.total_lista}
+              universo={datos.evaluados}
+              que="clientes con caída"
+              queLista="en toda la lista de caída"
+              queUniverso="clientes evaluados por el detector"
+            />
+            <TablaPro
+              filas={filas}
+              columnas={COLUMNAS}
+              formato={formato}
+              prioritarias={["Puesto", "NIU", "Municipio", "Clase", "Consumía (kWh/mes)", "Consume ahora (kWh/mes)", "Caída", colVis, "Gravedad", "Tendencia"]}
+              movil={["NIU", "Municipio", colVis, "Caída", "Gravedad", "Tendencia"]}
+              destacada={colVis}
+              que="clientes con caída"
+              columnaId="NIU"
+              ordenNumerico={ordenNumerico}
+              sensibles={["NIU"]}
+              descargar={descarga}
+              ficha={(niu) => <FichaCliente token={token} niu={niu} />}
+            />
+          </>
+        )}
+      </div>
 
       <details className="v2-exp" open={!movil}>
         <summary>Cuántos clientes hay por gravedad en cada zona regional (toda la lista)</summary>
