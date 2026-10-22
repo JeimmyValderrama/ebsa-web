@@ -7,6 +7,7 @@ import { MapaBoyaca, type InfoMapa } from "../components/MapaBoyaca";
 import { ListaCaida } from "../components/ListaCaida";
 import { SinConsumo } from "../components/SinConsumo";
 import { Fuga } from "../components/Fuga";
+import { Salidas } from "../components/Salidas";
 import { ProjectionView, recortarProyeccion, type Anual, type Mensual } from "../components/Projection";
 import { Aviso, Banda, ComoLeer, Kpis, Tarjeta, TituloPagina, type ItemKpi } from "../components/v2/ui";
 import { NOTA_CERO_SOSTENIDO, NOTA_REGLAS_LISTA, QUE_ES_ESTO, periodoTexto } from "../components/v2/textos";
@@ -77,20 +78,7 @@ export default function CommercialPage() {
       {section === "caidas" && <ListaCaida token={idToken} />}
       {section === "sin_consumo" && <SinConsumo token={idToken} />}
       {section === "fuga" && <Fuga token={idToken} />}
-      {section === "salidas" && (
-        <div className="stack">
-          <DatasetView
-            token={idToken}
-            datasetKey="churn_other_supplier"
-            title="Clientes que ya están con otro comercializador"
-            description="Viene del archivo de otros comercializadores que entrega la empresa, cruzado con la historia de consumo en EBSA."
-            prioritarias={["NIU", "zona_nombre", "grupo_consumo", "meses_desde_salida", "consumo_prom_semestral_kwh"]}
-            action={puedeFichas ? abrirFicha : undefined}
-            actionLabel="Ver ficha"
-          />
-          <DatasetView token={idToken} datasetKey="churn_non_regulated" title="Vigilancia de mercado no regulado" description="Clientes con señales de haber migrado a mercado no regulado." />
-        </div>
-      )}
+      {section === "salidas" && <Salidas token={idToken} />}
       {section === "proyeccion" && <ProjectionView token={idToken} />}
       {section === "descargas" && <DownloadHub token={idToken} />}
     </div>

@@ -775,6 +775,88 @@ def fuga_csv(
         raise schema_error(exc) from exc
 
 
+@router.get("/salidas")
+def salidas(
+    db: Session = Depends(get_db),
+    _: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    """Clientes que ya están con otro comercializador y el perfil de los que se fueron.
+
+    Replica la sección "Clientes que ya se fueron" del Streamlit: la lista entera (459 clientes) para filtrarla en la web,
+    los conteos por estado, lo que consumían y facturaban antes de irse y el perfil por dimensión. El nombre del
+    comercializador que atiende hoy a cada cliente no se muestra ni se descarga (pedido de negocio, octubre de 2026).
+    """
+    try:
+        ultimo = db.scalar(select(func.max(DatasetRecord.data_run_id)).where(DatasetRecord.dataset_key == "churn_other_supplier"))
+        items: list[dict[str, Any]] = []
+        corte = ""
+        for registro in db.scalars(
+            select(DatasetRecord).where(
+                DatasetRecord.dataset_key == "churn_other_supplier",
+                DatasetRecord.data_run_id == ultimo,
+            )
+        ).all():
+            payload = registro.payload or {}
+            if not corte:
+                corte = str(payload.get("fecha_corte") or "")[:7]
+            items.append(
+                {
+                    "niu": str(registro.niu or payload.get("NIU") or "").strip(),
+                    "estado": str(payload.get("estado") or ""),
+                    "municipio": str(payload.get("municipio") or ""),
+                    "zona": str(payload.get("zona_nombre") or ""),
+                    "clase": str(payload.get("clase_servicio_nombre") or ""),
+                    "desde": str(payload.get("primer_mes_otro") or "")[:7],
+                    "mes_salida": str(payload.get("mes_salida") or "")[:7],
+                    "consumo_antes": _numero(payload, "consumo_prom_6m_antes_salida_kwh"),
+                    "valor_antes": _numero(payload, "valor_facturado_antes_salida_mes"),
+                }
+            )
+
+        conteo: dict[str, int] = {}
+        for item in items:
+            conteo[item["estado"]] = conteo.get(item["estado"], 0) + 1
+        estados = sorted(conteo.items(), key=lambda par: -par[1])
+
+        # Perfil de los que se fueron, sin la dimensión del comercializador (política de la empresa).
+        ultimo_perfil = db.scalar(select(func.max(DatasetRecord.data_run_id)).where(DatasetRecord.dataset_key == "churn_left_profiles"))
+        perfil: list[dict[str, Any]] = []
+        for registro in db.scalars(
+            select(DatasetRecord).where(
+                DatasetRecord.dataset_key == "churn_left_profiles",
+                DatasetRecord.data_run_id == ultimo_perfil,
+            )
+        ).all():
+            payload = registro.payload or {}
+            dimension = str(payload.get("dimension") or "")
+            if "comercializador" in dimension.lower():
+                continue
+            perfil.append(
+                {
+                    "dimension": dimension,
+                    "valor": payload.get("valor"),
+                    "n": _numero(payload, "n"),
+                    "pct": _numero(payload, "pct"),
+                }
+            )
+
+        return {
+            "total": len(items),
+            "corte": corte,
+            "items": items,
+            "resumen": {
+                "estados": [{"estado": estado, "clientes": clientes} for estado, clientes in estados],
+                "consumo_antes": sum(item["consumo_antes"] or 0.0 for item in items),
+                "valor_antes": sum(item["valor_antes"] or 0.0 for item in items),
+                "con_historia_consumo": sum(1 for item in items if item["consumo_antes"] is not None),
+                "con_historia_valor": sum(1 for item in items if item["valor_antes"] is not None),
+            },
+            "perfil": perfil,
+        }
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+
+
 def locations_by_niu(db: Session, nius: list[str]) -> dict[str, dict[str, Any]]:
     """Última ubicación conocida por NIU, consultada por lotes sobre el índice de niu."""
     result: dict[str, dict[str, Any]] = {}

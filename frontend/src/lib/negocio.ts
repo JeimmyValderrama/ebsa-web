@@ -42,6 +42,14 @@ export const NIVEL_FUGA_SIMPLE: Record<string, string> = {
   BAJO: "Bajo",
 };
 
+/** Qué significa cada estado del archivo de otros comercializadores (ESTADO_OTRO_TEXTO del Streamlit). */
+export const ESTADO_OTRO_TEXTO: Record<string, string> = {
+  "CON OTRO COMERCIALIZADOR": "Aparece en el último mes del archivo de otros comercializadores.",
+  "REGRESÓ A EBSA": "Dejó de aparecer en el archivo de otros y vuelve a tener consumo en TC2.",
+  "SIN HISTORIA EN TC2 (se fue antes de la historia)": "No hay filas suyas en TC2: se cambió antes de 2022 o nunca fue facturado por EBSA.",
+  "SALIÓ DEL ARCHIVO DE OTROS (verificar)": "Ya no está en el archivo de otros pero tampoco consume en TC2.",
+};
+
 export const ZONAS_REGIONALES = ["CENTRO", "TUNDAMA", "SUGAMUXI", "OCCIDENTE", "ORIENTE", "NORTE", "RICAURTE", "PUERTO BOYACA"];
 
 export const GRUPOS_CONSUMO_ORDEN = ["Grande", "Mediano", "Pequeño", "Intermitente", "Sin historia suficiente"];

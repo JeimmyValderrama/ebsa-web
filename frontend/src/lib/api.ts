@@ -106,6 +106,34 @@ export type DropsItem = {
   caida_pct: number | null;
 };
 
+/** Clientes que ya están con otro comercializador (clientes_con_otro_comercializador.csv). */
+export type SalidaItem = {
+  niu: string;
+  estado: string;
+  municipio: string;
+  zona: string;
+  clase: string;
+  desde: string;
+  mes_salida: string;
+  consumo_antes: number | null;
+  valor_antes: number | null;
+};
+
+export type SalidasData = {
+  total: number;
+  corte: string;
+  items: SalidaItem[];
+  resumen: {
+    estados: Array<{ estado: string; clientes: number }>;
+    consumo_antes: number;
+    valor_antes: number;
+    con_historia_consumo: number;
+    con_historia_valor: number;
+  };
+  /** Perfil de los que se fueron, por dimensión (sin el comercializador, por política de la empresa). */
+  perfil: Array<{ dimension: string; valor: unknown; n: number | null; pct: number | null }>;
+};
+
 /** Filtros de las listas de negocio (la API los recibe como query y aplica en servidor). */
 export type FiltroFuga = {
   niv?: string[];
@@ -273,6 +301,8 @@ export const api = {
       { token, raw: true, accept: "text/csv" },
     ).then((response) => response.blob());
   },
+  /** Clientes que ya están con otro comercializador, con su perfil; los filtros se aplican en la web. */
+  salidas: (token: string | undefined) => request<SalidasData>("/api/data/salidas", { token }),
   dataset: (token: string | undefined, key: string, options: DatasetQuery = {}) => request<DatasetPage>(`/api/data/datasets/${encodeURIComponent(key)}${query({ limit: options.limit ?? 200, offset: options.offset ?? 0, search: options.search, niu: options.niu, filter: options.filters })}`, { token }),
   datasetCsv: (token: string | undefined, key: string, options: Pick<DatasetQuery, "search" | "filters"> = {}) =>
     request<Response>(`/api/data/datasets/${encodeURIComponent(key)}/csv${query({ search: options.search, filter: options.filters })}`, { token, raw: true, accept: "text/csv" }).then((response) => response.blob()),

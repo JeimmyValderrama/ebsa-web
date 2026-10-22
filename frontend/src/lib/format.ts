@@ -164,6 +164,7 @@ export function formatCelda(value: unknown, columnName: string): string {
 
 const PISTAS_KWH = ["kwh", "consumo"];
 const PISTAS_PESOS = ["valor", "perdida", "pérdida", "factura", "$", "pesos", "tarifa_kwh"];
+const COLUMNAS_EXENTAS = ["pct", "prob"];
 
 /**
  * Formato de celda de las tablas de trabajo, idéntico a formato_tabla del Streamlit: la tarifa con un decimal,
@@ -186,6 +187,12 @@ export function formatoTabla(
     if (typeof valor === "number" && Number.isFinite(valor)) {
       const nombre = columna.toLowerCase();
       if (nombre.includes("tarifa")) return `$${fmtN(valor, 1)}`;
+      if (COLUMNAS_EXENTAS.some((exenta) => nombre.includes(exenta))) {
+        // Porcentajes y probabilidades: se dejan con sus decimales, sin redondear a entero.
+        const texto = String(valor);
+        const decimalesValor = texto.includes(".") ? Math.min(texto.split(".")[1].length, 3) : 0;
+        return fmtN(valor, decimalesValor);
+      }
       if (PISTAS_KWH.some((pista) => nombre.includes(pista)) && !nombre.includes("$")) return fmtN(valor, decimales[columna] ?? 0);
       if (PISTAS_PESOS.some((pista) => nombre.includes(pista))) return `$${fmtN(valor)}`;
       return fmtN(valor);
