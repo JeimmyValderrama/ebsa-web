@@ -106,6 +106,62 @@ export type DropsItem = {
   caida_pct: number | null;
 };
 
+/** Filtros de las listas de negocio (la API los recibe como query y aplica en servidor). */
+export type FiltroFuga = {
+  niv?: string[];
+  zon?: string[];
+  mun?: string[];
+  cla?: string[];
+  tam?: string[];
+};
+
+/** Lista de riesgo de fuga (riesgo_fuga_clientes.csv) con el municipio del TC1 ya cruzado. */
+export type FugaItem = {
+  ranking: number;
+  niu: string;
+  municipio: string;
+  zona_regional: string;
+  ciclo: string;
+  clase: string;
+  tamano: string;
+  consumo_6m: number;
+  valor_riesgo: number;
+  prob: number;
+  riesgo: string;
+  consumo_esperado: number;
+  valor_esperado: number;
+  senales: string;
+  situacion: string;
+  corte: string;
+};
+
+/** Grandes clientes del mercado no regulado que se acompañan desde el área comercial. */
+export type VigilanciaItem = {
+  niu: string;
+  municipio: string;
+  motivo: string;
+  clase: string;
+  consumo_12m: number | null;
+  valor_facturado_mes: number | null;
+  riesgo: string;
+  prob: number | null;
+};
+
+export type FugaData = {
+  total_lista: number;
+  alto_medio: number;
+  corte: string;
+  resumen: { clientes: number; consumo_6m: number; valor_riesgo: number; consumo_esperado: number; valor_esperado: number };
+  items: FugaItem[];
+  vigilancia: VigilanciaItem[];
+  opciones: {
+    zonas: string[];
+    municipios: Array<{ municipio: string; zonas: string[] }>;
+    clases: string[];
+    tamanos: string[];
+  };
+};
+
 /** Clientes sin consumo (cero sostenido): fila con lo que consumía, lo que factura y cuánto lleva así. */
 export type CeroItem = {
   niu: string;
@@ -186,6 +242,37 @@ export const api = {
   },
   /** Lista completa de clientes en cero sostenido; los filtros se aplican en la web. */
   zero: (token: string | undefined) => request<CeroData>("/api/data/zero", { token }),
+  /** Riesgo de fuga a otro comercializador: lista filtrada, indicadores globales y vigilancia de no regulados. */
+  fuga: (token: string | undefined, opciones: { medida?: string; n?: number } & FiltroFuga = {}) => {
+    const csv = (valor?: string[]): string | undefined => (valor?.length ? valor.join(",") : undefined);
+    return request<FugaData>(
+      `/api/data/fuga${query({
+        medida: opciones.medida,
+        n: opciones.n,
+        niv: csv(opciones.niv),
+        zon: csv(opciones.zon),
+        mun: csv(opciones.mun),
+        cla: csv(opciones.cla),
+        tam: csv(opciones.tam),
+      })}`,
+      { token },
+    );
+  },
+  /** La misma lista filtrada completa como CSV (todas las filas, no solo las de la tabla). */
+  fugaCsv: (token: string | undefined, opciones: { medida?: string } & FiltroFuga = {}) => {
+    const csv = (valor?: string[]): string | undefined => (valor?.length ? valor.join(",") : undefined);
+    return request<Response>(
+      `/api/data/fuga/csv${query({
+        medida: opciones.medida,
+        niv: csv(opciones.niv),
+        zon: csv(opciones.zon),
+        mun: csv(opciones.mun),
+        cla: csv(opciones.cla),
+        tam: csv(opciones.tam),
+      })}`,
+      { token, raw: true, accept: "text/csv" },
+    ).then((response) => response.blob());
+  },
   dataset: (token: string | undefined, key: string, options: DatasetQuery = {}) => request<DatasetPage>(`/api/data/datasets/${encodeURIComponent(key)}${query({ limit: options.limit ?? 200, offset: options.offset ?? 0, search: options.search, niu: options.niu, filter: options.filters })}`, { token }),
   datasetCsv: (token: string | undefined, key: string, options: Pick<DatasetQuery, "search" | "filters"> = {}) =>
     request<Response>(`/api/data/datasets/${encodeURIComponent(key)}/csv${query({ search: options.search, filter: options.filters })}`, { token, raw: true, accept: "text/csv" }).then((response) => response.blob()),

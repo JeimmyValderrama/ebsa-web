@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type DatasetPage } from "../../lib/api";
-import { enmascarar, energia, fmtN, mesCorto, pesos, queRevisar } from "../../lib/format";
+import { enmascarar, energia, fmtN, mesCorto, pesos, probPct, queRevisar } from "../../lib/format";
 import { ESTADO_LISTA_SIMPLE, NIVEL_FUGA_SIMPLE, PRIORIDAD_SIMPLE, TRAYECTORIA_SIMPLE, etiqueta } from "../../lib/negocio";
 import { SEVERIDAD_SIMPLE } from "../../charts/paleta";
 import { serieClienteSpec, type DatoCliente } from "../../charts/vegaSpec";
@@ -28,15 +28,6 @@ type Datos = {
 };
 
 const soloItem = (pagina: DatasetPage | null): Record<string, unknown> | null => pagina?.items[0]?.payload ?? null;
-
-function probPct(probabilidad: unknown): string {
-  const valor = Number(probabilidad ?? Number.NaN);
-  if (Number.isNaN(valor)) return "—";
-  const pct = valor * 100;
-  if (pct >= 1) return `${fmtN(pct, 1)} %`;
-  if (pct >= 0.01) return `${fmtN(pct, 2)} %`;
-  return pct > 0 ? "< 0,01 %" : "0 %";
-}
 
 export function FichaCliente({ token, niu }: { token?: string | null; niu: string }) {
   const { measure, hideIds } = usePresentation();

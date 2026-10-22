@@ -201,6 +201,16 @@ export function csvCelda(valor: unknown): string {
   return String(valor);
 }
 
+/** Probabilidad en %, con decimales suficientes para que 0,004 % no se lea como 0,0 % (prob_pct). */
+export function probPct(probabilidad: unknown): string {
+  const valor = Number(probabilidad ?? Number.NaN);
+  if (Number.isNaN(valor)) return "—";
+  const pct = valor * 100;
+  if (pct >= 1) return `${fmtN(pct, 1)} %`;
+  if (pct >= 0.01) return `${fmtN(pct, 2)} %`;
+  return pct > 0 ? "< 0,01 %" : "0 %";
+}
+
 // ---------------------------------------------------------------------------
 // Regla de negocio: "Qué revisar" (sugerencia en lenguaje simple para soporte).
 // ---------------------------------------------------------------------------

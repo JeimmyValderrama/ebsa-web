@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
-import { DatasetCatalog, DatasetView, type FilterField, type Row } from "../components/DataExplorer";
+import { DatasetCatalog, DatasetView, type Row } from "../components/DataExplorer";
 import { MapaBoyaca, type InfoMapa } from "../components/MapaBoyaca";
 import { ListaCaida } from "../components/ListaCaida";
 import { SinConsumo } from "../components/SinConsumo";
+import { Fuga } from "../components/Fuga";
 import { ProjectionView, recortarProyeccion, type Anual, type Mensual } from "../components/Projection";
 import { Aviso, Banda, ComoLeer, Kpis, Tarjeta, TituloPagina, type ItemKpi } from "../components/v2/ui";
 import { NOTA_CERO_SOSTENIDO, NOTA_REGLAS_LISTA, QUE_ES_ESTO, periodoTexto } from "../components/v2/textos";
@@ -54,7 +55,6 @@ const GRUPOS: Array<{ nombre: string; items: Array<{ clave: Section; etiqueta: s
   },
 ];
 
-const FILTROS_FUGA: FilterField[] = [{ key: "nivel_riesgo", label: "Nivel de riesgo" }, { key: "perfil", label: "Perfil" }];
 
 export default function CommercialPage() {
   const { idToken, currentUser } = useAuth();
@@ -76,18 +76,7 @@ export default function CommercialPage() {
       {section === "panorama" && <Panorama token={idToken} />}
       {section === "caidas" && <ListaCaida token={idToken} />}
       {section === "sin_consumo" && <SinConsumo token={idToken} />}
-      {section === "fuga" && (
-        <DatasetView
-          token={idToken}
-          datasetKey="churn_scores"
-          title="Clientes con probabilidad de fuga a otro comercializador"
-          description="Probabilidad de salida a 6 meses, valor esperado de pérdida y señales del modelo de fuga."
-          filters={FILTROS_FUGA}
-          prioritarias={["NIU", "nivel_riesgo", "prob_fuga_6m", "valor_esperado_perdida_mes", "valor_en_riesgo_mes"]}
-          action={puedeFichas ? abrirFicha : undefined}
-          actionLabel="Ver ficha"
-        />
-      )}
+      {section === "fuga" && <Fuga token={idToken} />}
       {section === "salidas" && (
         <div className="stack">
           <DatasetView

@@ -292,6 +292,15 @@ ORDEN_PRIORIDAD = {"GESTIONAR": 0, "SEGUIMIENTO: caída antigua": 1, "VIGILAR: s
 _MUNICIPIOS_LISTA: dict[str, dict[str, str]] = {}
 
 
+def _numero(payload: dict[str, Any], *claves: str) -> float | None:
+    """Primera clave del payload que traiga un número válido (ignora NaN, null y booleanos)."""
+    for clave in claves:
+        valor = payload.get(clave)
+        if isinstance(valor, (int, float)) and not isinstance(valor, bool) and valor == valor:
+            return float(valor)
+    return None
+
+
 def _municipios_de_la_lista(db: Session, clave: str, nius: list[str]) -> dict[str, str]:
     """Municipio de cada NIU de la lista de caída (agregar_municipio), memorizado por corte."""
     mapa = _MUNICIPIOS_LISTA.get(clave)
@@ -454,13 +463,6 @@ def zero(
             select(func.max(DatasetRecord.data_run_id)).where(DatasetRecord.dataset_key == "zero_sustained")
         )
 
-        def _numero(payload: dict[str, Any], *claves: str) -> float | None:
-            for clave in claves:
-                valor = payload.get(clave)
-                if isinstance(valor, (int, float)) and not isinstance(valor, bool) and valor == valor:
-                    return float(valor)
-            return None
-
         registros: list[dict[str, Any]] = []
         for registro in db.scalars(
             select(DatasetRecord).where(
@@ -497,6 +499,278 @@ def zero(
             registro["municipio"] = municipios.get(registro["niu"], "")
         registros.sort(key=lambda registro: registro["niu"])
         return {"total": len(registros), "items": registros}
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+
+
+# ---------------------------------------------------------------------------
+# Riesgo de fuga (sección "Clientes con probabilidad de fuga a otro comercializador")
+# ---------------------------------------------------------------------------
+
+_FUGA_CACHE: dict[int, list[dict[str, Any]]] = {}
+
+_ESTADO_LISTA_SIMPLE = {"NUEVO": "Nuevo este mes", "PERSISTENTE": "Sigue desde el corte anterior", "REINCIDENTE": "Ya había estado antes"}
+
+_FUGA_COLUMNAS_CSV = [
+    "Prioridad",
+    "NIU",
+    "Municipio",
+    "Zona regional",
+    "Ciclo",
+    "Clase",
+    "Tamaño",
+    "Consumo promedio 6 meses (kWh/mes)",
+    "Factura promedio 6 meses ($/mes)",
+    "Probabilidad de fuga (6 meses)",
+    "Riesgo",
+    "Consumo esperado en riesgo (kWh/mes)",
+    "Pérdida esperada ($/mes)",
+    "Señales observadas",
+    "Situación",
+]
+
+
+def _es(valor: float, decimales: int = 0) -> str:
+    """Número en formato español (punto de miles, coma decimal), como fmt_n del Streamlit."""
+    texto = f"{valor:,.{decimales}f}"
+    return texto.replace(",", "\u0000").replace(".", ",").replace("\u0000", ".")
+
+
+def _prob_pct(prob: float) -> str:
+    """Probabilidad en %, con decimales suficientes para que 0,004 % no se lea como 0,0 %."""
+    v = float(prob) * 100
+    if v >= 1:
+        return _es(v, 1) + " %"
+    if v >= 0.01:
+        return _es(v, 2) + " %"
+    return "< 0,01 %" if v > 0 else "0 %"
+
+
+def _csv_texto(columnas: list[str], filas: list[list[Any]]) -> str:
+    """CSV con separador ';' y coma decimal (csv_es del Streamlit), listo para Excel en español."""
+
+    def celda(valor: Any) -> str:
+        if valor is None:
+            return ""
+        if isinstance(valor, bool):
+            return "Sí" if valor else "No"
+        if isinstance(valor, (int, float)):
+            return str(valor).replace(".", ",")
+        texto = str(valor)
+        if any(c in texto for c in (';', '"', "\n")):
+            return '"' + texto.replace('"', '""') + '"'
+        return texto
+
+    lineas = [";".join(celda(columna) for columna in columnas)]
+    lineas.extend(";".join(celda(valor) for valor in fila) for fila in filas)
+    return "\r\n".join(lineas)
+
+
+def _fuga_lista(db: Session, run_id: int | None) -> list[dict[str, Any]]:
+    """Riesgo de fuga por cliente con el municipio del TC1, memorizado por corte (riesgo_fuga_clientes.csv)."""
+    if run_id is None:
+        return []
+    cache = _FUGA_CACHE.get(run_id)
+    if cache is not None:
+        return cache
+
+    registros = db.scalars(select(ClientChurnRisk).where(ClientChurnRisk.data_run_id == run_id)).all()
+    municipios = _municipios_de_la_lista(db, f"fuga:{run_id}", [str(registro.niu or "") for registro in registros])
+    filas: list[dict[str, Any]] = []
+    for registro in registros:
+        payload = registro.payload or {}
+        prob = _numero(payload, "prob_fuga_6m") or 0.0
+        consumo_6m = _numero(payload, "consumo_prom_6m_kwh") or 0.0
+        niu = str(registro.niu or payload.get("NIU") or "").strip()
+        filas.append(
+            {
+                "ranking": int(_numero(payload, "ranking") or 0),
+                "niu": niu,
+                "municipio": municipios.get(niu, ""),
+                "zona_regional": str(payload.get("zona_regional") or "SIN ZONA"),
+                "ciclo": str(payload.get("zona_nombre") or ""),
+                "clase": str(payload.get("clase_servicio_nombre") or "SIN CLASIFICAR"),
+                "tamano": str(payload.get("grupo_consumo") or "Sin historia suficiente"),
+                "consumo_6m": consumo_6m,
+                "valor_riesgo": _numero(payload, "valor_en_riesgo_mes") or 0.0,
+                "prob": prob,
+                "riesgo": str(registro.nivel_riesgo or payload.get("nivel_riesgo") or ""),
+                "consumo_esperado": consumo_6m * prob,
+                "valor_esperado": _numero(payload, "valor_esperado_perdida_mes") or 0.0,
+                "senales": str(payload.get("senales") or ""),
+                "situacion": str(payload.get("estado_en_lista") or ""),
+                "corte": str(payload.get("fecha_corte") or registro.fecha_corte or "")[:7],
+            }
+        )
+    # solo los dos cortes más recientes, para que la memoria no crezca sin límite
+    while len(_FUGA_CACHE) >= 2:
+        _FUGA_CACHE.pop(next(iter(_FUGA_CACHE)))
+    _FUGA_CACHE[run_id] = filas
+    return filas
+
+
+def _fuga_vigilancia(db: Session) -> list[dict[str, Any]]:
+    """Grandes clientes del mercado no regulado (vigilancia_mercado_no_regulado.csv) con su municipio."""
+    ultimo = db.scalar(select(func.max(DatasetRecord.data_run_id)).where(DatasetRecord.dataset_key == "churn_non_regulated"))
+    registros = db.scalars(
+        select(DatasetRecord).where(DatasetRecord.dataset_key == "churn_non_regulated", DatasetRecord.data_run_id == ultimo)
+    ).all()
+    nius = [str(registro.niu or (registro.payload or {}).get("NIU") or "") for registro in registros]
+    municipios = _municipios_de_la_lista(db, f"vigilancia:{ultimo or 0}", nius)
+    filas: list[dict[str, Any]] = []
+    for registro, niu in zip(registros, nius):
+        payload = registro.payload or {}
+        prob = _numero(payload, "prob_fuga_6m")
+        filas.append(
+            {
+                "niu": niu,
+                "municipio": municipios.get(niu, ""),
+                "motivo": str(payload.get("motivo") or ""),
+                "clase": str(payload.get("clase_servicio_nombre") or "SIN CLASIFICAR"),
+                "consumo_12m": _numero(payload, "consumo_prom_12m_kwh"),
+                "valor_facturado_mes": _numero(payload, "valor_facturado_mes"),
+                "riesgo": str(payload.get("nivel_riesgo") or ""),
+                "prob": prob,
+            }
+        )
+    filas.sort(key=lambda fila: -(fila["prob"] or 0.0))
+    return filas
+
+
+def _fuga_filtradas(
+    filas: list[dict[str, Any]],
+    niv: set[str],
+    zon: set[str],
+    mun: set[str],
+    cla: set[str],
+    tam: set[str],
+) -> list[dict[str, Any]]:
+    """Lista de riesgo de fuga con los filtros de la página aplicados, de mayor a menor pérdida esperada."""
+    seleccion = [
+        fila
+        for fila in filas
+        if (not niv or fila["riesgo"] in niv)
+        and (not zon or fila["zona_regional"] in zon)
+        and (not mun or fila["municipio"] in mun)
+        and (not cla or fila["clase"] in cla)
+        and (not tam or fila["tamano"] in tam)
+    ]
+    return seleccion
+
+
+def _fuga_orden(seleccion: list[dict[str, Any]], medida: str) -> list[dict[str, Any]]:
+    """De mayor a menor pérdida esperada de la medida activa y, a igual pérdida, de mayor a menor probabilidad."""
+    clave = "valor_esperado" if medida == "Facturación" else "consumo_esperado"
+    return sorted(seleccion, key=lambda fila: (-fila[clave], -fila["prob"]))
+
+
+def _fuga_opciones(filas: list[dict[str, Any]]) -> dict[str, Any]:
+    """Opciones de los filtros de la página, en el orden del glosario."""
+    zonas = {fila["zona_regional"] for fila in filas}
+    municipios: dict[str, set[str]] = {}
+    for fila in filas:
+        if fila["municipio"]:
+            municipios.setdefault(fila["municipio"], set()).add(fila["zona_regional"])
+    tamanos = {fila["tamano"] for fila in filas}
+    return {
+        "zonas": [zona for zona in ZONAS_REGIONALES if zona in zonas] + sorted(zonas - set(ZONAS_REGIONALES)),
+        "municipios": [{"municipio": nombre, "zonas": sorted(zonales)} for nombre, zonales in sorted(municipios.items())],
+        "clases": sorted({fila["clase"] for fila in filas}),
+        "tamanos": [grupo for grupo in GRUPOS_CONSUMO_ORDEN if grupo in tamanos] + sorted(tamanos - set(GRUPOS_CONSUMO_ORDEN)),
+    }
+
+
+def _fuga_filtros(niv: str | None, zon: str | None, mun: str | None, cla: str | None, tam: str | None) -> dict[str, set[str]]:
+    def _elegidos(texto: str | None) -> set[str]:
+        return {valor.strip() for valor in (texto or "").split(",") if valor.strip()}
+
+    return {"niv": _elegidos(niv), "zon": _elegidos(zon), "mun": _elegidos(mun), "cla": _elegidos(cla), "tam": _elegidos(tam)}
+
+
+@router.get("/fuga")
+def fuga(
+    medida: str = "Consumo",
+    n: int = Query(1000, ge=25, le=5000),
+    niv: str | None = None,
+    zon: str | None = None,
+    mun: str | None = None,
+    cla: str | None = None,
+    tam: str | None = None,
+    db: Session = Depends(get_db),
+    _: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    """Riesgo de fuga a otro comercializador: los primeros n clientes de la lista filtrada, indicadores globales y vigilancia.
+
+    Replica la sección "Clientes con probabilidad de fuga a otro comercializador" del Streamlit: la lista va de mayor a menor
+    pérdida esperada de la medida elegida, y la tabla muestra los primeros 1.000 (la descarga trae la lista filtrada completa).
+    """
+    try:
+        run_id = db.scalar(select(func.max(ClientChurnRisk.data_run_id)))
+        filas = _fuga_lista(db, run_id)
+        elegidos = _fuga_filtros(niv, zon, mun, cla, tam)
+        seleccion = _fuga_orden(_fuga_filtradas(filas, **elegidos), medida)
+        return {
+            "total_lista": len(filas),
+            "alto_medio": sum(1 for fila in filas if fila["riesgo"] in ("ALTO", "MEDIO")),
+            "corte": filas[0]["corte"] if filas else "",
+            "resumen": {
+                "clientes": len(filas),
+                "consumo_6m": sum(fila["consumo_6m"] for fila in filas),
+                "valor_riesgo": sum(fila["valor_riesgo"] for fila in filas),
+                "consumo_esperado": sum(fila["consumo_esperado"] for fila in filas),
+                "valor_esperado": sum(fila["valor_esperado"] for fila in filas),
+            },
+            "items": seleccion[:n],
+            "vigilancia": _fuga_vigilancia(db),
+            "opciones": _fuga_opciones(filas),
+        }
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+
+
+@router.get("/fuga/csv")
+def fuga_csv(
+    medida: str = "Consumo",
+    niv: str | None = None,
+    zon: str | None = None,
+    mun: str | None = None,
+    cla: str | None = None,
+    tam: str | None = None,
+    db: Session = Depends(get_db),
+    _: dict[str, Any] = Depends(current_user),
+) -> Response:
+    """La misma lista de riesgo de fuga completa (todas las filas filtradas) como CSV en español, para Excel."""
+    try:
+        run_id = db.scalar(select(func.max(ClientChurnRisk.data_run_id)))
+        filas = _fuga_lista(db, run_id)
+        elegidos = _fuga_filtros(niv, zon, mun, cla, tam)
+        seleccion = _fuga_orden(_fuga_filtradas(filas, **elegidos), medida)
+        filas_csv = [
+            [
+                fila["ranking"],
+                fila["niu"],
+                fila["municipio"] or "—",
+                fila["zona_regional"],
+                fila["ciclo"],
+                fila["clase"],
+                fila["tamano"],
+                round(fila["consumo_6m"]),
+                round(fila["valor_riesgo"]),
+                _prob_pct(fila["prob"]),
+                fila["riesgo"],
+                round(fila["consumo_esperado"]),
+                round(fila["valor_esperado"]),
+                fila["senales"],
+                _ESTADO_LISTA_SIMPLE.get(fila["situacion"], ""),
+            ]
+            for fila in seleccion
+        ]
+        corte = seleccion[0]["corte"] if seleccion else ""
+        return Response(
+            _csv_texto(_FUGA_COLUMNAS_CSV, filas_csv),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="clientes_riesgo_de_irse_{corte}.csv"'},
+        )
     except OperationalError as exc:
         raise schema_error(exc) from exc
 
