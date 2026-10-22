@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
 import { DatasetCatalog, DatasetView, type FilterField, type Row } from "../components/DataExplorer";
 import { MapaBoyaca, type InfoMapa } from "../components/MapaBoyaca";
+import { ListaCaida } from "../components/ListaCaida";
 import { ProjectionView, recortarProyeccion, type Anual, type Mensual } from "../components/Projection";
 import { Aviso, Banda, ComoLeer, Kpis, Tarjeta, TituloPagina, type ItemKpi } from "../components/v2/ui";
 import { NOTA_CERO_SOSTENIDO, NOTA_REGLAS_LISTA, QUE_ES_ESTO, periodoTexto } from "../components/v2/textos";
@@ -52,7 +53,6 @@ const GRUPOS: Array<{ nombre: string; items: Array<{ clave: Section; etiqueta: s
   },
 ];
 
-const FILTROS_CAIDAS: FilterField[] = [{ key: "veredicto", label: "Veredicto" }, { key: "severidad", label: "Gravedad" }, { key: "zona", label: "Zona" }];
 const FILTROS_FUGA: FilterField[] = [{ key: "nivel_riesgo", label: "Nivel de riesgo" }, { key: "perfil", label: "Perfil" }];
 
 export default function CommercialPage() {
@@ -73,18 +73,7 @@ export default function CommercialPage() {
   return (
     <div className="page-content">
       {section === "panorama" && <Panorama token={idToken} />}
-      {section === "caidas" && (
-        <DatasetView
-          token={idToken}
-          datasetKey="drop_analysis"
-          title="Clientes cuyo consumo está cayendo"
-          description="Estudio de caída de consumo por cliente: veredicto, gravedad, consumo anterior y reciente, y variación contra el periodo anterior."
-          filters={FILTROS_CAIDAS}
-          prioritarias={["NIU", "veredicto", "severidad", "consumo_anterior_kwh", "consumo_reciente_kwh", "variacion_vs_anterior_pct"]}
-          action={puedeFichas ? abrirFicha : undefined}
-          actionLabel="Ver ficha"
-        />
-      )}
+      {section === "caidas" && <ListaCaida token={idToken} />}
       {section === "sin_consumo" && (
         <DatasetView
           token={idToken}

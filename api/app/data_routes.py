@@ -173,15 +173,26 @@ def _acumular(bloque: dict[str, Any], clave: str, perdida: Any, valor: Any, grav
     registro["gravedad"][gravedad] = registro["gravedad"].get(gravedad, 0) + 1
 
 
-def _suma_payload(db: Session, key: str, campo: str) -> float:
-    """Suma numérica de un campo del payload de un dataset (los payloads vienen como JSON)."""
-    suma = 0.0
-    for payload in db.execute(select(DatasetRecord.payload).where(DatasetRecord.dataset_key == key)).all():
+def _gravedad(severidad: Any, veredicto: Any) -> str:
+    """Gravedad que ve negocio: una caída sostenida ya no es urgente, es "antigua" (gravedad() del Streamlit)."""
+    return "ANTIGUA" if str(veredicto or "") == "CAIDA_SOSTENIDA" else str(severidad or "—")
+
+
+def _resumen_cero_sostenido(db: Session) -> dict[str, Any]:
+    """Clientes sin consumo: cuántos son y cuánto consumían/facturaban antes de quedarse en cero."""
+    filas = db.scalars(select(DatasetRecord).where(DatasetRecord.dataset_key == "zero_sustained")).all()
+    consumo, valor = 0.0, 0.0
+    for fila in filas:
+        p = fila.payload or {}
         try:
-            suma += float((payload[0] or {}).get(campo) or 0)
+            consumo += float(p.get("consumo_referencia_kwh") or p.get("consumo_anterior_kwh") or 0)
         except (TypeError, ValueError):
-            continue
-    return suma
+            pass
+        try:
+            valor += float(p.get("valor_facturaba_antes_mes") or 0)
+        except (TypeError, ValueError):
+            pass
+    return {"clientes": len(filas), "consumo_referencia_kwh": consumo, "valor_facturaba_antes_mes": valor}
 
 
 @router.get("/panorama")
@@ -210,7 +221,7 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
             select(operational.severidad, operational.estado_en_lista, operational.perdida_kwh_mes, operational.valor_riesgo_mes, operational.payload)
         ).all():
             p = payload or {}
-            g = "ANTIGUA" if str(p.get("veredicto") or "") == "CAIDA_SOSTENIDA" else str(severidad or "—")
+            g = _gravedad(severidad, p.get("veredicto"))
             gravedad[g] = gravedad.get(g, 0) + 1
             clave_estado = str(estado_en_lista or "—")
             estado[clave_estado] = estado.get(clave_estado, 0) + 1
@@ -229,18 +240,7 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
                 continue
 
         # Clientes sin consumo: cuánto consumían y cuánto facturaban antes de quedarse en cero.
-        cero_filas = db.scalars(select(DatasetRecord).where(DatasetRecord.dataset_key == "zero_sustained")).all()
-        cero_kwh, cero_valor = 0.0, 0.0
-        for fila in cero_filas:
-            p = fila.payload or {}
-            try:
-                cero_kwh += float(p.get("consumo_referencia_kwh") or p.get("consumo_anterior_kwh") or 0)
-            except (TypeError, ValueError):
-                pass
-            try:
-                cero_valor += float(p.get("valor_facturaba_antes_mes") or 0)
-            except (TypeError, ValueError):
-                pass
+        cero = _resumen_cero_sostenido(db)
 
         # Ya atendidos por otro comercializador: los que el archivo de la empresa marca como "CON OTRO...".
         con_otro = 0
@@ -271,15 +271,168 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
                 "por_nivel": fuga_niveles,
             },
             "cero_sostenido": dataset_count(db, "zero_sustained"),
-            "cero_sostenido_resumen": {
-                "clientes": len(cero_filas),
-                "consumo_referencia_kwh": cero_kwh,
-                "valor_facturaba_antes_mes": cero_valor,
-            },
+            "cero_sostenido_resumen": cero,
             "otro_comercializador": dataset_count(db, "churn_other_supplier"),
             "otro_comercializador_con_otro": con_otro,
             "mercado_no_regulado": dataset_count(db, "churn_non_regulated"),
             "cortes_zona": cortes_zona,
+        }
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+
+
+# ---------------------------------------------------------------------------
+# Lista de caída: sección "Caídas de consumo" de Comercial y de Soporte
+# ---------------------------------------------------------------------------
+
+ZONAS_REGIONALES = ("CENTRO", "TUNDAMA", "SUGAMUXI", "OCCIDENTE", "ORIENTE", "NORTE", "RICAURTE", "PUERTO BOYACA")
+GRUPOS_CONSUMO_ORDEN = ("Grande", "Mediano", "Pequeño", "Intermitente", "Sin historia suficiente")
+ORDEN_PRIORIDAD = {"GESTIONAR": 0, "SEGUIMIENTO: caída antigua": 1, "VIGILAR: se espera recuperación": 2, "VIGILAR: estacional": 3}
+
+_MUNICIPIOS_LISTA: dict[str, dict[str, str]] = {}
+
+
+def _municipios_de_la_lista(db: Session, clave: str, nius: list[str]) -> dict[str, str]:
+    """Municipio de cada NIU de la lista de caída (agregar_municipio), memorizado por corte."""
+    mapa = _MUNICIPIOS_LISTA.get(clave)
+    if mapa is None:
+        mapa = {niu: str(valor.get("municipio") or "") for niu, valor in locations_by_niu(db, nius).items()}
+        # solo los dos cortes más recientes, para que la memoria no crezca sin límite
+        while len(_MUNICIPIOS_LISTA) >= 2:
+            _MUNICIPIOS_LISTA.pop(next(iter(_MUNICIPIOS_LISTA)))
+        _MUNICIPIOS_LISTA[clave] = mapa
+    return mapa
+
+
+@router.get("/drops")
+def drops(
+    medida: str = "Consumo",
+    n: int = Query(200, ge=25, le=2000),
+    pri: str | None = None,
+    tip: str | None = None,
+    grav: str | None = None,
+    ten: str | None = None,
+    zon: str | None = None,
+    mun: str | None = None,
+    cla: str | None = None,
+    tam: str | None = None,
+    db: Session = Depends(get_db),
+    _: dict[str, Any] = Depends(current_user),
+) -> dict[str, Any]:
+    """Lista de clientes con caída de consumo: filtros, resumen de la medida elegida, primeros puestos y gravedad por zona.
+
+    Replica la sección "Caídas de consumo" del Streamlit: la lista va de lo que hay que gestionar a lo que se vigila,
+    y dentro de cada prioridad, de mayor a menor pérdida (kWh o pesos según la medida elegida).
+    """
+    try:
+
+        def _elegidos(texto: str | None) -> set[str]:
+            return {valor.strip() for valor in (texto or "").split(",") if valor.strip()}
+
+        sel_pri, sel_tip, sel_grav, sel_ten = _elegidos(pri), _elegidos(tip), _elegidos(grav), _elegidos(ten)
+        sel_zon, sel_mun, sel_cla, sel_tam = _elegidos(zon), _elegidos(mun), _elegidos(cla), _elegidos(tam)
+        col_op = "valor_riesgo_mes" if medida == "Facturación" else "perdida_kwh_mes"
+
+        registros: list[dict[str, Any]] = []
+        gravedad_zona: dict[str, dict[str, int]] = {}
+        for niu, severidad, trayectoria, estado, prioridad, perdida, valor, payload in db.execute(
+            select(
+                OperationalManagement.niu,
+                OperationalManagement.severidad,
+                OperationalManagement.trayectoria,
+                OperationalManagement.estado_en_lista,
+                OperationalManagement.prioridad_gestion,
+                OperationalManagement.perdida_kwh_mes,
+                OperationalManagement.valor_riesgo_mes,
+                OperationalManagement.payload,
+            )
+        ).all():
+            p = payload or {}
+            gravedad = _gravedad(severidad, p.get("veredicto"))
+            zona = str(p.get("zona_regional") or "SIN ZONA")
+            gravedad_zona.setdefault(zona, {})
+            gravedad_zona[zona][gravedad] = gravedad_zona[zona].get(gravedad, 0) + 1
+            registros.append(
+                {
+                    "niu": str(niu).strip(),
+                    "veredicto": str(p.get("veredicto") or ""),
+                    "gravedad": gravedad,
+                    "zona_regional": zona,
+                    "ciclo": str(p.get("zona_nombre") or ""),
+                    "clase": str(p.get("clase_servicio_nombre") or p.get("clase_servicio") or "SIN CLASIFICAR"),
+                    "tamano": str(p.get("grupo_consumo") or p.get("tramo_consumo") or "—"),
+                    "trayectoria": str(trayectoria or ""),
+                    "prioridad": str(prioridad or ""),
+                    "situacion": str(estado or ""),
+                    "consumo_reciente_kwh": float(p.get("consumo_reciente_kwh") or 0),
+                    "consumo_anterior_kwh": float(p.get("consumo_anterior_kwh") or 0),
+                    "perdida_kwh_mes": float(perdida or 0),
+                    "valor_riesgo_mes": float(valor or 0),
+                    "tarifa_kwh": float(p.get("tarifa_kwh") or 0),
+                }
+            )
+        # Cruce con el TC1 para el municipio; el mapa queda memorizado por corte (se repite en cada consulta).
+        corte_id = db.scalar(select(func.max(OperationalManagement.data_run_id))) or 0
+        municipios = _municipios_de_la_lista(db, str(corte_id), [registro["niu"] for registro in registros])
+
+        opciones_municipios: dict[str, set[str]] = {}
+        for registro in registros:
+            registro["municipio"] = municipios.get(registro["niu"], "")
+            if registro["municipio"]:
+                opciones_municipios.setdefault(registro["municipio"], set()).add(registro["zona_regional"])
+
+        seleccionados = [
+            registro
+            for registro in registros
+            if (not sel_pri or registro["prioridad"] in sel_pri)
+            and (not sel_tip or registro["veredicto"] in sel_tip)
+            and (not sel_grav or registro["gravedad"] in sel_grav)
+            and (not sel_ten or registro["trayectoria"] in sel_ten)
+            and (not sel_zon or registro["zona_regional"] in sel_zon)
+            and (not sel_mun or registro["municipio"] in sel_mun)
+            and (not sel_cla or registro["clase"] in sel_cla)
+            and (not sel_tam or registro["tamano"] in sel_tam)
+        ]
+        # Orden: primero lo que hay que gestionar, luego vigilar; dentro de cada grupo, de mayor a menor pérdida.
+        seleccionados.sort(key=lambda registro: (ORDEN_PRIORIDAD.get(registro["prioridad"], 0), -registro[col_op]))
+        top = seleccionados[:n]
+
+        def _suma(filas: list[dict[str, Any]]) -> dict[str, float]:
+            return {
+                "clientes": len(filas),
+                "perdida_kwh_mes": sum(fila["perdida_kwh_mes"] for fila in filas),
+                "valor_riesgo_mes": sum(fila["valor_riesgo_mes"] for fila in filas),
+            }
+
+        items = []
+        for puesto, registro in enumerate(top, start=1):
+            # Referencia de la pérdida: consumo reciente + lo que se pierde (referencia_caida).
+            referencia = registro["consumo_reciente_kwh"] + registro["perdida_kwh_mes"]
+            items.append(
+                {
+                    "puesto": puesto,
+                    **registro,
+                    "referencia_kwh": referencia,
+                    "caida_pct": ((registro["consumo_reciente_kwh"] - referencia) / referencia * 100) if referencia > 0 else None,
+                }
+            )
+
+        zonas_lista = {registro["zona_regional"] for registro in registros}
+        tamanos_lista = {registro["tamano"] for registro in registros}
+        return {
+            "total_lista": len(registros),
+            "evaluados": int(db.scalar(select(func.count(func.distinct(ClientDropAnalysis.niu)))) or 0),
+            "resumen": _suma(seleccionados),
+            "top": _suma(top),
+            "items": items,
+            "gravedad_zona": gravedad_zona,
+            "cero_sostenido": _resumen_cero_sostenido(db),
+            "opciones": {
+                "zonas": [zona for zona in ZONAS_REGIONALES if zona in zonas_lista] + sorted(zonas_lista - set(ZONAS_REGIONALES)),
+                "municipios": [{"municipio": nombre, "zonas": sorted(zonas)} for nombre, zonas in sorted(opciones_municipios.items())],
+                "clases": sorted({registro["clase"] for registro in registros}),
+                "tamanos": [grupo for grupo in GRUPOS_CONSUMO_ORDEN if grupo in tamanos_lista] + sorted(tamanos_lista - set(GRUPOS_CONSUMO_ORDEN)),
+            },
         }
     except OperationalError as exc:
         raise schema_error(exc) from exc

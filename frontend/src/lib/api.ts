@@ -78,13 +78,57 @@ function query(params: Record<string, string | number | undefined | string[]>): 
 export type DatasetQuery = { limit?: number; offset?: number; search?: string; niu?: string; filters?: string[] };
 export type DatasetPage = { dataset_key: string; items: Array<{ id: number | string; niu?: string | null; payload: Record<string, unknown> }>; limit: number; offset: number; returned: number; total: number };
 
+/** Filtros de las listas de negocio (un valor vacío = sin filtro, como en el Streamlit). */
+export type FiltroLista = {
+  pri?: string[]; tip?: string[]; grav?: string[]; ten?: string[];
+  zon?: string[]; mun?: string[]; cla?: string[]; tam?: string[];
+};
+
+export type DropsItem = {
+  puesto: number;
+  niu: string;
+  municipio: string;
+  zona_regional: string;
+  ciclo: string;
+  clase: string;
+  tamano: string;
+  veredicto: string;
+  gravedad: string;
+  trayectoria: string;
+  prioridad: string;
+  situacion: string;
+  consumo_reciente_kwh: number;
+  consumo_anterior_kwh: number;
+  perdida_kwh_mes: number;
+  valor_riesgo_mes: number;
+  tarifa_kwh: number;
+  referencia_kwh: number;
+  caida_pct: number | null;
+};
+
+export type DropsData = {
+  total_lista: number;
+  evaluados: number;
+  resumen: { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number };
+  top: { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number };
+  items: DropsItem[];
+  gravedad_zona: Record<string, Record<string, number>>;
+  cero_sostenido: { clientes: number; consumo_referencia_kwh: number; valor_facturaba_antes_mes: number };
+  opciones: {
+    zonas: string[];
+    municipios: Array<{ municipio: string; zonas: string[] }>;
+    clases: string[];
+    tamanos: string[];
+  };
+};
+
 export const api = {
   health: () => request<{ status: string; service: string; timestamp: string }>("/api/health"),
   status: () => request<{ status: string; database_configured: boolean; database_engine: string; firebase_configured: boolean }>("/api/status"),
   summary: (token?: string) => request<{ latest_run: { period: string; rows_imported: number; completed_at?: string } | null; counts: Record<string, number> }>("/api/data/summary", { token }),
   risks: (token: string | undefined, limit = 200, offset = 0, severity = "", prioridad = "") => request<{ items: Array<Record<string, unknown>>; limit: number; offset: number; total: number }>(`/api/data/risks${query({ limit, offset, severity, prioridad })}`, { token }),
   client: (token: string | undefined, niu: string) => request<Record<string, any>>(`/api/data/clients/${encodeURIComponent(niu)}`, { token }),
-  consumption: (token: string | undefined, niu: string) => request<Array<{ periodo: string; consumo_kwh: number | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/consumption`, { token }),
+  consumption: (token: string | undefined, niu: string) => request<Array<{ periodo: string; consumo_kwh: number | null; estado_mes?: string | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/consumption`, { token }),
   forecast: (token: string | undefined, niu: string) => request<Array<{ horizonte: number | null; periodo_pronosticado: string | null; consumo_pronosticado_kwh: number | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/forecast`, { token }),
   locations: (token: string | undefined, limit = 5000) => request<Array<Record<string, unknown>>>(`/api/data/locations${query({ limit })}`, { token }),
   catalog: (token: string | undefined) => request<Array<{ dataset_key: string; rows: number }>>("/api/data/datasets/catalog", { token }),
@@ -106,6 +150,24 @@ export const api = {
       mercado_no_regulado: number;
       cortes_zona: Record<string, string>;
     }>("/api/data/panorama", { token }),
+  drops: (token: string | undefined, opciones: { medida?: string; n?: number } & FiltroLista = {}) => {
+    const csv = (valor?: string[]): string | undefined => (valor?.length ? valor.join(",") : undefined);
+    return request<DropsData>(
+      `/api/data/drops${query({
+        medida: opciones.medida,
+        n: opciones.n,
+        pri: csv(opciones.pri),
+        tip: csv(opciones.tip),
+        grav: csv(opciones.grav),
+        ten: csv(opciones.ten),
+        zon: csv(opciones.zon),
+        mun: csv(opciones.mun),
+        cla: csv(opciones.cla),
+        tam: csv(opciones.tam),
+      })}`,
+      { token },
+    );
+  },
   dataset: (token: string | undefined, key: string, options: DatasetQuery = {}) => request<DatasetPage>(`/api/data/datasets/${encodeURIComponent(key)}${query({ limit: options.limit ?? 200, offset: options.offset ?? 0, search: options.search, niu: options.niu, filter: options.filters })}`, { token }),
   datasetCsv: (token: string | undefined, key: string, options: Pick<DatasetQuery, "search" | "filters"> = {}) =>
     request<Response>(`/api/data/datasets/${encodeURIComponent(key)}/csv${query({ search: options.search, filter: options.filters })}`, { token, raw: true, accept: "text/csv" }).then((response) => response.blob()),

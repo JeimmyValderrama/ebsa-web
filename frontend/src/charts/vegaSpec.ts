@@ -362,6 +362,7 @@ export function proyeccionTotalSpec(mensual: FilaProyeccion[], opciones: { movil
     filas.map((fila) => ({ ...fila, texto: fmtN(fila.gwh, 1) + " GWh", mes: mesCorto(fila.periodo) }));
   const dd = conTexto([...real, ...enlace, ...proy]);
   const bandaDatos = conTexto(proy.filter((fila) => fila.inf80_gwh !== null && fila.sup80_gwh !== null));
+  if (!dd.length) return { layer: [], height: movil ? 200 : 230, config: CONFIG_GRAFICO };
   const numeros = [...dd.map((fila) => fila.gwh), ...bandaDatos.flatMap((fila) => [fila.inf80_gwh as number, fila.sup80_gwh as number])];
   const piso = Math.min(...numeros) * 0.97;
   const techo = Math.max(...numeros) * 1.02;
@@ -395,4 +396,46 @@ export function proyeccionTotalSpec(mensual: FilaProyeccion[], opciones: { movil
     },
   };
   return conAjuste({ layer: [banda, lineas], height: movil ? 200 : 230 });
+}
+
+// ---------------------------------------------------------------------------
+// Consumo de un cliente: real, lectura parcial y pronóstico (grafica_consumo_cliente)
+// ---------------------------------------------------------------------------
+
+export interface DatoCliente {
+  mes: string;
+  serie: "Real" | "Pronóstico" | "Parcial (sin lectura completa)";
+  kwh: number;
+}
+
+/** Serie mensual de un NIU: línea real azul, pronóstico naranja punteado y rombos en los meses con lectura parcial. */
+export function serieClienteSpec(datos: DatoCliente[], opciones: { movil?: boolean } = {}): Spec {
+  const { movil = false } = opciones;
+  const dd = datos.map((dato) => ({ ...dato, texto: fmtN(dato.kwh, 1) + " kWh", periodo: mesCorto(dato.mes) }));
+  const ejeX = {
+    field: "mes",
+    type: "nominal",
+    title: null,
+    sort: null,
+    axis: { labelAngle: movil ? -90 : -45, labelOverlap: true },
+  };
+  const ejeY = { field: "kwh", type: "quantitative", title: "kWh por mes", axis: { labelExpr: EXPR_MILES, tickCount: 5, minExtent: 46 } };
+  const tooltips = [
+    { field: "periodo", type: "nominal", title: "Mes" },
+    { field: "texto", type: "nominal", title: "Consumo" },
+    { field: "serie", type: "nominal", title: "Dato" },
+  ];
+  const capa = (serie: DatoCliente["serie"], mark: Record<string, unknown>) => ({
+    data: { values: dd.filter((dato) => dato.serie === serie) },
+    mark,
+    encoding: { x: ejeX, y: ejeY, tooltip: tooltips },
+  });
+  return conAjuste({
+    layer: [
+      capa("Real", { type: "line", color: AZUL, strokeWidth: 2.5, point: { color: AZUL } }),
+      capa("Pronóstico", { type: "line", color: NARANJA, strokeWidth: 2.5, strokeDash: [6, 4], point: { color: NARANJA } }),
+      capa("Parcial (sin lectura completa)", { type: "point", color: "#8a8a8a", shape: "diamond", size: 90, filled: true }),
+    ],
+    height: movil ? 260 : 300,
+  });
 }
