@@ -119,6 +119,10 @@ p { margin: 0; }
   font-weight: 600;
   font-size: 15px;
   white-space: nowrap;
+  /* el enlace se estira a la altura de la franja: el texto va centrado, como en el Streamlit */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .vista-tab:hover { color: #fff; }
 .vista-tab.activa { color: #fff; border-bottom-color: var(--marca); }
@@ -538,6 +542,8 @@ textarea.search-input {
   color: var(--ink2);
   font-size: 14px;
   text-align: center;
+  /* un mensaje de error con URL larga no debe salirse de su caja */
+  overflow-wrap: anywhere;
 }
 .notice {
   display: flex;
@@ -810,7 +816,7 @@ textarea.search-input {
 .proy-campo .v2-radio { justify-self: start; }
 .proy-descargas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .proy-descargas .ghost-button { width: 100%; }
-/* Descargas por grupo: selector de archivo y su bot├│n, apilados como st.selectbox + st.download_button. */
+/* Descargas por grupo: selector de archivo y su botón, apilados como st.selectbox + st.download_button. */
 .dl-sel { display: grid; gap: 10px; justify-items: start; max-width: 640px; }
 .dl-sel .filter-select { width: 100%; max-width: 560px; }
 .v2-exp { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 0; }
@@ -860,9 +866,15 @@ textarea.search-input {
   .ctl-fila > *:last-child { justify-self: stretch; min-width: 0; }
   .tabla-pie { grid-template-columns: minmax(0, 1fr) 1fr; }
 }
-.mapa-tablas { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; padding: 12px 15px 15px; }
+/* minmax(0, …) en vez de 1fr/2fr: si no, la pista no puede encogerse por debajo del ancho
+   mínimo de la tabla y el grid se sale de la tarjeta en vez de desplazar su scroll interno. */
+.mapa-tablas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; padding: 12px 15px 15px; }
+.mapa-tablas > div { min-width: 0; }
 .tabla-titulo { font-size: 15px; color: var(--ink); margin: 0 0 8px; }
 .tabla-alta { max-height: 380px; overflow: auto; }
+@media (max-width: 1080px) {
+  .mapa-tablas { grid-template-columns: minmax(0, 1fr); }
+}
 .coordinate-plot {
   width: 100%;
   height: 390px;

@@ -5,6 +5,20 @@ import type { Config, Data, Layout } from "plotly.js-dist-min";
  * Dibuja una figura de Plotly igual que st.plotly_chart del Streamlit (proyección de consumo con bandas).
  * plotly.js-dist-min se carga bajo demanda: la proyección es la única sección que lo usa.
  */
+
+/**
+ * Solo se importa de forma dinámica; si Vite reoptimiza las dependencias en caliente, el primer
+ * intento puede apuntar a un módulo obsoleto: se reintenta una vez antes de rendirse.
+ */
+async function cargarPlotly() {
+  try {
+    return (await import("plotly.js-dist-min")).default;
+  } catch {
+    await new Promise((resolver) => window.setTimeout(resolver, 1200));
+    return (await import("plotly.js-dist-min")).default;
+  }
+}
+
 export function PlotlyChart({
   data,
   layout,
@@ -28,9 +42,8 @@ export function PlotlyChart({
     let cancelado = false;
     let plotly: typeof import("plotly.js-dist-min").default | null = null;
     let observador: ResizeObserver | null = null;
-    import("plotly.js-dist-min")
-      .then((modulo) => {
-        const lib = modulo.default;
+    cargarPlotly()
+      .then((lib) => {
         if (cancelado || !lib) return;
         plotly = lib;
         return lib.newPlot(node, data, { autosize: true, ...layout }, { displaylogo: false, displayModeBar: false, ...config }).then(() => {
