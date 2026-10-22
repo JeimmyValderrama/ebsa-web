@@ -3,8 +3,8 @@
  * Cada función devuelve el mismo JSON que alt.Chart(...).to_dict() + config (_mostrar),
  * de modo que la imagen en pantalla sea la misma que en st.vega_lite_chart.
  */
-import { fmtN } from "../lib/format";
-import { C, RAMPA_MAPA } from "./paleta";
+import { fmtN, mesCorto } from "../lib/format";
+import { AZUL, C, NARANJA, RAMPA_MAPA } from "./paleta";
 
 export type Spec = Record<string, unknown>;
 
@@ -323,4 +323,76 @@ export function colorRampa(valor: number, tope: number): string {
     return Math.round(a + (b - a) * f).toString(16).padStart(2, "0");
   };
   return "#" + canal(0) + canal(2) + canal(4);
+}
+
+// ---------------------------------------------------------------------------
+// Consumo total real y proyección (tarjeta_proyeccion_total de app_ebsa_v2.py)
+// ---------------------------------------------------------------------------
+
+export interface FilaProyeccion {
+  periodo: string;
+  tipo: string;
+  real_gwh: number | null;
+  proyeccion_gwh: number | null;
+  inf80_gwh: number | null;
+  sup80_gwh: number | null;
+}
+
+/**
+ * Serie mensual del consumo total: línea real azul, proyección naranja punteada y banda del 80 %,
+ * con el mismo eje (años) y la misma escala que el gráfico de Altair del Streamlit.
+ */
+export function proyeccionTotalSpec(mensual: FilaProyeccion[], opciones: { movil?: boolean } = {}): Spec {
+  const { movil = false } = opciones;
+  const real = mensual
+    .filter((fila) => fila.tipo === "REAL")
+    .map((fila) => ({ periodo: fila.periodo, gwh: Number(fila.real_gwh ?? 0), serie: "Consumo real", inf80_gwh: null, sup80_gwh: null }));
+  const proy = mensual
+    .filter((fila) => fila.tipo === "PROYECCION")
+    .map((fila) => ({
+      periodo: fila.periodo,
+      gwh: Number(fila.proyeccion_gwh ?? 0),
+      serie: "Proyección",
+      inf80_gwh: fila.inf80_gwh === null || fila.inf80_gwh === undefined ? null : Number(fila.inf80_gwh),
+      sup80_gwh: fila.sup80_gwh === null || fila.sup80_gwh === undefined ? null : Number(fila.sup80_gwh),
+    }));
+  // La proyección se enlaza con el último mes real para que la línea no empiece suelta.
+  const enlace = real.length && proy.length ? [{ ...real[real.length - 1], serie: "Proyección" }] : [];
+  const conTexto = (filas: Array<{ periodo: string; gwh: number; serie: string; inf80_gwh: number | null; sup80_gwh: number | null }>) =>
+    filas.map((fila) => ({ ...fila, texto: fmtN(fila.gwh, 1) + " GWh", mes: mesCorto(fila.periodo) }));
+  const dd = conTexto([...real, ...enlace, ...proy]);
+  const bandaDatos = conTexto(proy.filter((fila) => fila.inf80_gwh !== null && fila.sup80_gwh !== null));
+  const numeros = [...dd.map((fila) => fila.gwh), ...bandaDatos.flatMap((fila) => [fila.inf80_gwh as number, fila.sup80_gwh as number])];
+  const piso = Math.min(...numeros) * 0.97;
+  const techo = Math.max(...numeros) * 1.02;
+  const escalaY = { domain: [piso, techo], zero: false };
+  const ejeX = { field: "periodo", type: "temporal", title: null, axis: { format: "%Y", tickCount: "year", grid: false } };
+  const banda = {
+    data: { values: bandaDatos },
+    mark: { type: "area", color: NARANJA, opacity: 0.18 },
+    encoding: {
+      x: ejeX,
+      y: {
+        field: "inf80_gwh", type: "quantitative", scale: escalaY, title: "GWh por mes",
+        axis: { labelExpr: EXPR_MILES, tickCount: 5, minExtent: 46 },
+      },
+      y2: { field: "sup80_gwh" },
+    },
+  };
+  const lineas = {
+    data: { values: dd },
+    mark: { type: "line", strokeWidth: 2 },
+    encoding: {
+      x: ejeX,
+      y: { field: "gwh", type: "quantitative", scale: escalaY },
+      color: { field: "serie", type: "nominal", scale: { domain: ["Consumo real", "Proyección"], range: [AZUL, NARANJA] }, legend: null },
+      strokeDash: { field: "serie", type: "nominal", scale: { domain: ["Consumo real", "Proyección"], range: [[1, 0], [5, 4]] }, legend: null },
+      tooltip: [
+        { field: "mes", type: "nominal", title: "Mes" },
+        { field: "texto", type: "nominal", title: "Consumo" },
+        { field: "serie", type: "nominal", title: "Dato" },
+      ],
+    },
+  };
+  return conAjuste({ layer: [banda, lineas], height: movil ? 200 : 230 });
 }

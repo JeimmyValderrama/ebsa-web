@@ -569,6 +569,114 @@ textarea.search-input {
 .v2-conteo b { color: var(--ink); }
 .v2-pie { margin: 2px 0 0; font-size: 13.5px; color: var(--ink2); max-width: 86ch; }
 .v2-pie i { font-style: italic; }
+
+/* ---------- títulos y tarjetas (v2-ph / v2-card / v2-hero del Streamlit) ---------- */
+.v2-ph { margin: 0 0 6px; }
+.v2-ph h1 { font-family: var(--disp); font-weight: 600; font-size: 34px; line-height: 1.05; margin: 0 0 4px; padding: 0; color: var(--ink); letter-spacing: .1px; }
+.v2-ph p { margin: 0; color: var(--ink2); font-size: 15.5px; line-height: 1.6; max-width: 96ch; }
+.v2-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 16px 18px 14px; min-width: 0; }
+.v2-hero { background: var(--sup); border: 1px solid var(--linea); border-top: 4px solid var(--carbon); border-radius: 8px; padding: 18px 22px 14px; min-width: 0; }
+.v2-ch h3 { font-family: var(--disp); font-weight: 600; font-size: 20px; line-height: 1.2; margin: 0; padding: 0; color: var(--ink); }
+.v2-ch p { margin: 3px 0 0; color: var(--ink2); font-size: 14px; line-height: 1.6; max-width: 86ch; }
+.v2-hero-h h3 { font-size: 26px; }
+.v2-hero-h p { font-size: 15.5px; }
+.fila-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: start; margin-top: 16px; }
+.fila-1-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; margin-top: 16px; }
+.v2-fila-medida { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; margin-bottom: 14px; }
+.v2-fila-medida p { margin: 6px 0 0; font-size: 13.5px; color: var(--ink2); line-height: 1.6; max-width: 96ch; }
+
+/* ---------- indicadores (v2-kpis del Streamlit) ---------- */
+.v2-kpis { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 14px; }
+.v2-kpi { position: relative; background: var(--sup); border: 1px solid var(--linea); border-left: 4px solid var(--linea); border-radius: 8px; padding: 12px 15px 11px; min-width: 0; }
+.v2-kpi-t { font-size: 14px; color: var(--ink2); font-weight: 600; line-height: 1.25; padding-right: 18px; }
+.v2-kpi-v { font-family: var(--disp); font-weight: 600; font-size: 34px; line-height: 1.1; margin: 2px 0; color: var(--ink); overflow-wrap: anywhere; }
+.v2-kpi-v small { font-size: 16px; font-weight: 600; color: var(--ink2); }
+.v2-kpi-v.texto { font-size: 24px; line-height: 1.15; }
+.v2-kpi-v.largo { font-size: 27px; }
+.v2-kpi-n { font-size: 13.5px; color: var(--ink2); line-height: 1.3; }
+.v2-kpi.t-alerta { border-left-color: var(--alerta); }
+.v2-kpi.t-g { border-left-color: var(--g); }
+.v2-kpi.t-s { border-left-color: var(--s); }
+.v2-kpi.t-bien { border-left-color: var(--bien); }
+.v2-kpi.t-aviso { border-left-color: #e0a100; }
+.v2-kpi.t-marca { border-left-color: var(--marca); }
+.v2-kpis.compacto .v2-kpi { padding: 9px 13px 8px; }
+.v2-kpis.compacto .v2-kpi-v { font-size: 25px; }
+.v2-kpis.compacto .v2-kpi-v.texto { font-size: 19px; }
+.v2-kpis.compacto .v2-kpi-n { font-size: 13px; }
+.v2-ay {
+  position: absolute; top: 10px; right: 11px; width: 17px; height: 17px; border: 1px solid var(--linea); border-radius: 50%;
+  font-size: 11px; font-weight: 700; color: var(--ink3); text-align: center; line-height: 15px; background: var(--sup); cursor: help;
+}
+.v2-ay:hover, .v2-ay:focus { color: var(--ink); border-color: var(--ink3); outline: none; }
+.v2-ay::after {
+  content: attr(data-t); position: absolute; top: 22px; right: -6px; z-index: 60; width: 250px; max-width: 70vw;
+  padding: 8px 10px; background: var(--carbon); color: #fff; font-size: 12.5px; font-weight: 400; line-height: 1.45;
+  border-radius: 6px; text-align: left; opacity: 0; visibility: hidden; transition: opacity .15s;
+}
+.v2-ay:hover::after, .v2-ay:focus::after { opacity: 1; visibility: visible; }
+
+/* ---------- banda de prioridades (v2-banda del Streamlit) ---------- */
+.v2-banda { display: flex; gap: 8px; margin-top: 14px; }
+.v2-seg { display: grid; gap: 1px; border-radius: 6px; padding: 10px 12px 9px; color: #fff; min-width: 0; overflow: hidden; }
+.v2-seg-n { font-size: 13px; font-weight: 600; opacity: .95; }
+.v2-seg-v { font-family: var(--disp); font-weight: 600; font-size: 24px; line-height: 1.1; }
+.v2-seg-v small { font-size: 14px; font-weight: 600; opacity: .92; }
+.v2-seg-c { font-size: 13px; opacity: .96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- avisos (v2-aviso del Streamlit) ---------- */
+.v2-aviso {
+  display: flex; gap: 12px; align-items: flex-start; border: 1px solid transparent; border-left-width: 4px; border-radius: 6px;
+  padding: 11px 14px; margin-top: 14px; font-size: 14px; line-height: 1.55; background: var(--neutro-f); color: var(--ink);
+}
+.v2-aviso .ico {
+  flex: 0 0 auto; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2);
+  border: 1px solid var(--linea); background: var(--sup); border-radius: 4px; padding: 2px 7px; margin-top: 1px;
+}
+.v2-aviso div { max-width: 100ch; }
+.v2-aviso.a-info { background: var(--neutro-f); border-left-color: var(--carbon); }
+.v2-aviso.a-alerta { background: var(--alerta-f); border-left-color: var(--alerta); }
+.v2-aviso.a-alerta .ico { color: var(--alerta); border-color: var(--alerta); }
+.v2-aviso.a-limite, .v2-aviso.a-calidad { background: var(--aviso-f); border-left-color: #e0a100; }
+.v2-aviso.a-limite .ico, .v2-aviso.a-calidad .ico { color: var(--aviso); border-color: #e0a100; }
+.v2-aviso.a-bien { background: var(--bien-f); border-left-color: var(--bien); }
+.v2-aviso.a-bien .ico { color: var(--bien); border-color: var(--bien); }
+.v2-aviso.a-academico { background: var(--neutro-f); border-left-color: var(--marca); }
+
+/* ---------- etiquetas de estado (v2-tag del Streamlit) ---------- */
+.v2-tag { display: inline-block; border-radius: 4px; padding: 2px 8px; font-size: 12.5px; font-weight: 700; background: var(--neutro-f); color: var(--ink2); }
+.v2-tag.t-alerta { background: var(--alerta-f); color: var(--alerta); }
+.v2-tag.t-aviso { background: var(--aviso-f); color: var(--aviso); }
+.v2-tag.t-bien { background: var(--bien-f); color: var(--bien); }
+
+/* ---------- tableta y celular (mismos cortes que el Streamlit) ---------- */
+@media (max-width: 1080px) {
+  .v2-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fila-3-2, .fila-1-1, .v2-fila-medida, .split-panel { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 768px) {
+  .v2-ph h1 { font-size: 27px; }
+  .v2-ph p { font-size: 14.5px; }
+  .v2-card { padding: 13px 13px 11px; }
+  .v2-hero { padding: 14px 14px 12px; }
+  .v2-hero-h h3 { font-size: 21px; }
+  .v2-hero-h p { font-size: 14.5px; }
+  .v2-ch h3 { font-size: 18.5px; }
+  .v2-banda { flex-direction: column; }
+  .v2-seg { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; padding: 7px 13px 8px; }
+  .v2-seg-n { width: 100%; }
+  .v2-seg-v { font-size: 29px; }
+  .v2-aviso { flex-direction: column; gap: 5px; }
+  .v2-aviso .ico { align-self: flex-start; }
+  .v2-kpis { gap: 9px; }
+  .v2-kpi { padding: 10px 11px 9px; }
+  .v2-kpi-v { font-size: 27px; }
+  .v2-kpi-v.largo { font-size: 21px; }
+  .v2-kpi-v.largo small { font-size: 13px; }
+  .v2-kpi-v.texto { font-size: 19px; }
+  .v2-kpi-t { font-size: 13px; }
+  .v2-kpi-n { font-size: 12.5px; }
+}
 .vega-lite-figura { width: 100%; }
 .vega-lite-figura .vega-embed { width: 100%; }
 .vega-lite-figura svg { display: block; }
@@ -662,6 +770,9 @@ textarea.search-input {
 .v2-exp { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 0; }
 .v2-exp summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 15px; padding: 11px 15px; list-style-position: inside; }
 .v2-exp[open] summary { border-bottom: 1px solid var(--linea2); }
+.v2-exp-cuerpo { padding: 10px 15px 13px; font-size: 14px; color: var(--ink2); line-height: 1.6; }
+.v2-exp-cuerpo p { margin: 0 0 10px; max-width: 100ch; }
+.v2-exp-cuerpo p:last-child { margin-bottom: 0; }
 .mapa-tablas { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; padding: 12px 15px 15px; }
 .tabla-titulo { font-size: 15px; color: var(--ink); margin: 0 0 8px; }
 .tabla-alta { max-height: 380px; overflow: auto; }

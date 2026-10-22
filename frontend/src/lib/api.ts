@@ -93,10 +93,18 @@ export const api = {
       lista: { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number };
       por_prioridad: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number }>;
       por_severidad: Record<string, number>;
-      fuga: { clientes: number; perdida_esperada_mes: number; valor_en_riesgo_mes: number; por_nivel: Record<string, number> };
+      gravedad: Record<string, number>;
+      estado_en_lista: Record<string, number>;
+      por_zona: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number; gravedad: Record<string, number> }>;
+      por_clase: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number; gravedad: Record<string, number> }>;
+      por_grupo: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number; gravedad: Record<string, number> }>;
+      fuga: { clientes: number; perdida_esperada_mes: number; valor_en_riesgo_mes: number; consumo_alto_medio_kwh: number; por_nivel: Record<string, number> };
       cero_sostenido: number;
+      cero_sostenido_resumen: { clientes: number; consumo_referencia_kwh: number; valor_facturaba_antes_mes: number };
       otro_comercializador: number;
+      otro_comercializador_con_otro: number;
       mercado_no_regulado: number;
+      cortes_zona: Record<string, string>;
     }>("/api/data/panorama", { token }),
   dataset: (token: string | undefined, key: string, options: DatasetQuery = {}) => request<DatasetPage>(`/api/data/datasets/${encodeURIComponent(key)}${query({ limit: options.limit ?? 200, offset: options.offset ?? 0, search: options.search, niu: options.niu, filter: options.filters })}`, { token }),
   datasetCsv: (token: string | undefined, key: string, options: Pick<DatasetQuery, "search" | "filters"> = {}) =>

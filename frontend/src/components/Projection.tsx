@@ -12,7 +12,7 @@ import { Pie, md, useEsMovil } from "../charts/textos";
  * El modelo calcula 36 meses; el horizonte solo recorta lo que se muestra.
  */
 
-type Mensual = {
+export type Mensual = {
   periodo: string;
   tipo: string;
   real_gwh: number | null;
@@ -25,7 +25,7 @@ type Mensual = {
   zona_regional?: string;
 };
 
-type Anual = {
+export type Anual = {
   anio: number;
   total_gwh: number | null;
   meses_proyectados?: number;
@@ -44,7 +44,7 @@ function monthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-type Recorte = {
+export type Recorte = {
   mensual: Mensual[];
   anual: Anual[];
   fin: Date | null;
@@ -52,7 +52,7 @@ type Recorte = {
 };
 
 /** recortar_proyeccion(): un año anual solo se muestra completo si el horizonte llega a diciembre. */
-function recortarProyeccion(mensual: Mensual[], anual: Anual[], meses: number | null): Recorte {
+export function recortarProyeccion(mensual: Mensual[], anual: Anual[], meses: number | null): Recorte {
   const reales = mensual.filter((row) => row.tipo === "REAL").map((row) => row.periodo).sort();
   if (meses === null || !reales.length) return { mensual, anual, fin: null, fuera: [] };
   const [ultimoAnio, ultimoMes] = reales[reales.length - 1].slice(0, 7).split("-").map(Number);

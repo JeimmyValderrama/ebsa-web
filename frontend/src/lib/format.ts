@@ -87,6 +87,11 @@ export function mesCorto(value: unknown): string {
   return `${MESES_CORTOS[month - 1]} ${text.slice(0, 4)}`;
 }
 
+/** str.title() de Python: capitaliza la primera letra de cada palabra (para zonas y provincias). */
+export function tituloPropio(texto: string): string {
+  return texto.toLowerCase().replace(/(^|\s)(\p{L})/gu, (_coincidencia, espacio: string, letra: string) => espacio + letra.toUpperCase());
+}
+
 export function fechaCo(value: unknown): string {
   const text = String(value ?? "");
   if (!text || text === "None" || text === "null") return "—";

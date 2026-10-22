@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
-import { energia, fmtN, pesos } from "../lib/format";
+import { energia, fmtN, pesos, tituloPropio } from "../lib/format";
 import { usePresentation } from "../app/Presentation";
 import { VegaLite } from "../charts/VegaLite";
 import { COLOR_ZONA_SIN_ZONA, GRIS_FUERA, RAMPA_MAPA, ZONA_MAPA_COLOR } from "../charts/paleta";
@@ -84,11 +84,6 @@ function fmtMetrica(valor: number, unidad: string): string {
   return fmtN(valor) + " " + unidad;
 }
 
-/** str.title() de Python: capitaliza la primera letra de cada palabra. */
-function tituloPropio(texto: string): string {
-  return texto.toLowerCase().replace(/(^|\s)(\p{L})/gu, (_coincidencia, espacio: string, letra: string) => espacio + letra.toUpperCase());
-}
-
 /** CSV en español como csv_es: separador ';' y coma decimal, con BOM para que abra con tildes. */
 function csvEs(columnas: string[], filas: Array<Record<string, unknown>>): string {
   const escapar = (valor: unknown): string => {
@@ -109,16 +104,28 @@ function fmtCelda(valor: unknown, columna: string): string {
   return fmtN(n);
 }
 
+/** Lo que el mapa le entrega a la página para la tarjeta "Los diez municipios con más" (st.columns([3, 2])). */
+export interface InfoMapa {
+  filas: Array<{ municipio: string; valor: number; valor_total: number; valor_texto: string }>;
+  enProporcion: boolean;
+  metNombre: string;
+  unidad: string;
+  municipios: number;
+}
+
 export function MapaBoyaca({
   token,
   modo = "comercial",
   altura = 520,
   corte,
+  onCalculo,
 }: {
   token?: string | null;
   modo?: "comercial" | "tecnico";
   altura?: number;
   corte?: string | null;
+  /** Devuelve el mapa ya calculado (la página lo usa para la tarjeta del top 10, que va al lado). */
+  onCalculo?: (info: InfoMapa | null) => void;
 }) {
   const { measure } = usePresentation();
   const movil = useEsMovil();
@@ -205,6 +212,27 @@ export function MapaBoyaca({
     });
     return { d: conValor, enProporcion, unidad, unidadTotal, totalVal, puedeProporcion, metNombre: metrica.nombre, metCol: metrica.col };
   }, [comparar, filas, metrica, zonasSel]);
+
+  // La tarjeta "Los diez municipios con más" va al lado del mapa (mismas columnas 3:2 que el Streamlit);
+  // el mapa le pasa su cálculo para que use exactamente la cifra y el modo elegidos aquí.
+  useEffect(() => {
+    onCalculo?.(
+      calculo
+        ? {
+            filas: calculo.d.map((fila) => ({
+              municipio: String(fila.municipio ?? ""),
+              valor: fila.valor,
+              valor_total: fila.valor_total,
+              valor_texto: fila.valor_texto,
+            })),
+            enProporcion: calculo.enProporcion,
+            metNombre: calculo.metNombre,
+            unidad: calculo.unidad,
+            municipios: calculo.d.length,
+          }
+        : null,
+    );
+  }, [calculo, onCalculo]);
 
   const spec = useMemo(() => {
     if (!calculo || !geometrias) return null;

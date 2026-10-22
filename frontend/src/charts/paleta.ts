@@ -39,3 +39,22 @@ export const COLOR_ZONA_SIN_ZONA = "#b9bcb3";
 
 /** Azul de los municipios sin dato en el mapa de caídas de la versión anterior. */
 export const GRIS_ANTIGUA = "#9aa0a6";
+
+/** Gravedad simple que se muestra a negocio (gravedad de limpiar_lista; "ANTIGUA" viene de una caída sostenida). */
+export const SEVERIDAD_SIMPLE: Record<string, string> = {
+  CRITICA: "Grave",
+  FUERTE: "Fuerte",
+  MODERADA: "Moderada",
+  ANTIGUA: "Antigua (lleva meses así)",
+};
+
+/** Color de cada gravedad, con las dos formas de nombrarla (COLOR_GRAVEDAD del Streamlit). */
+export const COLOR_GRAVEDAD: Record<string, string> = {
+  Grave: NARANJA,
+  Fuerte: C.naranja_claro,
+  Moderada: AZUL,
+  "Antigua (lleva meses así)": GRIS_ANTIGUA,
+  CRITICA: NARANJA,
+  FUERTE: C.naranja_claro,
+  MODERADA: AZUL,
+};

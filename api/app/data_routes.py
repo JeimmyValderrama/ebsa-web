@@ -164,9 +164,29 @@ def dataset_count(db: Session, key: str) -> int:
     return int(db.scalar(select(func.count()).select_from(DatasetRecord).where(DatasetRecord.dataset_key == key)) or 0)
 
 
+def _acumular(bloque: dict[str, Any], clave: str, perdida: Any, valor: Any, gravedad: str) -> None:
+    """Suma clientes, kWh y pesos de un grupo, con el conteo por gravedad (para las barras apiladas)."""
+    registro = bloque.setdefault(clave, {"clientes": 0, "perdida_kwh_mes": 0.0, "valor_riesgo_mes": 0.0, "gravedad": {}})
+    registro["clientes"] += 1
+    registro["perdida_kwh_mes"] += float(perdida or 0)
+    registro["valor_riesgo_mes"] += float(valor or 0)
+    registro["gravedad"][gravedad] = registro["gravedad"].get(gravedad, 0) + 1
+
+
+def _suma_payload(db: Session, key: str, campo: str) -> float:
+    """Suma numérica de un campo del payload de un dataset (los payloads vienen como JSON)."""
+    suma = 0.0
+    for payload in db.execute(select(DatasetRecord.payload).where(DatasetRecord.dataset_key == key)).all():
+        try:
+            suma += float((payload[0] or {}).get(campo) or 0)
+        except (TypeError, ValueError):
+            continue
+    return suma
+
+
 @router.get("/panorama")
 def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
-    """KPIs agregados del panorama comercial: lista, prioridades, severidad y fuga."""
+    """KPIs agregados del panorama comercial: lista, prioridades, gravedad de negocio, zonas, clases, fuga y cortes."""
     try:
         operational = OperationalManagement
         churn = ClientChurnRisk
@@ -178,16 +198,88 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
             ).all()
         }
         por_severidad = {str(severidad): int(clientes) for severidad, clientes in db.execute(select(operational.severidad, func.count()).group_by(operational.severidad)).all()}
+
+        # Una sola pasada por la lista: la gravedad que ve negocio (una caída sostenida es "antigua"),
+        # las entradas del ciclo y los agregados por zona regional, clase de servicio y tamaño (limpiar_lista + gravedad).
+        gravedad: dict[str, int] = {}
+        estado: dict[str, int] = {}
+        por_zona: dict[str, Any] = {}
+        por_clase: dict[str, Any] = {}
+        por_grupo: dict[str, Any] = {}
+        for severidad, estado_en_lista, perdida, valor, payload in db.execute(
+            select(operational.severidad, operational.estado_en_lista, operational.perdida_kwh_mes, operational.valor_riesgo_mes, operational.payload)
+        ).all():
+            p = payload or {}
+            g = "ANTIGUA" if str(p.get("veredicto") or "") == "CAIDA_SOSTENIDA" else str(severidad or "—")
+            gravedad[g] = gravedad.get(g, 0) + 1
+            clave_estado = str(estado_en_lista or "—")
+            estado[clave_estado] = estado.get(clave_estado, 0) + 1
+            _acumular(por_zona, str(p.get("zona_regional") or "SIN ZONA"), perdida, valor, g)
+            _acumular(por_clase, str(p.get("clase_servicio_nombre") or p.get("clase_servicio") or "SIN CLASE"), perdida, valor, g)
+            _acumular(por_grupo, str(p.get("grupo_consumo") or p.get("tramo_consumo") or "SIN GRUPO"), perdida, valor, g)
+
         fuga = db.execute(select(func.count(), func.sum(churn.valor_esperado_perdida_mes), func.sum(churn.valor_en_riesgo_mes)).where(churn.nivel_riesgo.in_(("ALTO", "MEDIO")))).one()
         fuga_niveles = {str(nivel): int(clientes) for nivel, clientes in db.execute(select(churn.nivel_riesgo, func.count()).group_by(churn.nivel_riesgo)).all()}
+        # Energía que consumen hoy los clientes con probabilidad de fuga alta o media (promedio de 6 meses).
+        fuga_consumo_kwh = 0.0
+        for payload in db.execute(select(churn.payload).where(churn.nivel_riesgo.in_(("ALTO", "MEDIO")))).all():
+            try:
+                fuga_consumo_kwh += float((payload[0] or {}).get("consumo_prom_6m_kwh") or 0)
+            except (TypeError, ValueError):
+                continue
+
+        # Clientes sin consumo: cuánto consumían y cuánto facturaban antes de quedarse en cero.
+        cero_filas = db.scalars(select(DatasetRecord).where(DatasetRecord.dataset_key == "zero_sustained")).all()
+        cero_kwh, cero_valor = 0.0, 0.0
+        for fila in cero_filas:
+            p = fila.payload or {}
+            try:
+                cero_kwh += float(p.get("consumo_referencia_kwh") or p.get("consumo_anterior_kwh") or 0)
+            except (TypeError, ValueError):
+                pass
+            try:
+                cero_valor += float(p.get("valor_facturaba_antes_mes") or 0)
+            except (TypeError, ValueError):
+                pass
+
+        # Ya atendidos por otro comercializador: los que el archivo de la empresa marca como "CON OTRO...".
+        con_otro = 0
+        for payload in db.execute(select(DatasetRecord.payload).where(DatasetRecord.dataset_key == "churn_other_supplier")).all():
+            if str((payload[0] or {}).get("estado") or "").startswith("CON OTRO"):
+                con_otro += 1
+
+        # Corte facturado de cada zona (el rural va un trimestre atrás).
+        cortes_zona = {
+            str((payload[0] or {}).get("zona") or "").upper(): str((payload[0] or {}).get("fecha_corte") or "")[:7]
+            for payload in db.execute(select(DatasetRecord.payload).where(DatasetRecord.dataset_key == "zone_cuts")).all()
+        }
+
         return {
             "lista": {"clientes": int(total[0] or 0), "perdida_kwh_mes": float(total[1] or 0), "valor_riesgo_mes": float(total[2] or 0)},
             "por_prioridad": por_prioridad,
             "por_severidad": por_severidad,
-            "fuga": {"clientes": int(fuga[0] or 0), "perdida_esperada_mes": float(fuga[1] or 0), "valor_en_riesgo_mes": float(fuga[2] or 0), "por_nivel": fuga_niveles},
+            "gravedad": gravedad,
+            "estado_en_lista": estado,
+            "por_zona": por_zona,
+            "por_clase": por_clase,
+            "por_grupo": por_grupo,
+            "fuga": {
+                "clientes": int(fuga[0] or 0),
+                "perdida_esperada_mes": float(fuga[1] or 0),
+                "valor_en_riesgo_mes": float(fuga[2] or 0),
+                "consumo_alto_medio_kwh": fuga_consumo_kwh,
+                "por_nivel": fuga_niveles,
+            },
             "cero_sostenido": dataset_count(db, "zero_sustained"),
+            "cero_sostenido_resumen": {
+                "clientes": len(cero_filas),
+                "consumo_referencia_kwh": cero_kwh,
+                "valor_facturaba_antes_mes": cero_valor,
+            },
             "otro_comercializador": dataset_count(db, "churn_other_supplier"),
+            "otro_comercializador_con_otro": con_otro,
             "mercado_no_regulado": dataset_count(db, "churn_non_regulated"),
+            "cortes_zona": cortes_zona,
         }
     except OperationalError as exc:
         raise schema_error(exc) from exc

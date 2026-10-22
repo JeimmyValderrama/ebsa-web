@@ -83,25 +83,27 @@ export function usePresentation(): PresentationValue {
   return value;
 }
 
-/** Botón Consumo / Facturación. Cambia cifras, unidades y títulos de toda la página. */
+/** Botón Consumo / Facturación (selector_medida). Cambia cifras, unidades y títulos de toda la página. */
 export function MeasureSelector({ compact = false }: { compact?: boolean }) {
   const { measure, setMeasure } = usePresentation();
   return (
-    <div className="segmented-control" role="radiogroup" aria-label={compact ? "Medir en" : "Cómo medir las cifras"}>
-      {!compact && <span className="segmented-label">Cómo medir las cifras</span>}
-      {MEDIDAS.map((option) => (
-        <button
-          key={option}
-          type="button"
-          role="radio"
-          aria-checked={measure === option}
-          className={measure === option ? "segmented-option segmented-active" : "segmented-option"}
-          onClick={() => setMeasure(option)}
-          title="Consumo: energía en kWh, MWh o GWh. Facturación: pesos por mes con la tarifa real de cada cliente. Son los mismos clientes y las mismas listas; cambia la unidad con que se miden."
-        >
-          {option}
-        </button>
-      ))}
+    <div className="campo">
+      {!compact && <span>Cómo medir las cifras</span>}
+      <div className="v2-radio" role="radiogroup" aria-label={compact ? "Medir en" : "Cómo medir las cifras"}>
+        {MEDIDAS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={measure === option}
+            className={measure === option ? "activo" : ""}
+            title="Consumo: energía en kWh, MWh o GWh (lo que usa EBSA en su operación). Facturación: pesos por mes con la tarifa real de cada cliente (impacto comercial). Son los mismos clientes y las mismas listas; cambia la unidad con que se miden."
+            onClick={() => setMeasure(option)}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
