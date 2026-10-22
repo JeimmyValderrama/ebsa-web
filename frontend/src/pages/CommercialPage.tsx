@@ -8,7 +8,7 @@ import { ListaCaida } from "../components/ListaCaida";
 import { SinConsumo } from "../components/SinConsumo";
 import { Fuga } from "../components/Fuga";
 import { Salidas } from "../components/Salidas";
-import { ProjectionView, recortarProyeccion, type Anual, type Mensual } from "../components/Projection";
+import { Proyeccion, recortarProyeccion, type Anual, type Mensual } from "../components/Projection";
 import { Aviso, Banda, ComoLeer, Kpis, Tarjeta, TituloPagina, type ItemKpi } from "../components/v2/ui";
 import { NOTA_CERO_SOSTENIDO, NOTA_REGLAS_LISTA, QUE_ES_ESTO, periodoTexto } from "../components/v2/textos";
 import { useCorte } from "../lib/useCorte";
@@ -79,7 +79,7 @@ export default function CommercialPage() {
       {section === "sin_consumo" && <SinConsumo token={idToken} />}
       {section === "fuga" && <Fuga token={idToken} />}
       {section === "salidas" && <Salidas token={idToken} />}
-      {section === "proyeccion" && <ProjectionView token={idToken} />}
+      {section === "proyeccion" && <Proyeccion token={idToken} />}
       {section === "descargas" && <DownloadHub token={idToken} />}
     </div>
   );

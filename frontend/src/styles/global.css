@@ -798,6 +798,18 @@ textarea.search-input {
   padding: 5px 14px; font-size: 13.5px; color: var(--ink2);
 }
 .v2-radio button.activo { background: var(--sup); border-color: var(--linea); color: var(--ink); font-weight: 700; }
+/* Radio con etiquetas largas (escenarios de la proyección): una opción debajo de otra. */
+.v2-radio.etiquetas { display: grid; gap: 6px; padding: 0; background: transparent; }
+.v2-radio.etiquetas button { text-align: left; background: var(--sup); border: 1px solid var(--linea); border-radius: 6px; padding: 8px 12px; line-height: 1.45; font-weight: 400; }
+.v2-radio.etiquetas button.activo { background: var(--neutro-f); border-color: var(--carbon); color: var(--ink); font-weight: 600; }
+
+/* ---------- proyección: selectores (tarjeta proy_sel) y descargas (v2fila_proy_dl) ---------- */
+.proy-sel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; align-items: start; }
+.proy-campo { display: grid; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--ink); min-width: 0; }
+.proy-campo .filter-select { width: 100%; font-weight: 400; }
+.proy-campo .v2-radio { justify-self: start; }
+.proy-descargas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.proy-descargas .ghost-button { width: 100%; }
 .v2-exp { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 0; }
 .v2-exp summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 15px; padding: 11px 15px; list-style-position: inside; }
 .v2-exp[open] summary { border-bottom: 1px solid var(--linea2); }
@@ -988,6 +1000,7 @@ textarea.search-input {
   .metric-value { font-size: 27px; }
   .metric-card { padding: 10px 11px 9px; }
   .year-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .proy-sel, .proy-descargas { grid-template-columns: minmax(0, 1fr); }
   .catalog-grid { grid-template-columns: repeat(2, 1fr); }
   .bar-row { grid-template-columns: 90px 1fr 52px; }
   .hero-orbit { right: -90px; opacity: .35; }

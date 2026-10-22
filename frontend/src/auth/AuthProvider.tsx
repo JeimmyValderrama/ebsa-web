@@ -131,3 +131,11 @@ export function useAuth(): AuthContextValue {
   if (!value) throw new Error("useAuth debe usarse dentro de AuthProvider");
   return value;
 }
+
+/**
+ * useAuth() sin exigir el proveedor: devuelve null cuando no hay sesión montada (pruebas de render y
+ * componentes aislados). El rol se interpreta con cuidado: sin sesión se asume el menos privilegiado.
+ */
+export function useAuthOptional(): AuthContextValue | null {
+  return useContext(AuthContext);
+}

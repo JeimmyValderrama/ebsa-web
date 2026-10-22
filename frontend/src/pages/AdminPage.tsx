@@ -5,7 +5,7 @@ import { api } from "../lib/api";
 import { DatasetCatalog, DatasetTable, DatasetView, MiniBars, type Row } from "../components/DataExplorer";
 import { MapaBoyaca } from "../components/MapaBoyaca";
 import { useCorte } from "../lib/useCorte";
-import { ProjectionView } from "../components/Projection";
+import { Proyeccion } from "../components/Projection";
 import { Sensitive, usePresentation } from "../app/Presentation";
 import { useSectionNav } from "../app/SectionNav";
 import { fechaCo, fmtN, limpiarNiu, mesCorto } from "../lib/format";
@@ -171,14 +171,7 @@ export default function AdminPage() {
           <DatasetView token={idToken} datasetKey="model_usage" title="Uso de modelos por fecha de corte" />
         </div>
       )}
-      {tab === "proyeccion" && (
-        <div className="stack">
-          <ProjectionView token={idToken} />
-          <DatasetView token={idToken} datasetKey="projection_backtest" title="Error de backtest por zona" description="WAPE y sesgo de la proyección anual contra lo realmente consumido." />
-          <DatasetView token={idToken} datasetKey="projection_model_comparison" title="Comparación de modelos de proyección" />
-          <DatasetView token={idToken} datasetKey="projection_comparison" title="Comparación de escenarios" />
-        </div>
-      )}
+      {tab === "proyeccion" && <Proyeccion token={idToken} />}
       {tab === "seguimiento" && (
         <div className="stack">
           <DatasetView token={idToken} datasetKey="followup_clientes" title="Seguimiento por cliente" description="Clientes en lista, meses consecutivos y veces que han entrado en los últimos 12 meses." prioritarias={["NIU", "meses_en_lista", "veces_en_lista_12m", "valor_riesgo_mes"]} />

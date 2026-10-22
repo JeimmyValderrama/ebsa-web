@@ -73,8 +73,8 @@ export interface ItemKpi {
   texto?: boolean;
 }
 
-/** ui.kpis(): fila de indicadores. columnas = cuántos por fila; compacto = fila pequeña. */
-export function Kpis({ items, columnas, compacto }: { items: ItemKpi[]; columnas?: number; compacto?: boolean }) {
+/** ui.kpis(): fila de indicadores. columnas = cuántos por fila; compacto = fila pequeña (los nulos no se muestran). */
+export function Kpis({ items, columnas, compacto }: { items: Array<ItemKpi | null | undefined>; columnas?: number; compacto?: boolean }) {
   const visibles = items.filter((item): item is ItemKpi => Boolean(item));
   if (!visibles.length) return null;
   const cols = columnas || Math.min(4, visibles.length);
@@ -95,6 +95,48 @@ export function Kpis({ items, columnas, compacto }: { items: ItemKpi[]; columnas
           {item.nota ? <div className="v2-kpi-n">{md(item.nota)}</div> : null}
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * ui.tabla_simple(): tabla que ya viene con el texto listo (no se le cambia el formato), como st.dataframe.
+ * `formato` se usa cuando la celda sigue siendo número (formato de las tablas cortas con tabla()).
+ */
+export function TablaSimple({
+  columnas,
+  filas,
+  formato,
+  alto,
+}: {
+  columnas: string[];
+  filas: Array<Record<string, unknown>>;
+  formato?: (valor: unknown, columna: string) => string;
+  alto?: number;
+}) {
+  if (!filas.length) return null;
+  return (
+    <div className="table-card" style={alto ? { maxHeight: `${alto}px`, overflow: "auto" } : undefined}>
+      <table>
+        <thead>
+          <tr>
+            {columnas.map((columna) => (
+              <th key={columna}>{columna}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((fila, index) => (
+            <tr key={index}>
+              {columnas.map((columna) => {
+                const celda = fila[columna];
+                const texto = formato ? formato(celda, columna) : celda === null || celda === undefined ? "" : String(celda);
+                return <td key={columna}>{texto}</td>;
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
