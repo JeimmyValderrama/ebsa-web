@@ -798,7 +798,7 @@ textarea.search-input {
 /* Descargas por grupo: selector de archivo y su botón, apilados como st.selectbox + st.download_button. */
 .dl-sel { display: grid; gap: 10px; justify-items: start; max-width: 640px; }
 .dl-sel .filter-select { width: 100%; max-width: 560px; }
-.v2-exp { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 0; }
+.v2-exp { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 0; min-width: 0; }
 .v2-exp summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 15px; padding: 11px 15px; list-style-position: inside; }
 .v2-exp[open] summary { border-bottom: 1px solid var(--linea2); }
 .v2-exp-cuerpo { padding: 10px 15px 13px; font-size: 14px; color: var(--ink2); line-height: 1.6; }
