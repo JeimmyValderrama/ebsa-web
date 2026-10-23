@@ -63,6 +63,26 @@ export const GRUPO_CONSUMO_DESCRIPCION: Record<string, string> = {
   "Sin historia suficiente": "Menos de 6 meses válidos en el último año (no se pronostica)",
 };
 
+/** Código de perfil del pronóstico a su nombre de negocio (GRUPO_CONSUMO_NOMBRE del glosario). */
+export const GRUPO_CONSUMO_NOMBRE: Record<string, string> = {
+  P0_INTERMITENTE: "Intermitente",
+  P1_REGULAR: "Pequeño",
+  P2_ALTO: "Mediano",
+  P3_GRANDE: "Grande",
+  P4_INSUFICIENTE: "Sin historia suficiente",
+};
+
+/** Qué significa cada veredicto del estudio de caída (VEREDICTO_TEXTO del Streamlit). */
+export const VEREDICTO_TEXTO: Record<string, string> = {
+  CAIDA_CONFIRMADA: "Cae frente al periodo anterior Y frente al mismo periodo del año pasado.",
+  CAIDA_SOSTENIDA: "Ya venía bajo frente al año pasado y sigue ahí.",
+  CAIDA_RECIENTE: "Cae frente al periodo anterior, pero no frente al año pasado.",
+  SIN_CAIDA: "No cumple el criterio de caída de su segmento.",
+  SIN_BASE_COMPARABLE: "No hay periodo anterior con dato suficiente.",
+  NO_APLICA: "Segmento sin consumo o sin datos: no se evalúa.",
+  NO_EVALUADO: "No alcanzó a evaluarse en la ventana.",
+};
+
 export const AYUDA_MUNICIPIO = "Si hay una zona regional elegida, aquí solo aparecen los municipios de esa zona.";
 export const AYUDA_ZONA_REGIONAL = "Agrupa el ciclo urbano, el rural y los seccionales de una misma dirección regional";
 

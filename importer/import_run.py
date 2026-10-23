@@ -104,6 +104,8 @@ def forecast_records(row: dict[str, Any], run_id: int) -> list[dict[str, Any]]:
 
     No se guarda el JSON de la fila fuente: cada fila derretida ya lleva sus columnas
     tipadas, y el original repite las 34 columnas seis veces (≈6 GB sin aportar nada).
+    El payload se queda solo con el modelo elegido por horizonte, que la ficha muestra
+    en la tabla del pronóstico a 6 meses.
     """
     niu = text(value(row, "NIU", "niu"))
     corte = date_value(value(row, "fecha_corte"))
@@ -113,6 +115,7 @@ def forecast_records(row: dict[str, Any], run_id: int) -> list[dict[str, Any]]:
         consumo = number(value(row, f"pred_{horizonte}m_kwh"))
         if periodo is None and consumo is None:
             continue
+        modelo = text(value(row, f"modelo_{horizonte}m"))
         records.append({
             "data_run_id": run_id,
             "niu": niu,
@@ -121,6 +124,7 @@ def forecast_records(row: dict[str, Any], run_id: int) -> list[dict[str, Any]]:
             "periodo_pronosticado": periodo,
             "consumo_pronosticado_kwh": consumo,
             "grupo_consumo": text(value(row, "grupo_consumo", "perfil")),
+            "payload": {"modelo": modelo} if modelo else None,
         })
     return records
 

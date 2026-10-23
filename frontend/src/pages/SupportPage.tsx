@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
-import { api, type DatasetPage } from "../lib/api";
+import { api } from "../lib/api";
 import { DatasetView } from "../components/DataExplorer";
 import { Sensitive } from "../app/Presentation";
 import { useSectionNav } from "../app/SectionNav";
-import { energia, fechaCo, fmtN, limpiarNiu, mesCorto, pesos, queRevisar } from "../lib/format";
+import { fechaCo, fmtN, limpiarNiu, queRevisar } from "../lib/format";
+import { FichaCliente } from "../components/v2/FichaCliente";
 
 const sections = [
   ["cliente", "Consultar un cliente"],
@@ -33,54 +34,6 @@ const GRUPOS: Array<{ nombre: string; items: Array<{ clave: Section; etiqueta: s
     ],
   },
 ];
-
-type Ficha = {
-  cliente: Record<string, unknown> | null;
-  operativa: Record<string, unknown> | null;
-  caida: Record<string, unknown> | null;
-  fuga: Record<string, unknown> | null;
-  ubicacion: Record<string, unknown> | null;
-  consumo: Array<{ periodo: string; consumo_kwh: number | null }>;
-  pronostico: Array<{ horizonte: number | null; periodo_pronosticado: string | null; consumo_pronosticado_kwh: number | null }>;
-};
-
-function Item({ label, value }: { label: string; value: unknown }) {
-  return (
-    <div className="ficha-item">
-      <span>{label}</span>
-      <b>{value === null || value === undefined || value === "" ? "—" : String(value)}</b>
-    </div>
-  );
-}
-
-function ConsumoChart({ puntos }: { puntos: Array<{ periodo: string; valor: number }> }) {
-  if (!puntos.length) return <div className="empty-state">Este cliente no tiene serie de consumo importada (la serie completa se carga en la importación de producción).</div>;
-  const width = 720;
-  const height = 200;
-  const padding = 28;
-  const max = Math.max(1, ...puntos.map((punto) => punto.valor));
-  const path = puntos
-    .map((punto, index) => {
-      const x = padding + (index / Math.max(1, puntos.length - 1)) * (width - padding * 2);
-      const y = height - padding - (punto.valor / max) * (height - padding * 2);
-      return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <div className="chart-card">
-      <svg viewBox={`0 0 ${width} ${height}`} className="line-chart" role="img" aria-label="Consumo mensual">
-        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} className="chart-axis" />
-        <path d={path} className="chart-line chart-real" />
-      </svg>
-      <div className="chart-axis-labels">
-        <span>
-          {mesCorto(puntos[0].periodo)} · máximo {energia(max)}
-        </span>
-        <span>{mesCorto(puntos[puntos.length - 1].periodo)}</span>
-      </div>
-    </div>
-  );
-}
 
 export default function SupportPage() {
   const { idToken } = useAuth();
@@ -123,52 +76,10 @@ export default function SupportPage() {
 function ClientLookup({ token, initialNiu }: { token?: string | null; initialNiu: string }) {
   const [busqueda, setBusqueda] = useState(initialNiu);
   const [niu, setNiu] = useState(initialNiu);
-  const [ficha, setFicha] = useState<Ficha | null>(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialNiu) setBusqueda(initialNiu);
   }, [initialNiu]);
-
-  useEffect(() => {
-    if (!niu) {
-      setFicha(null);
-      return;
-    }
-    let cancelled = false;
-    setCargando(true);
-    const soloItem = (pagina: DatasetPage) => pagina.items[0]?.payload ?? null;
-    Promise.all([
-      api.client(token ?? undefined, niu).catch(() => null),
-      api.dataset(token ?? undefined, "operational", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "drop_analysis", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "churn_scores", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "locations", { niu, limit: 1 }).catch(() => null),
-      api.consumption(token ?? undefined, niu).catch(() => []),
-      api.forecast(token ?? undefined, niu).catch(() => []),
-    ])
-      .then(([cliente, operativa, caida, fuga, ubicacion, consumo, pronostico]) => {
-        if (cancelled) return;
-        setFicha({ cliente, operativa: soloItem(operativa as DatasetPage), caida: soloItem(caida as DatasetPage), fuga: soloItem(fuga as DatasetPage), ubicacion: soloItem(ubicacion as DatasetPage), consumo, pronostico });
-        setError(null);
-      })
-      .catch((cause: unknown) => {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "No fue posible consultar el cliente.");
-      })
-      .finally(() => {
-        if (!cancelled) setCargando(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [niu, token]);
-
-  const serieConsumo = useMemo(
-    () => (ficha?.consumo ?? []).filter((row) => row.consumo_kwh !== null).slice(-18).map((row) => ({ periodo: row.periodo, valor: Number(row.consumo_kwh) })),
-    [ficha],
-  );
-  const sugerencia = useMemo(() => (ficha?.operativa ? queRevisar(ficha.operativa) : ""), [ficha]);
 
   return (
     <section className="data-module">
@@ -193,82 +104,7 @@ function ClientLookup({ token, initialNiu }: { token?: string | null; initialNiu
         </button>
       </form>
 
-      {cargando && <div className="empty-state">Consultando el corte vigente…</div>}
-      {error && <div className="empty-state">{error}</div>}
-
-      {ficha && !cargando && (
-        <>
-          <div className="ficha-grid">
-            <div className="ficha-item">
-              <span>NIU</span>
-              <b>
-                <Sensitive value={niu} />
-              </b>
-            </div>
-            <Item label="Clase de servicio" value={ficha.cliente?.clase_servicio_nombre ?? ficha.operativa?.clase_servicio_nombre} />
-            <Item label="Grupo de consumo" value={ficha.cliente?.grupo_consumo ?? ficha.operativa?.grupo_consumo} />
-            <Item label="Zona regional" value={ficha.cliente?.zona_regional ?? ficha.operativa?.zona_regional} />
-            <Item label="Ciclo" value={ficha.cliente?.ciclo_etiqueta ?? ficha.operativa?.ciclo_etiqueta} />
-            <div className="ficha-item">
-              <span>Municipio</span>
-              <b>{String(ficha.ubicacion?.municipio ?? "—")}</b>
-            </div>
-            <div className="ficha-item">
-              <span>Dirección</span>
-              <b>
-                <Sensitive value={ficha.ubicacion?.direccion} />
-              </b>
-            </div>
-            <Item label="Gravedad de la caída" value={ficha.caida?.severidad ?? ficha.operativa?.gravedad} />
-            <Item label="Veredicto" value={ficha.caida?.veredicto} />
-            <Item label="Trayectoria" value={ficha.operativa?.trayectoria} />
-            <Item label="Prioridad de gestión" value={ficha.operativa?.prioridad_gestion} />
-            <Item label="Riesgo de fuga" value={ficha.fuga?.nivel_riesgo} />
-            <Item label="Pérdida esperada ($/mes)" value={ficha.fuga?.valor_esperado_perdida_mes ? pesos(Number(ficha.fuga.valor_esperado_perdida_mes)) : "—"} />
-          </div>
-
-          {sugerencia && (
-            <div className="ficha-note">
-              <strong>Qué revisar:</strong> {sugerencia}
-            </div>
-          )}
-
-          <h3>Consumo mensual (últimos 18 meses)</h3>
-          <ConsumoChart puntos={serieConsumo} />
-
-          <h3>Pronóstico de 6 meses</h3>
-          {ficha.pronostico.length ? (
-            <div className="table-card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Horizonte</th>
-                    <th>Periodo</th>
-                    <th>Consumo esperado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ficha.pronostico.map((row) => (
-                    <tr key={String(row.horizonte)}>
-                      <td>{fmtN(row.horizonte)}</td>
-                      <td>{mesCorto(row.periodo_pronosticado)}</td>
-                      <td>{energia(row.consumo_pronosticado_kwh)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="empty-state">Sin pronóstico importado para este cliente en el corte actual.</div>
-          )}
-
-          {(ficha.caida || ficha.operativa) && (
-            <p className="quiet-note">
-              Última actualización del estudio: {fechaCo(ficha.caida?.fecha_corte ?? ficha.operativa?.fecha_corte)}. Los datos corresponden al corte importado más reciente.
-            </p>
-          )}
-        </>
-      )}
+      {niu ? <FichaCliente token={token} niu={niu} /> : null}
     </section>
   );
 }

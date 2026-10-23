@@ -246,8 +246,8 @@ export const api = {
   summary: (token?: string) => request<{ latest_run: { period: string; rows_imported: number; completed_at?: string } | null; counts: Record<string, number> }>("/api/data/summary", { token }),
   risks: (token: string | undefined, limit = 200, offset = 0, severity = "", prioridad = "") => request<{ items: Array<Record<string, unknown>>; limit: number; offset: number; total: number }>(`/api/data/risks${query({ limit, offset, severity, prioridad })}`, { token }),
   client: (token: string | undefined, niu: string) => request<Record<string, any>>(`/api/data/clients/${encodeURIComponent(niu)}`, { token }),
-  consumption: (token: string | undefined, niu: string) => request<Array<{ periodo: string; consumo_kwh: number | null; estado_mes?: string | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/consumption`, { token }),
-  forecast: (token: string | undefined, niu: string) => request<Array<{ horizonte: number | null; periodo_pronosticado: string | null; consumo_pronosticado_kwh: number | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/forecast`, { token }),
+  consumption: (token: string | undefined, niu: string) => request<Array<{ periodo: string; consumo_kwh: number | null; estado_mes?: string | null; es_rural?: boolean | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/consumption`, { token }),
+  forecast: (token: string | undefined, niu: string) => request<Array<{ horizonte: number | null; periodo_pronosticado: string | null; consumo_pronosticado_kwh: number | null; grupo_consumo?: string | null; fecha_corte?: string | null; modelo?: string | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/forecast`, { token }),
   locations: (token: string | undefined, limit = 5000) => request<Array<Record<string, unknown>>>(`/api/data/locations${query({ limit })}`, { token }),
   catalog: (token: string | undefined) => request<Array<{ dataset_key: string; rows: number }>>("/api/data/datasets/catalog", { token }),
   panorama: (token: string | undefined) =>

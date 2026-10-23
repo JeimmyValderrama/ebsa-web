@@ -120,7 +120,7 @@ def client_consumption(niu: str, db: Session = Depends(get_db), _: dict[str, Any
 @router.get("/clients/{niu}/forecast")
 def client_forecast(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> list[dict[str, Any]]:
     rows = db.scalars(select(ClientForecast).where(ClientForecast.niu == niu).order_by(ClientForecast.periodo_pronosticado.asc()).limit(12)).all()
-    return [{"horizonte": row.horizonte, "periodo_pronosticado": row.periodo_pronosticado.isoformat() if row.periodo_pronosticado else None, "consumo_pronosticado_kwh": float(row.consumo_pronosticado_kwh) if row.consumo_pronosticado_kwh is not None else None} for row in rows]
+    return [{"horizonte": row.horizonte, "periodo_pronosticado": row.periodo_pronosticado.isoformat() if row.periodo_pronosticado else None, "consumo_pronosticado_kwh": float(row.consumo_pronosticado_kwh) if row.consumo_pronosticado_kwh is not None else None, "grupo_consumo": row.grupo_consumo, "fecha_corte": row.fecha_corte.isoformat() if row.fecha_corte else None, "modelo": (row.payload or {}).get("modelo")} for row in rows]
 
 
 @router.get("/locations")
