@@ -220,25 +220,6 @@ const REN_TECNICA: Array<[string, string]> = [
   ["puntos_anio2", "Puntos 2 años"],
 ];
 
-const REN_CANDIDATOS: Record<string, string> = {
-  modelo: "Modelo",
-  wape_anio1_pct: "Error 1 año (%)",
-  wape_anio2_pct: "Error 2 años (%)",
-  sesgo_anio1_pct: "Sesgo 1 año (%)",
-  sesgo_anio2_pct: "Sesgo 2 años (%)",
-  cobertura_banda80_pct: "Cobertura banda 80 % (%)",
-  aic: "AIC",
-  puntos_anio1: "Puntos 1 año",
-  puntos_anio2: "Puntos 2 años",
-};
-
-const REN_CONTRASTE: Record<string, string> = {
-  periodo: "Mes",
-  suma_individual_gwh: "Suma pronósticos individuales (GWh)",
-  proyeccion_gwh: "Modelo agregado (GWh)",
-  diferencia_pct: "Diferencia (%)",
-};
-
 /** Columnas de conteo que no llevan decimales en las tablas técnicas. */
 const COLUMNAS_ENTERAS = ["Año", "Meses reales", "Meses proyectados", "Puntos 1 año", "Puntos 2 años"];
 
@@ -257,15 +238,6 @@ const PIE_SELECCION =
 const PIE_ANUAL =
   "La banda anual suma las bandas mensuales, por eso es conservadora (más ancha que la del año como un todo). "
   + "El año en curso combina meses reales y proyectados.";
-
-const CANDIDATOS_NOTA =
-  "Cada zona pasó por todos los candidatos (línea base estacional, 6 variantes de Holt-Winters y los 3 SARIMA de mejor AIC "
-  + "entre 72 órdenes) y se quedó con el de menor error a 1 año en el backtest. Sesgo cerca de 0, cobertura cerca de 80 % "
-  + "y Ljung-Box p > 0,05 son las tres verificaciones.";
-
-const CONTRASTE_NOTA =
-  "Los 580.000 pronósticos por cliente sumados, mes a mes, frente a la proyección del modelo agregado del total. "
-  + "Si coinciden, cada uno valida al otro; una diferencia sostenida indica sesgo en uno de los dos.";
 
 const SIN_PROYECCION =
   "Todavía no existe la proyección. Desde la carpeta del código corre:  python proyeccion_anual_consumo.py  "
@@ -304,10 +276,7 @@ export function Proyeccion({ token }: { token?: string | null }) {
   const [mensual, setMensual] = useState<Mensual[]>([]);
   const [anual, setAnual] = useState<Anual[]>([]);
   const [backtest, setBacktest] = useState<Backtest[]>([]);
-  const [candidatos, setCandidatos] = useState<Array<Record<string, unknown>>>([]);
-  const [contraste, setContraste] = useState<Array<Record<string, unknown>>>([]);
   const [zonaElegida, setZonaElegida] = useState("");
-  const [zonaCandidatos, setZonaCandidatos] = useState("");
   const [escenario, setEscenario] = useState("BASE");
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -327,15 +296,6 @@ export function Proyeccion({ token }: { token?: string | null }) {
         setAnual(serieAnual.items.map((fila) => ({ ...(fila.payload as unknown as Anual), anio: Number(fila.payload.anio) })));
         setBacktest(serieError.items.map((fila) => fila.payload as unknown as Backtest));
         setError(null);
-        if (tecnico) {
-          const [candidatosZona, comparacion] = await Promise.all([
-            api.dataset(token ?? undefined, "projection_model_comparison", { limit: 400 }),
-            api.dataset(token ?? undefined, "projection_comparison", { limit: 400 }),
-          ]);
-          if (cancelado) return;
-          setCandidatos(candidatosZona.items.map((fila) => fila.payload));
-          setContraste(comparacion.items.map((fila) => fila.payload));
-        }
       } catch (cause: unknown) {
         if (!cancelado) setError(cause instanceof Error ? cause.message : "No fue posible cargar la proyección.");
       } finally {
@@ -574,28 +534,6 @@ export function Proyeccion({ token }: { token?: string | null }) {
     return salida;
   });
 
-  const candidatosZona = candidatos
-    .filter((fila) => fila.zona_regional === (zonaCandidatos || zonas[0]))
-    .sort((a, b) => Number(a.wape_anio1_pct ?? 0) - Number(b.wape_anio1_pct ?? 0));
-  const columnasCandidatos = Object.keys(candidatos[0] ?? {})
-    .filter((clave) => clave !== "zona_regional")
-    .map((clave) => REN_CANDIDATOS[clave] ?? clave);
-  const filasCandidatos = candidatosZona.map((fila) => {
-    const salida: Record<string, unknown> = {};
-    for (const clave of Object.keys(candidatos[0] ?? {})) {
-      if (clave === "zona_regional") continue;
-      salida[REN_CANDIDATOS[clave] ?? clave] = fila[clave];
-    }
-    return salida;
-  });
-
-  const columnasContraste = Object.keys(contraste[0] ?? {}).map((clave) => REN_CONTRASTE[clave] ?? clave);
-  const filasContraste = contraste.map((fila) => {
-    const salida: Record<string, unknown> = {};
-    for (const clave of Object.keys(fila)) salida[REN_CONTRASTE[clave] ?? clave] = fila[clave];
-    return salida;
-  });
-
   const bajadaGrafica = horizonte && recorte.ult
     ? `Proyección a ${horizonte} meses desde ${mesLargo(recorte.ult)} (hasta ${mesLargo(recorte.fin ? monthKey(recorte.fin) : "")})`
     : "Todo el horizonte calculado por el modelo";
@@ -746,43 +684,9 @@ export function Proyeccion({ token }: { token?: string | null }) {
 
           {!tecnico ? <TablaSimple columnas={columnasError} filas={filasError} formato={fmtTabla(1)} alto={420} /> : null}
 
-          {tecnico ? (
-            <>
-              <TablaSimple columnas={columnasTecnicas} filas={filasTecnicas} formato={fmtTabla(2)} alto={420} />
-              <p className="v2-caption">{md(CANDIDATOS_NOTA)}</p>
-              <p>
-                <b>Todos los candidatos probados por zona</b>
-              </p>
-              <label className="proy-campo">
-                Zona
-                <select
-                  className="filter-select"
-                  value={zonaCandidatos || zonas[0]}
-                  onChange={(event) => setZonaCandidatos(event.target.value)}
-                  aria-label="Zona de los candidatos"
-                >
-                  {zonas.map((opcion) => (
-                    <option key={opcion} value={opcion}>
-                      {opcion}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <TablaSimple columnas={columnasCandidatos} filas={filasCandidatos} formato={fmtTabla(2)} alto={420} />
-            </>
-          ) : null}
+          {tecnico ? <TablaSimple columnas={columnasTecnicas} filas={filasTecnicas} formato={fmtTabla(2)} alto={420} /> : null}
         </div>
       </details>
-
-      {tecnico && contraste.length ? (
-        <details className="v2-exp">
-          <summary>Contraste con la suma de los pronósticos individuales (6 meses)</summary>
-          <div className="v2-exp-cuerpo">
-            <p className="v2-caption">{md(CONTRASTE_NOTA)}</p>
-            <TablaSimple columnas={columnasContraste} filas={filasContraste} formato={fmtTabla(2)} alto={420} />
-          </div>
-        </details>
-      ) : null}
 
       <div className="proy-descargas">
         <button type="button" className="ghost-button" onClick={() => descargar("proyeccion_mensual_por_zona.csv", csvDe(mensual as unknown as Array<Record<string, unknown>>))}>
