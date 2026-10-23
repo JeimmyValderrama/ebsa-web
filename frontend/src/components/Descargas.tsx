@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthOptional } from "../auth/AuthProvider";
 import { api, type ExporteFila, type ExportesData } from "../lib/api";
 import { formatoTabla, fmtN } from "../lib/format";
@@ -8,8 +8,8 @@ import { Aviso, TablaSimple, Tarjeta, TituloPagina } from "./v2/ui";
 
 /**
  * Sección "Descargas por grupo" (Comercial la llama "Descargas"): el índice que deja el pipeline
- * (11_exportes_negocio/indice_exportes.csv), una tabla por producto y la descarga del archivo
- * elegido, que se lee del disco recién cuando se pide (los grandes pesan ~145 MB).
+ * (11_exportes_negocio/indice_exportes.csv) y una tabla por producto con su botón de descarga,
+ * que se lee del disco recién cuando se pide (los grandes pesan ~145 MB).
  */
 
 /** NOMBRES_PRODUCTO del Streamlit. */
@@ -48,8 +48,8 @@ export function Descargas({ token }: { token?: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [errorDescarga, setErrorDescarga] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [elegido, setElegido] = useState("");
-  const [bajando, setBajando] = useState(false);
+  // Rutas que se están descargando ahora mismo (una por fila que tenga su botón pulsado).
+  const [bajando, setBajando] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     let cancelado = false;
@@ -72,39 +72,28 @@ export function Descargas({ token }: { token?: string | null }) {
     };
   }, [token]);
 
-  // Solo los archivos que están en disco entran al selector (como `if existe:` del Streamlit).
-  const opciones = useMemo(
-    () =>
-      (indice?.productos ?? []).flatMap((producto) =>
-        producto.filas
-          .filter((fila) => fila.estado === "disponible")
-          .map((fila) => ({
-            ruta: fila.ruta,
-            archivo: fila.archivo,
-            etiqueta: `${NOMBRES_PRODUCTO[producto.producto] ?? producto.producto} — ${fila.grupo_consumo} (${fila.archivo})`,
-          })),
-      ),
-    [indice],
-  );
-  const seleccion = opciones.find((opcion) => opcion.ruta === elegido) ?? null;
-
-  const descargar = async (): Promise<void> => {
-    if (!elegido || bajando) return;
-    setBajando(true);
+  // Cada archivo se lee del disco solo cuando su fila pide la descarga (como `if existe:` del Streamlit).
+  const descargar = async (ruta: string, archivo: string): Promise<void> => {
+    if (bajando.has(ruta)) return;
+    setBajando((prev) => new Set(prev).add(ruta));
     setErrorDescarga(null);
     try {
-      const blob = await api.exporteArchivo(token ?? undefined, elegido);
+      const blob = await api.exporteArchivo(token ?? undefined, ruta);
       const url = URL.createObjectURL(blob);
       const enlace = document.createElement("a");
       enlace.href = url;
-      enlace.download = seleccion?.archivo ?? "archivo.csv";
+      enlace.download = archivo;
       enlace.click();
       // Se libera después de un rato: el navegador sigue leyendo el blob mientras descarga.
       window.setTimeout(() => URL.revokeObjectURL(url), 120000);
     } catch (cause: unknown) {
       setErrorDescarga(cause instanceof Error ? cause.message : "No fue posible descargar el archivo.");
     } finally {
-      setBajando(false);
+      setBajando((prev) => {
+        const copia = new Set(prev);
+        copia.delete(ruta);
+        return copia;
+      });
     }
   };
 
@@ -137,36 +126,15 @@ export function Descargas({ token }: { token?: string | null }) {
     );
   }
 
+  const disponibles = productos.some((producto) => producto.filas.some((fila) => fila.estado === "disponible"));
+
   return (
     <div className="stack">
       {cabecera}
 
-      <Tarjeta titulo="Descargar un archivo" bajada="Elige el archivo; solo se lee del disco el que escojas">
-        {!opciones.length ? (
-          <Aviso texto="No hay archivos disponibles para descargar." />
-        ) : (
-          <div className="dl-sel">
-            <label className="proy-campo">
-              Archivo
-              <select className="filter-select" value={elegido} onChange={(event) => setElegido(event.target.value)} aria-label="Archivo">
-                <option value="">Elige el archivo que quieres descargar</option>
-                {opciones.map((opcion) => (
-                  <option key={opcion.ruta} value={opcion.ruta}>
-                    {opcion.etiqueta}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {elegido ? (
-              <button type="button" className="ghost-button" onClick={() => void descargar()} disabled={bajando}>
-                {bajando ? "Descargando…" : `Descargar ${seleccion?.archivo ?? ""}`}
-              </button>
-            ) : null}
-          </div>
-        )}
-        {errorDescarga ? <Aviso texto={errorDescarga} tipo="alerta" /> : null}
-        {opciones.length > 0 && !tecnico ? <Aviso texto={NIU} tipo="calidad" /> : null}
-      </Tarjeta>
+      {errorDescarga ? <Aviso texto={errorDescarga} tipo="alerta" /> : null}
+      {!disponibles ? <Aviso texto="No hay archivos disponibles para descargar." /> : null}
+      {disponibles && !tecnico ? <Aviso texto={NIU} tipo="calidad" /> : null}
 
       {productos.map((producto) => {
         const filas = producto.filas.map(filaTabla);
@@ -179,7 +147,28 @@ export function Descargas({ token }: { token?: string | null }) {
         };
         return (
           <Tarjeta key={producto.producto} titulo={NOMBRES_PRODUCTO[producto.producto] ?? producto.producto}>
-            <TablaSimple columnas={COLUMNAS} filas={filas} formato={formato} />
+            <TablaSimple
+              columnas={COLUMNAS}
+              filas={filas}
+              formato={formato}
+              tituloAcciones="Descarga"
+              acciones={(_fila, indiceFila) => {
+                const origen = producto.filas[indiceFila];
+                // Solo los que están en disco ofrecen descarga (como `if existe:` del Streamlit).
+                if (origen.estado !== "disponible") return null;
+                const bajandoEsta = bajando.has(origen.ruta);
+                return (
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => void descargar(origen.ruta, origen.archivo)}
+                    disabled={bajandoEsta}
+                  >
+                    {bajandoEsta ? "Descargando…" : "Descargar"}
+                  </button>
+                );
+              }}
+            />
           </Tarjeta>
         );
       })}

@@ -380,6 +380,11 @@ export function proyeccionTotalSpec(mensual: FilaProyeccion[], opciones: { movil
       y2: { field: "sup80_gwh" },
     },
   };
+  const tooltips = [
+    { field: "mes", type: "nominal", title: "Mes" },
+    { field: "texto", type: "nominal", title: "Consumo" },
+    { field: "serie", type: "nominal", title: "Dato" },
+  ];
   const lineas = {
     data: { values: dd },
     mark: { type: "line", strokeWidth: 2 },
@@ -388,14 +393,26 @@ export function proyeccionTotalSpec(mensual: FilaProyeccion[], opciones: { movil
       y: { field: "gwh", type: "quantitative", scale: escalaY },
       color: { field: "serie", type: "nominal", scale: { domain: ["Consumo real", "Proyección"], range: [AZUL, NARANJA] }, legend: null },
       strokeDash: { field: "serie", type: "nominal", scale: { domain: ["Consumo real", "Proyección"], range: [[1, 0], [5, 4]] }, legend: null },
-      tooltip: [
-        { field: "mes", type: "nominal", title: "Mes" },
-        { field: "texto", type: "nominal", title: "Consumo" },
-        { field: "serie", type: "nominal", title: "Dato" },
-      ],
+      tooltip: tooltips,
     },
   };
-  return conAjuste({ layer: [banda, lineas], height: movil ? 200 : 230 });
+  // Una línea es un mark multi-elemento: Vega-Lite no le aplica `nearest`, así que su tooltip solo
+  // salía si el cursor acertaba sobre los 2 px del trazo. Se superpone esta capa de puntos con
+  // opacity 0 (invisible en reposo) y `nearest`: su voronoi invisible tesela todo el área, enciende
+  // el punto más cercano al cursor y suelta el mismo tooltip, como en las barras de esta página.
+  const puntos = {
+    params: [{ name: "hover", select: { type: "point", nearest: true, on: "pointerover", clear: "pointerout" } }],
+    data: { values: dd },
+    mark: { type: "circle", size: 75, stroke: "#fff", strokeWidth: 1.5 },
+    encoding: {
+      x: ejeX,
+      y: { field: "gwh", type: "quantitative", scale: escalaY },
+      color: { field: "serie", type: "nominal", scale: { domain: ["Consumo real", "Proyección"], range: [AZUL, NARANJA] }, legend: null },
+      opacity: { condition: { param: "hover", value: 1, empty: false }, value: 0 },
+      tooltip: tooltips,
+    },
+  };
+  return conAjuste({ layer: [banda, lineas, puntos], height: movil ? 200 : 230 });
 }
 
 // ---------------------------------------------------------------------------

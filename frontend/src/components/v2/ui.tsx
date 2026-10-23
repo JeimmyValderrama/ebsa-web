@@ -108,11 +108,16 @@ export function TablaSimple({
   filas,
   formato,
   alto,
+  acciones,
+  tituloAcciones,
 }: {
   columnas: string[];
   filas: Array<Record<string, unknown>>;
   formato?: (valor: unknown, columna: string) => string;
   alto?: number;
+  /** Columna final con un botón por fila (p. ej. descargar); su celda puede devolver null. */
+  acciones?: (fila: Record<string, unknown>, indice: number) => ReactNode;
+  tituloAcciones?: string;
 }) {
   if (!filas.length) return null;
   return (
@@ -123,6 +128,7 @@ export function TablaSimple({
             {columnas.map((columna) => (
               <th key={columna}>{columna}</th>
             ))}
+            {acciones ? <th className="col-accion">{tituloAcciones ?? ""}</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -133,6 +139,7 @@ export function TablaSimple({
                 const texto = formato ? formato(celda, columna) : celda === null || celda === undefined ? "" : String(celda);
                 return <td key={columna}>{texto}</td>;
               })}
+              {acciones ? <td className="col-accion">{acciones(fila, index)}</td> : null}
             </tr>
           ))}
         </tbody>

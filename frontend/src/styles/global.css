@@ -795,9 +795,9 @@ textarea.search-input {
 .proy-campo .v2-radio { justify-self: start; }
 .proy-descargas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .proy-descargas .ghost-button { width: 100%; }
-/* Descargas por grupo: selector de archivo y su botón, apilados como st.selectbox + st.download_button. */
-.dl-sel { display: grid; gap: 10px; justify-items: start; max-width: 640px; }
-.dl-sel .filter-select { width: 100%; max-width: 560px; }
+/* Descargas por grupo: columna con el botón de descarga de cada fila (una celda por archivo). */
+.col-accion { text-align: right; white-space: nowrap; }
+.col-accion .ghost-button { padding: 5px 11px; font-size: 13px; }
 .v2-exp { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 0; min-width: 0; }
 .v2-exp summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 15px; padding: 11px 15px; list-style-position: inside; }
 .v2-exp[open] summary { border-bottom: 1px solid var(--linea2); }
