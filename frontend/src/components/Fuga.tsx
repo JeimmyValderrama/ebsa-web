@@ -298,7 +298,7 @@ export function Fuga({ token }: { token?: string | null }) {
 
       <Conteo
         mostrados={filasTabla.length}
-        filtrados={datos.total_lista}
+        filtrados={datos.filtrados}
         enLista={datos.alto_medio}
         universo={datos.total_lista}
         que="clientes con riesgo"

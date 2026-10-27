@@ -777,14 +777,17 @@ def fuga(
         seleccion = _fuga_orden(_fuga_filtradas(filas, **elegidos), medida)
         return {
             "total_lista": len(filas),
+            "filtrados": len(seleccion),
             "alto_medio": sum(1 for fila in filas if fila["riesgo"] in ("ALTO", "MEDIO")),
             "corte": filas[0]["corte"] if filas else "",
+            # Los indicadores son de la lista filtrada (como en el original); el total y el
+            # ALTO/MEDIO son de la lista completa, que es lo que pide la linea de conteo.
             "resumen": {
-                "clientes": len(filas),
-                "consumo_6m": sum(fila["consumo_6m"] for fila in filas),
-                "valor_riesgo": sum(fila["valor_riesgo"] for fila in filas),
-                "consumo_esperado": sum(fila["consumo_esperado"] for fila in filas),
-                "valor_esperado": sum(fila["valor_esperado"] for fila in filas),
+                "clientes": len(seleccion),
+                "consumo_6m": sum(fila["consumo_6m"] for fila in seleccion),
+                "valor_riesgo": sum(fila["valor_riesgo"] for fila in seleccion),
+                "consumo_esperado": sum(fila["consumo_esperado"] for fila in seleccion),
+                "valor_esperado": sum(fila["valor_esperado"] for fila in seleccion),
             },
             "items": seleccion[:n],
             "vigilancia": _fuga_vigilancia(db),

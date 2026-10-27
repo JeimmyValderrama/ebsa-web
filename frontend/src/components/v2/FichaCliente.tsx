@@ -46,6 +46,7 @@ type Datos = {
   noRegulado: Record<string, unknown> | null;
   cero: Record<string, unknown> | null;
   auto: Record<string, unknown> | null;
+  segmento: Record<string, unknown> | null;
   cortes: Array<Record<string, unknown>>;
   usoModelos: Array<Record<string, unknown>>;
   consumo: Array<{ periodo: string; consumo_kwh: number | null; estado_mes?: string | null; es_rural?: boolean | null }>;
@@ -98,10 +99,11 @@ export function FichaCliente({ token, niu }: { token?: string | null; niu: strin
       api.consumption(token ?? undefined, niu).catch(() => []),
       api.forecast(token ?? undefined, niu).catch(() => []),
       api.dataset(token ?? undefined, "autogenerators", { niu, limit: 1 }).catch(() => null),
+      api.dataset(token ?? undefined, "clusters", { niu, limit: 1 }).catch(() => null),
       api.dataset(token ?? undefined, "zone_cuts", { limit: 5 }).catch(() => null),
       api.dataset(token ?? undefined, "model_usage", { limit: 30 }).catch(() => null),
     ])
-      .then(([cliente, operativa, fuga, ubicacion, otros, noRegulado, cero, consumo, pronostico, auto, cortes, uso]) => {
+      .then(([cliente, operativa, fuga, ubicacion, otros, noRegulado, cero, consumo, pronostico, auto, segmento, cortes, uso]) => {
         if (cancelled) return;
         setDatos({
           cliente,
@@ -112,6 +114,7 @@ export function FichaCliente({ token, niu }: { token?: string | null; niu: strin
           noRegulado: soloItem(noRegulado as DatasetPage),
           cero: soloItem(cero as DatasetPage),
           auto: soloItem(auto as DatasetPage),
+          segmento: soloItem(segmento as DatasetPage),
           cortes: todosItems(cortes as DatasetPage),
           usoModelos: todosItems(uso as DatasetPage),
           consumo,
@@ -345,9 +348,13 @@ export function FichaCliente({ token, niu }: { token?: string | null; niu: strin
         <p className="v2-pie">
           {md(
             `Clase de servicio **${String(o?.clase_servicio_nombre ?? z?.clase_servicio_nombre ?? cli?.clase_servicio_nombre ?? o?.clase_servicio ?? z?.clase_servicio ?? cli?.clase_servicio ?? "—")}** · estrato/sector `
-            + `**${String(o?.estrato ?? z?.estrato ?? cli?.estrato ?? "—")}** · tamaño **${String(o?.grupo_consumo ?? z?.grupo_consumo ?? cli?.grupo_consumo ?? "—")}**`,
+            + `**${String(o?.estrato ?? z?.estrato ?? cli?.estrato ?? "—")}** · tamaño **${String(o?.grupo_consumo ?? z?.grupo_consumo ?? cli?.grupo_consumo ?? "—")}**`
+            + (datos.segmento ? ` · segmento **${String(datos.segmento.cluster_id ?? "—")}**` : ""),
           )}
         </p>
+        {typeof datos.segmento?.segmento_descripcion === "string" && datos.segmento.segmento_descripcion ? (
+          <p className="v2-pie">{String(datos.segmento.segmento_descripcion)}</p>
+        ) : null}
       </div>
 
       <div>

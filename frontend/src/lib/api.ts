@@ -177,6 +177,8 @@ export type VigilanciaItem = {
 
 export type FugaData = {
   total_lista: number;
+  /** Clientes que quedan tras aplicar los filtros (los indicadores son sobre esta selección). */
+  filtrados: number;
   alto_medio: number;
   corte: string;
   resumen: { clientes: number; consumo_6m: number; valor_riesgo: number; consumo_esperado: number; valor_esperado: number };
