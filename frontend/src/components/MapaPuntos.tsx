@@ -7,24 +7,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 export type PuntoMapa = { lat: number; lon: number; color: string };
 
 /**
- * Réplica de st.map() de la sección "Visitas por ciclo": mismos azulejos que usa Streamlit
- * (Carto Positron, basemaps.cartocdn.com), mismos círculos (radio de 120 metros con piso de 3 px,
- * color opaco por gravedad) y el mismo encuadre automático (_get_viewport_details del original:
- * centro en el medio del bounding box y zoom por la mayor distancia en grados).
+ * Réplica de st.map() de la sección "Visitas por ciclo": mismos círculos (radio de 120 metros con
+ * piso de 3 px, color opaco por gravedad) y el mismo encuadre automático (_get_viewport_details del
+ * original: centro en el medio del bounding box y zoom por la mayor distancia en grados).
  *
- * desde el 29-09-2026 basemaps.cartocdn.com exige ?key= y sin ella devuelve un azulejo con la
- * leyenda "API KEY REQUIRED". CARTO_KEY es la key publica que Streamlit lleva embebida en su JS
- * (es la que usa el Streamlit de referencia). Si un dia dejara de responder, hay dos salidas en
- * una sola linea: pedir key propia gratis en carto.com/basemaps/apikey (5 M de tiles/mes), o
- * cambiar a tiles de OpenStreetMap sin key, https://tile.openstreetmap.org/{z}/{x}/{y}.png
- * (mantener la atribucion "© OpenStreetMap contributors").
+ * Azulejos: OpenStreetMap (tile.openstreetmap.org) en vez del Positron de Carto que usa Streamlit.
+ * Desde el 29-09-2026 basemaps.cartocdn.com exige ?key= en cada azulejo y sin ella devuelve una
+ * imagen con la leyenda "API KEY REQUIRED": se probó la key publica que Streamlit reparte en su
+ * bundle y aun asi seguia llegando la leyenda, asi que se paso a OSM, que no pide key ni query de
+ * ningun tipo. Para volver a Positron basta pedir key propia gratis en carto.com/basemaps/apikey
+ * (5 M de tiles/mes) y restaurar https://{a|b|c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png
+ * con ?key= (y devolverle la atribucion "© CARTO" al pie). OSM no tiene variantes @2x: en
+ * pantallas retina se sirve el azulejo normal, como aqui. Zoom tope 18 (OSM llega a 19).
  */
 const ZOOM_POR_GRADOS = [
   360, 180, 90, 45, 22.5, 11.25, 5.625, 2.813, 1.406, 0.703, 0.352, 0.176, 0.088, 0.044, 0.022, 0.011, 0.005, 0.003, 0.001, 0.0005, 0.00025,
 ];
-
-/** Key de basemaps.cartocdn.com: la misma que Streamlit reparte en su bundle (ver nota superior). */
-const CARTO_KEY = "x7g2plm9yq8vfrc";
 
 /** Zoom en el que cabe la distancia en grados pedida (_get_zoom_level; suelo de 12 si no aplica). */
 function zoomAjustado(distancia: number): number {
@@ -131,7 +129,7 @@ export function MapaPuntos({ puntos, altura, etiqueta = "Clientes con coordenada
     return () => elemento.removeEventListener("wheel", alRodar);
   }, [tamano]);
 
-  // Azulejos de Carto (positron) que cubren la pantalla, con la key de la nota superior.
+  // Azulejos de OpenStreetMap (sin key) que cubren la pantalla: misma malla de 256 px que st.map.
   const baldosas = useMemo(() => {
     const { ancho, alto } = tamano;
     if (!ancho || !alto) return [];
@@ -140,16 +138,14 @@ export function MapaPuntos({ puntos, altura, etiqueta = "Clientes con coordenada
     const centro = aMundo(vista.lat, vista.lon, zoom);
     const origenX = centro.x - ancho / 2;
     const origenY = centro.y - alto / 2;
-    const retina = typeof window !== "undefined" && window.devicePixelRatio > 1 ? "@2x" : "";
     const lista: Array<{ clave: string; url: string; izquierda: number; arriba: number }> = [];
     for (let x = Math.floor(origenX / 256); x <= Math.floor((origenX + ancho) / 256); x++) {
       for (let y = Math.floor(origenY / 256); y <= Math.floor((origenY + alto) / 256); y++) {
         if (y < 0 || y >= lado) continue;
         const columna = ((x % lado) + lado) % lado;
-        const subdominio = ["a", "b", "c"][(columna + y) % 3];
         lista.push({
           clave: `${zoom}/${x}/${y}`,
-          url: `https://${subdominio}.basemaps.cartocdn.com/light_all/${zoom}/${columna}/${y}${retina}.png?key=${CARTO_KEY}`,
+          url: `https://tile.openstreetmap.org/${zoom}/${columna}/${y}.png`,
           izquierda: x * 256 - origenX,
           arriba: y * 256 - origenY,
         });
@@ -257,7 +253,7 @@ export function MapaPuntos({ puntos, altura, etiqueta = "Clientes con coordenada
         <img key={baldosa.clave} className="mapa-st-baldosa" src={baldosa.url} alt="" draggable={false} style={{ left: `${baldosa.izquierda}px`, top: `${baldosa.arriba}px` }} />
       ))}
       <canvas ref={lienzo} className="mapa-st-lienzo" style={{ width: `${tamano.ancho}px`, height: `${tamano.alto}px` }} aria-hidden="true" />
-      <span className="mapa-st-atrib">© CARTO © OpenStreetMap contributors</span>
+      <span className="mapa-st-atrib">© OpenStreetMap contributors</span>
     </div>
   );
 }
