@@ -795,6 +795,8 @@ textarea.search-input {
 .proy-campo .v2-radio { justify-self: start; }
 .proy-descargas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .proy-descargas .ghost-button { width: 100%; }
+/* Escenario alternativo: un poco de aire arriba para que no quede pegado a la tabla base (como en Streamlit). */
+.proy-bloque-alt { display: grid; gap: 10px; margin-top: 20px; }
 /* Descargas por grupo: columna con el botón de descarga de cada fila (una celda por archivo). */
 .col-accion { text-align: right; white-space: nowrap; }
 .col-accion .ghost-button { padding: 5px 11px; font-size: 13px; }

@@ -362,25 +362,19 @@ export function Proyeccion({ token }: { token?: string | null }) {
       + "(por defecto a un año, que es el horizonte verificado). "
       + "Las bandas muestran el rango en el que se espera que caiga el consumo (80 % y 95 % de probabilidad).";
 
-  // Etiquetas de los escenarios (el tecnico ve el nombre del modelo; el resto, la hipótesis).
+  // Etiquetas de los escenarios: lenguaje llano para todo el mundo (sin las siglas del modelo estadístico).
   const tipoAlt = String(errorZona.tipo_alternativo ?? "alternativo");
   const altEsCrecimiento = tipoAlt === "con tendencia";
   const nombreBase = altEsCrecimiento ? "Escenario estable (el consumo sigue como en los últimos dos años)" : "Escenario de crecimiento (continúa la tendencia)";
   const nombreAlt = altEsCrecimiento ? "Escenario de crecimiento (continúa la tendencia de los primeros años)" : "Escenario estable (el consumo se estanca)";
   const errorAlt = `error 1 año ${fmtN(errorZona.wape_alternativo_anio1_pct, 1)} %, 2 años ${fmtN(errorZona.wape_alternativo_anio2_pct, 1)} %`;
-  const etiquetasEscenario: Record<string, string> = tecnico
-    ? {
-        BASE: `Base: ${errorZona.modelo_elegido} (el que mejor pronosticó el pasado)`,
-        ALTERNATIVO: `Alternativo ${tipoAlt}: ${errorZona.modelo_alternativo} (${errorAlt})`,
-      }
-    : {
-        BASE: `${nombreBase} — el que mejor acertó el pasado`,
-        ALTERNATIVO: `${nombreAlt} — ${errorAlt}`,
-      };
+  const etiquetasEscenario: Record<string, string> = {
+    BASE: `${nombreBase} — el que mejor acertó el pasado`,
+    ALTERNATIVO: `${nombreAlt} — ${errorAlt}`,
+  };
 
   const kpis: Array<ItemKpi | undefined> = tecnico
     ? [
-        { titulo: "Modelo elegido", valor: String(errorZona.modelo_elegido ?? "—"), tono: "marca", texto: true },
         {
           titulo: "Error del backtest a 1 año",
           valor: fmtN(errorZona.wape_anio1_pct, 1),
@@ -393,14 +387,6 @@ export function Proyeccion({ token }: { token?: string | null }) {
           unidad: " %",
           nota: `${fmtN(errorZona.puntos_anio2)} puntos`,
         },
-        errorZona.wape_base_anio1_pct === null || errorZona.wape_base_anio1_pct === undefined
-          ? undefined
-          : {
-              titulo: "Línea base estacional",
-              valor: fmtN(errorZona.wape_base_anio1_pct, 1),
-              unidad: " %",
-              nota: "Error a 1 año sin modelo",
-            },
       ]
     : [
         {
@@ -628,7 +614,7 @@ export function Proyeccion({ token }: { token?: string | null }) {
         ) : null}
       </Tarjeta>
 
-      <Kpis items={kpis} columnas={tecnico ? 4 : 2} compacto />
+      <Kpis items={kpis} columnas={2} compacto />
 
       {verificacion ? <p className="v2-caption">{md(verificacion)}</p> : null}
 
@@ -674,12 +660,12 @@ export function Proyeccion({ token }: { token?: string | null }) {
           </p>
 
           {pivotAlternativo ? (
-            <>
+            <div className="proy-bloque-alt">
               <p>
                 <b>Escenario alternativo (GWh por año)</b>
               </p>
               <TablaSimple columnas={pivotAlternativo.columnas} filas={pivotAlternativo.filas} formato={fmtPivote} alto={420} />
-            </>
+            </div>
           ) : null}
 
           {!tecnico ? <TablaSimple columnas={columnasError} filas={filasError} formato={fmtTabla(1)} alto={420} /> : null}
