@@ -12,6 +12,9 @@ import { fechaCo, fmtN, limpiarNiu, mesCorto } from "../lib/format";
 import { ResumenAdmin } from "./admin/ResumenAdmin";
 import { GestionCiclo } from "./admin/GestionCiclo";
 import { RankingGerencial } from "./admin/RankingGerencial";
+import { FugaAdmin } from "./admin/FugaAdmin";
+import { CortesAdmin } from "./admin/CortesAdmin";
+import { TituloPagina } from "../components/v2/ui";
 
 type AdminUser = { uid: string; email?: string; disabled: boolean; email_verified: boolean; role?: string };
 type Run = { id?: number; period: string; status?: string; files_total?: number; rows_imported: number; completed_at?: string };
@@ -117,27 +120,13 @@ export default function AdminPage() {
       {tab === "resumen" && <ResumenAdmin token={idToken} />}
       {tab === "gestion" && <GestionCiclo token={idToken} />}
       {tab === "ranking" && <RankingGerencial token={idToken} />}
-      {tab === "fuga" && (
-        <div className="stack">
-          <DatasetView token={idToken} datasetKey="churn_scores" title="Clientes con riesgo de fuga" description="Probabilidad de salida a 6 meses, valor esperado de pérdida y señales del modelo." filters={[{ key: "nivel_riesgo", label: "Nivel de riesgo" }]} prioritarias={["NIU", "nivel_riesgo", "prob_fuga_6m", "valor_esperado_perdida_mes"]} />
-          <DatasetView token={idToken} datasetKey="churn_feature_importance" title="Importancia de variables del modelo de fuga" />
-          <DatasetView token={idToken} datasetKey="churn_metrics" title="Métricas del modelo de fuga" />
-        </div>
-      )}
-      {tab === "cortes" && (
-        <div className="stack">
-          <DatasetView token={idToken} datasetKey="cut_summary" title="Resumen por corte" description="Tamaño de la lista en cada corte de referencia." prioritarias={["corte", "en_lista", "gestionados"]} />
-          <DatasetView token={idToken} datasetKey="list_entries_exits" title="Entradas y salidas de la lista" />
-        </div>
-      )}
+      {tab === "fuga" && <FugaAdmin token={idToken} />}
+      {tab === "cortes" && <CortesAdmin token={idToken} />}
       {tab === "mapa" && (
-        <section className="data-module">
-          <header className="module-heading">
-            <h2>Mapa de riesgo por municipio</h2>
-            <p>Las mismas cifras del mapa comercial, con las métricas técnicas del modelo (caída y fuga por municipio).</p>
-          </header>
+        <div className="stack">
+          <TituloPagina titulo="Mapa: dónde están los clientes, las caídas y el riesgo de fuga" />
           <MapaBoyaca token={idToken} modo="tecnico" altura={600} corte={corte} />
-        </section>
+        </div>
       )}
       {tab === "buscar" && <BuscarCliente token={idToken} />}
       {tab === "pronostico" && (
