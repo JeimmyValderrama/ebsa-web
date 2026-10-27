@@ -11,10 +11,20 @@ export type PuntoMapa = { lat: number; lon: number; color: string };
  * (Carto Positron, basemaps.cartocdn.com), mismos círculos (radio de 120 metros con piso de 3 px,
  * color opaco por gravedad) y el mismo encuadre automático (_get_viewport_details del original:
  * centro en el medio del bounding box y zoom por la mayor distancia en grados).
+ *
+ * desde el 29-09-2026 basemaps.cartocdn.com exige ?key= y sin ella devuelve un azulejo con la
+ * leyenda "API KEY REQUIRED". CARTO_KEY es la key publica que Streamlit lleva embebida en su JS
+ * (es la que usa el Streamlit de referencia). Si un dia dejara de responder, hay dos salidas en
+ * una sola linea: pedir key propia gratis en carto.com/basemaps/apikey (5 M de tiles/mes), o
+ * cambiar a tiles de OpenStreetMap sin key, https://tile.openstreetmap.org/{z}/{x}/{y}.png
+ * (mantener la atribucion "© OpenStreetMap contributors").
  */
 const ZOOM_POR_GRADOS = [
   360, 180, 90, 45, 22.5, 11.25, 5.625, 2.813, 1.406, 0.703, 0.352, 0.176, 0.088, 0.044, 0.022, 0.011, 0.005, 0.003, 0.001, 0.0005, 0.00025,
 ];
+
+/** Key de basemaps.cartocdn.com: la misma que Streamlit reparte en su bundle (ver nota superior). */
+const CARTO_KEY = "x7g2plm9yq8vfrc";
 
 /** Zoom en el que cabe la distancia en grados pedida (_get_zoom_level; suelo de 12 si no aplica). */
 function zoomAjustado(distancia: number): number {
@@ -121,7 +131,7 @@ export function MapaPuntos({ puntos, altura, etiqueta = "Clientes con coordenada
     return () => elemento.removeEventListener("wheel", alRodar);
   }, [tamano]);
 
-  // Azulejos de Carto (positron) que cubren la pantalla.
+  // Azulejos de Carto (positron) que cubren la pantalla, con la key de la nota superior.
   const baldosas = useMemo(() => {
     const { ancho, alto } = tamano;
     if (!ancho || !alto) return [];
@@ -139,7 +149,7 @@ export function MapaPuntos({ puntos, altura, etiqueta = "Clientes con coordenada
         const subdominio = ["a", "b", "c"][(columna + y) % 3];
         lista.push({
           clave: `${zoom}/${x}/${y}`,
-          url: `https://${subdominio}.basemaps.cartocdn.com/light_all/${zoom}/${columna}/${y}${retina}.png`,
+          url: `https://${subdominio}.basemaps.cartocdn.com/light_all/${zoom}/${columna}/${y}${retina}.png?key=${CARTO_KEY}`,
           izquierda: x * 256 - origenX,
           arriba: y * 256 - origenY,
         });
