@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
 import { DatasetTable, DatasetView, type Row } from "../components/DataExplorer";
@@ -8,12 +7,14 @@ import { useCorte } from "../lib/useCorte";
 import { Proyeccion } from "../components/Projection";
 import { Descargas } from "../components/Descargas";
 import { useSectionNav } from "../app/SectionNav";
-import { fechaCo, fmtN, limpiarNiu, mesCorto } from "../lib/format";
+import { fechaCo, fmtN, mesCorto } from "../lib/format";
 import { ResumenAdmin } from "./admin/ResumenAdmin";
 import { GestionCiclo } from "./admin/GestionCiclo";
 import { RankingGerencial } from "./admin/RankingGerencial";
 import { FugaAdmin } from "./admin/FugaAdmin";
 import { CortesAdmin } from "./admin/CortesAdmin";
+import { PronosticoAdmin } from "./admin/PronosticoAdmin";
+import { ClientLookup } from "./SupportPage";
 import { TituloPagina } from "../components/v2/ui";
 
 type AdminUser = { uid: string; email?: string; disabled: boolean; email_verified: boolean; role?: string };
@@ -79,7 +80,6 @@ export default function AdminPage() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [message, setMessage] = useState<string | null>(null);
-  const navigate = useNavigate();
   const corte = useCorte(idToken);
 
   useEffect(() => {
@@ -128,16 +128,15 @@ export default function AdminPage() {
           <MapaBoyaca token={idToken} modo="tecnico" altura={600} corte={corte} />
         </div>
       )}
-      {tab === "buscar" && <BuscarCliente token={idToken} />}
-      {tab === "pronostico" && (
-        <div className="stack">
-          <DatasetView token={idToken} datasetKey="forecast_profile_metrics" title="Métricas por perfil de consumo" description="Error (WAPE) y sesgo del pronóstico por perfil y horizonte." prioritarias={["perfil", "horizonte", "wape_pct", "sesgo_pct"]} />
-          <DatasetView token={idToken} datasetKey="forecast_naive_comparison" title="Comparación contra modelos ingenuos" description="El modelo final debe ganarle a los referenciales (persistencia, medias históricas, mismo mes del año anterior)." />
-          <DatasetView token={idToken} datasetKey="forecast_model_selection" title="Selección de modelos" />
-          <DatasetView token={idToken} datasetKey="model_versions" title="Versiones de modelos registradas" />
-          <DatasetView token={idToken} datasetKey="model_usage" title="Uso de modelos por fecha de corte" />
-        </div>
+      {tab === "buscar" && (
+        <ClientLookup
+          token={idToken}
+          titulo="Buscar un cliente"
+          bajada="Todo lo que el proyecto sabe de un NIU: ubicación, segmento, caída, pronóstico y riesgo de fuga."
+          resumenEjemplos="¿No tienes un NIU a mano? Buscar ejemplos por municipio o situación"
+        />
       )}
+      {tab === "pronostico" && <PronosticoAdmin token={idToken} />}
       {tab === "proyeccion" && <Proyeccion token={idToken} />}
       {tab === "seguimiento" && (
         <div className="stack">
@@ -150,64 +149,6 @@ export default function AdminPage() {
       {tab === "descargas" && <Descargas token={idToken} />}
       {tab === "usuarios" && <Users rows={users} onUpdate={updateUser} />}
     </div>
-  );
-}
-
-function BuscarCliente({ token }: { token?: string | null }) {
-  const [busqueda, setBusqueda] = useState("");
-  const [niu, setNiu] = useState("");
-  const [coincidencias, setCoincidencias] = useState<Array<{ dataset: string; rows: number }> | null>(null);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!niu) return;
-    let cancelled = false;
-    const datasets = ["operational", "churn_scores", "drop_analysis", "forecast", "locations", "zero_sustained"];
-    Promise.all(datasets.map((dataset) => api.dataset(token ?? undefined, dataset, { niu, limit: 1 }).catch(() => null)))
-      .then((resultados) => {
-        if (cancelled) return;
-        setCoincidencias(resultados.map((pagina, index) => ({ dataset: datasets[index], rows: pagina?.total ?? 0 })).filter((item) => item.rows > 0));
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [niu, token]);
-
-  return (
-    <section className="data-module">
-      <header className="module-heading">
-        <div>
-          <div className="eyebrow">BÚSQUEDA</div>
-          <h2>Buscar cliente en el corte</h2>
-          <p>Verifica en qué listas aparece un NIU antes de atenderlo. El resultado abre la ficha completa de Soporte.</p>
-        </div>
-      </header>
-      <form
-        className="data-toolbar"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setCoincidencias(null);
-          setNiu(limpiarNiu(busqueda));
-        }}
-      >
-        <input className="search-input" value={busqueda} onChange={(event) => setBusqueda(event.target.value)} placeholder="NIU del cliente" aria-label="NIU" />
-        <button type="submit" className="primary-button">
-          Buscar
-        </button>
-      </form>
-      {coincidencias && (
-        <div className="ficha-grid">
-          {coincidencias.length === 0 && <div className="empty-state">El NIU no aparece en ninguna lista del corte vigente.</div>}
-          {coincidencias.map((item) => (
-            <button key={item.dataset} type="button" className="ficha-item clickable-row" onClick={() => navigate(`/soporte?niu=${encodeURIComponent(niu)}`)}>
-              <span>{item.dataset}</span>
-              <b>{fmtN(item.rows)} registro(s)</b>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
   );
 }
 

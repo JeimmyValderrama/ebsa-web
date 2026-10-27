@@ -67,7 +67,24 @@ export default function SupportPage() {
 /* Consultar un cliente                                                        */
 /* -------------------------------------------------------------------------- */
 
-function ClientLookup({ token, initialNiu }: { token?: string | null; initialNiu: string }) {
+/**
+ * Consulta de un cliente por NIU con su ficha completa. La usan Soporte ("Consultar un cliente")
+ * y el Administrador ("Buscar un cliente"), que solo cambian los títulos: el original tenía dos
+ * copias prácticamente iguales (seccion "Consultar un cliente" y seccion "Buscar cliente").
+ */
+export function ClientLookup({
+  token,
+  initialNiu,
+  titulo = "Consultar un cliente",
+  bajada = "Escribe el NIU y verás, en una sola página, dónde está, qué le pasa al consumo, qué probabilidad de fuga tiene y qué conviene revisar o decirle.",
+  resumenEjemplos = "¿No tienes el NIU? Buscar por municipio o situación",
+}: {
+  token?: string | null;
+  initialNiu?: string;
+  titulo?: string;
+  bajada?: string;
+  resumenEjemplos?: string;
+}) {
   const [busqueda, setBusqueda] = useState(initialNiu);
   const [niu, setNiu] = useState(initialNiu);
   const [existe, setExiste] = useState<boolean | null>(null);
@@ -110,10 +127,7 @@ function ClientLookup({ token, initialNiu }: { token?: string | null; initialNiu
 
   return (
     <>
-      <TituloPagina
-        titulo="Consultar un cliente"
-        bajada="Escribe el NIU y verás, en una sola página, dónde está, qué le pasa al consumo, qué probabilidad de fuga tiene y qué conviene revisar o decirle."
-      />
+      <TituloPagina titulo={titulo} bajada={bajada} />
 
       <Tarjeta>
         <form
@@ -133,7 +147,7 @@ function ClientLookup({ token, initialNiu }: { token?: string | null; initialNiu
         </form>
 
         <details className="v2-exp">
-          <summary>¿No tienes el NIU? Buscar por municipio o situación</summary>
+          <summary>{resumenEjemplos}</summary>
           <div className="v2-exp-cuerpo">
             <BuscaPorMunicipio token={token} />
           </div>
