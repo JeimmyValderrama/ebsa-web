@@ -563,6 +563,10 @@ textarea.search-input {
 .fila-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: start; margin-top: 16px; }
 .fila-2-3 { display: grid; grid-template-columns: 2fr 3fr; gap: 14px; align-items: start; }
 .fila-1-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; margin-top: 16px; }
+/* st.columns([1, 2]) del Streamlit: la zona regional ocupa un tercio y el ciclo los dos restantes. */
+.fila-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; }
+/* st.columns(3) del Streamlit: tres columnas iguales (la fila de Municipio / Gravedad / Tendencia). */
+.fila-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .v2-fila-medida { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; margin-bottom: 14px; }
 .v2-fila-medida p { margin: 6px 0 0; font-size: 13.5px; color: var(--ink2); line-height: 1.6; max-width: 96ch; }
 
@@ -645,7 +649,7 @@ textarea.search-input {
 /* ---------- tableta y celular (mismos cortes que el Streamlit) ---------- */
 @media (max-width: 1080px) {
   .v2-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .fila-3-2, .fila-1-1, .v2-fila-medida, .split-panel { grid-template-columns: minmax(0, 1fr); }
+  .fila-3-2, .fila-1-1, .fila-1-2, .fila-3, .v2-fila-medida, .split-panel { grid-template-columns: minmax(0, 1fr); }
   /* La banda nunca se aplasta: mínimo 150 px por segmento y, si no caben, salta a otra fila. */
   .v2-banda { flex-wrap: wrap; }
   .v2-seg { min-width: min(150px, 100%); }
@@ -804,6 +808,12 @@ textarea.search-input {
 .v2-exp summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 15px; padding: 11px 15px; list-style-position: inside; }
 .v2-exp[open] summary { border-bottom: 1px solid var(--linea2); }
 .v2-exp-cuerpo { padding: 10px 15px 13px; font-size: 14px; color: var(--ink2); line-height: 1.6; }
+/* Mapa de st.map (Visitas por ciclo): azulejos de Carto Positron con los puntos encima. */
+.mapa-st { position: relative; width: 100%; overflow: hidden; background: #eceae6; border: 1px solid var(--linea); border-radius: 6px; touch-action: none; user-select: none; cursor: grab; }
+.mapa-st.arrastrando { cursor: grabbing; }
+.mapa-st-baldosa { position: absolute; width: 256px; height: 256px; pointer-events: none; -webkit-user-drag: none; }
+.mapa-st-lienzo { position: absolute; left: 0; top: 0; pointer-events: none; }
+.mapa-st-atrib { position: absolute; right: 0; bottom: 0; z-index: 2; font-size: 10px; color: #6b6b6b; background: rgba(255, 255, 255, 0.75); padding: 1px 5px; border-radius: 4px 0 0 0; pointer-events: none; }
 .v2-exp-cuerpo p { margin: 0 0 10px; max-width: 100ch; }
 .v2-exp-cuerpo p:last-child { margin-bottom: 0; }
 

@@ -242,6 +242,69 @@ export type ExportesData = {
   directorio: string;
 };
 
+/** Un cliente de la lista de caída tal como lo devuelve /api/data/search. */
+export type BusquedaItem = {
+  niu: string;
+  municipio: string;
+  clase: string;
+  gravedad: string;
+  trayectoria: string;
+  valor_riesgo_mes: number;
+};
+
+/** Respuesta de /api/data/search: los 50 primeros por facturación en riesgo y el total que cumple el filtro. */
+export type BusquedaData = {
+  total: number;
+  municipios: string[];
+  items: BusquedaItem[];
+};
+
+/** Ciclo de lectura disponible en la ruta de visitas (etiqueta = "00 — CENTRO", como en el original). */
+export type CicloRuta = { ciclo: number; ciclo_etiqueta: string; etiqueta: string; clientes: number };
+
+/** Un cliente de la ruta de visitas por ciclo, con las columnas de negocio de la tabla. */
+export type RutaVisita = {
+  niu: string;
+  ciclo: number | null;
+  ciclo_etiqueta: string | null;
+  zona_regional: string | null;
+  zona_nombre: string | null;
+  municipio: string | null;
+  direccion: string | null;
+  latitud: number | null;
+  longitud: number | null;
+  coordenadas_validas: boolean;
+  orden_en_ciclo: number | null;
+  clase: string;
+  lectura: string;
+  veredicto: string;
+  gravedad: string;
+  referencia_kwh: number;
+  consumo_reciente_kwh: number;
+  caida_pct: number | null;
+  valor_riesgo_mes: number;
+  trayectoria: string;
+  prioridad: string;
+  situacion: string;
+  payload: Record<string, unknown>;
+};
+
+/** Respuesta de /api/data/route. */
+export type RutaData = {
+  cycles: CicloRuta[];
+  zonas: string[];
+  items: RutaVisita[];
+  total: number;
+  total_lista: number;
+  cycle: number | null;
+};
+
+/** Respuesta de /api/data/retro: el resumen de retroalimentación y si son resultados simulados. */
+export type RetroData = {
+  filas: Array<Record<string, unknown>>;
+  ejemplo: boolean;
+};
+
 export const api = {
   health: () => request<{ status: string; service: string; timestamp: string }>("/api/health"),
   status: () => request<{ status: string; database_configured: boolean; database_engine: string; firebase_configured: boolean }>("/api/status"),
@@ -333,12 +396,12 @@ export const api = {
     request<Response>(`/api/data/datasets/${encodeURIComponent(key)}/csv${query({ search: options.search, filter: options.filters })}`, { token, raw: true, accept: "text/csv" }).then((response) => response.blob()),
   runs: (token: string | undefined) => request<Array<Record<string, unknown>>>("/api/data/runs", { token }),
   pipeline: (token: string | undefined) => request<{ quality_control: Array<Record<string, unknown>>; forecast_bias: Array<Record<string, unknown>>; runs: Array<Record<string, unknown>> }>("/api/data/pipeline", { token }),
-  route: (token: string | undefined, options: { cycle?: number; limit?: number } = {}) => request<{ cycles: Array<Record<string, unknown>>; items: Array<Record<string, unknown>>; total: number; cycle: number | null }>(`/api/data/route${query(options)}`, { token }),
+  route: (token: string | undefined, options: { cycle?: number; zona?: string; limit?: number } = {}) => request<RutaData>(`/api/data/route${query(options)}`, { token }),
+  search: (token: string | undefined, options: { municipio?: string; gravedad?: string; trayectoria?: string } = {}) =>
+    request<BusquedaData>(`/api/data/search${query(options)}`, { token }),
+  /** Resultados de las visitas: el resumen real o, si no hay ninguno, el ejemplo simulado del disco. */
+  retro: (token?: string) => request<RetroData>("/api/data/retro", { token }),
   municipalityMetrics: (token: string | undefined) => request<{ metrics: Array<{ key: string; label: string; unidad: string }>; rows: Array<Record<string, unknown>> }>("/api/data/municipalities/metrics", { token }),
-  visits: (token: string | undefined) => request<unknown[]>("/api/visits", { token }),
-  createVisit: (token: string | undefined, data: { niu: string; cycle?: number; scheduled_for?: string }) => request<unknown>("/api/visits", { token, method: "POST", body: data }),
-  recordVisitResult: (token: string | undefined, id: number, result: string, notes: string) => request<unknown>(`/api/visits/${id}/result`, { token, method: "POST", body: { result, notes } }),
   adminUsers: (token: string | undefined) => request<unknown[]>("/api/admin/users", { token }),
   updateAdminUser: (token: string | undefined, uid: string, change: { role?: string; disabled?: boolean }) => request<unknown>(`/api/admin/users/${encodeURIComponent(uid)}`, { token, method: "PATCH", body: change }),
-  feedback: (token: string | undefined) => request<unknown[]>("/api/visits/feedback", { token }),
 };

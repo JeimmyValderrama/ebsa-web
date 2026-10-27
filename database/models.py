@@ -155,28 +155,6 @@ class ClientConsumptionMonthly(Base):
     __table_args__ = (UniqueConstraint("niu", "periodo", name="uq_consumption_niu_period"),)
 
 
-class Visit(Base):
-    __tablename__ = "visits"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    niu: Mapped[str] = mapped_column(ForeignKey("clients.niu", ondelete="CASCADE"), index=True)
-    data_run_id: Mapped[int | None] = mapped_column(ForeignKey("data_runs.id", ondelete="SET NULL"), nullable=True)
-    assigned_to_uid: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
-    cycle: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
-    scheduled_for: Mapped[date | None] = mapped_column(Date, nullable=True)
-    status: Mapped[str] = mapped_column(String(30), default="PENDIENTE", index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-
-
-class VisitResult(Base):
-    __tablename__ = "visit_results"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    visit_id: Mapped[int] = mapped_column(ForeignKey("visits.id", ondelete="CASCADE"), unique=True)
-    result: Mapped[str] = mapped_column(String(80))
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by_uid: Mapped[str] = mapped_column(String(160))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-
-
 class PipelineRun(Base):
     """Corrida del pipeline registrada en 09_registro_corridas/<corrida>/resumen_corrida.txt."""
 
@@ -202,5 +180,5 @@ class PipelineFeedback(Base):
 
 __all__ = [
     "Base", "Client", "ClientChurnRisk", "ClientConsumptionMonthly", "ClientDropAnalysis", "ClientForecast",
-    "ClientLocation", "DataFile", "DataRun", "DatasetRecord", "OperationalManagement", "PipelineFeedback", "PipelineRun", "Visit", "VisitResult",
+    "ClientLocation", "DataFile", "DataRun", "DatasetRecord", "OperationalManagement", "PipelineFeedback", "PipelineRun",
 ]

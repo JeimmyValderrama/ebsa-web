@@ -215,7 +215,6 @@ function Resumen({ summary, runs }: { summary: { latest_run?: Run | null; counts
         <Metric label="Riesgo de fuga" value={summary?.counts.churn_risks} />
         <Metric label="Estudios de caída" value={summary?.counts.drop_analysis} />
         <Metric label="Ubicaciones" value={summary?.counts.locations} />
-        <Metric label="Visitas agendadas" value={summary?.counts.visits} />
       </div>
       <div className="split-panel">
         <div className="mini-chart">
@@ -328,63 +327,14 @@ function BuscarCliente({ token }: { token?: string | null }) {
 }
 
 function Retroalimentacion({ token }: { token?: string | null }) {
-  const [visitas, setVisitas] = useState<Array<Record<string, unknown>>>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .visits(token ?? undefined)
-      .then((data) => {
-        if (!cancelled) setVisitas(data as Array<Record<string, unknown>>);
-      })
-      .catch((cause: unknown) => {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "No fue posible cargar la retroalimentación.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  const resultados = useMemo(() => visitas.filter((visita) => visita.result), [visitas]);
-
   return (
     <div className="stack">
-      <DatasetView token={idTokenSafe(token)} datasetKey="feedback_summary" title="Evaluación de la retroalimentación de campo" description="Comparación entre lo que el modelo preveía y lo que ocurrió realmente en las cuentas visitadas." />
-      <section className="data-module">
-        <header className="module-heading">
-          <h2>Resultados registrados en visitas</h2>
-          <p>Lo que dejaron los asesores de campo al cerrar cada visita.</p>
-        </header>
-        {error && <div className="empty-state">{error}</div>}
-        {!resultados.length && !error && <div className="empty-state">Aún no hay resultados de visita registrados.</div>}
-        {resultados.length > 0 && (
-          <div className="table-card">
-            <table>
-              <thead>
-                <tr>
-                  <th>NIU</th>
-                  <th>Resultado</th>
-                  <th>Notas</th>
-                  <th>Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resultados.map((visita) => (
-                  <tr key={String(visita.id)}>
-                    <td>
-                      <Sensitive value={visita.niu} />
-                    </td>
-                    <td>{String(visita.result ?? "—")}</td>
-                    <td>{String(visita.notes ?? "—")}</td>
-                    <td>{fechaCo(visita.created_at ?? visita.scheduled_for)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <DatasetView
+        token={idTokenSafe(token)}
+        datasetKey="feedback_summary"
+        title="Evaluación de la retroalimentación de campo"
+        description="Comparación entre lo que el modelo preveía y lo que ocurrió realmente en las cuentas visitadas."
+      />
     </div>
   );
 }

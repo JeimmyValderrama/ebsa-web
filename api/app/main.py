@@ -19,7 +19,6 @@ from .auth_routes import router as auth_router
 from .admin_routes import router as admin_router
 from .data_routes import precalentar, router as data_router
 from .firebase_auth import firebase_is_configured
-from .visit_routes import router as visit_router
 
 
 def _allowed_origins() -> list[str]:
@@ -64,7 +63,6 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(data_router)
-app.include_router(visit_router)
 
 
 @app.get("/", tags=["system"])

@@ -24,7 +24,6 @@ from database.models import (
     DatasetRecord,
     OperationalManagement,
     PipelineRun,
-    Visit,
 )
 from . import datasets as dataset_service
 from .security import current_user, require_roles
@@ -68,7 +67,7 @@ def run_dict(run: DataRun) -> dict[str, Any]:
 def summary(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
     try:
         latest = db.scalar(select(DataRun).where(DataRun.status == "COMPLETED").order_by(DataRun.created_at.desc()).limit(1))
-        return {"latest_run": run_dict(latest) if latest else None, "counts": {"clients": db.scalar(select(func.count()).select_from(Client)) or 0, "operational": db.scalar(select(func.count()).select_from(OperationalManagement)) or 0, "churn_risks": db.scalar(select(func.count()).select_from(ClientChurnRisk)) or 0, "drop_analysis": db.scalar(select(func.count()).select_from(ClientDropAnalysis)) or 0, "locations": db.scalar(select(func.count()).select_from(ClientLocation)) or 0, "visits": db.scalar(select(func.count()).select_from(Visit)) or 0}}
+        return {"latest_run": run_dict(latest) if latest else None, "counts": {"clients": db.scalar(select(func.count()).select_from(Client)) or 0, "operational": db.scalar(select(func.count()).select_from(OperationalManagement)) or 0, "churn_risks": db.scalar(select(func.count()).select_from(ClientChurnRisk)) or 0, "drop_analysis": db.scalar(select(func.count()).select_from(ClientDropAnalysis)) or 0, "locations": db.scalar(select(func.count()).select_from(ClientLocation)) or 0}}
     except OperationalError as exc:
         raise schema_error(exc) from exc
 
@@ -327,6 +326,29 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
 ZONAS_REGIONALES = ("CENTRO", "TUNDAMA", "SUGAMUXI", "OCCIDENTE", "ORIENTE", "NORTE", "RICAURTE", "PUERTO BOYACA")
 GRUPOS_CONSUMO_ORDEN = ("Grande", "Mediano", "Pequeño", "Intermitente", "Sin historia suficiente")
 ORDEN_PRIORIDAD = {"GESTIONAR": 0, "SEGUIMIENTO: caída antigua": 1, "VIGILAR: se espera recuperación": 2, "VIGILAR: estacional": 3}
+
+# ZONA_POR_CICLO de utilidades_glosario.py (glosario EBSA, hojas COLUMNA BR/BT): nombre de cada
+# ciclo de lectura, tal como lo muestra etiqueta_ciclo en el desplegable "Ciclo" del Streamlit.
+ZONA_POR_CICLO = {
+    0: "CENTRO", 1: "TUNDAMA", 2: "SUGAMUXI", 3: "OCCIDENTE", 4: "ORIENTE",
+    5: "NORTE", 6: "RICAURTE", 7: "PUERTO BOYACA",
+    9: "CENTRO (SECCIONALES - URBANO)", 10: "CENTRO RURAL", 11: "TUNDAMA RURAL",
+    12: "SUGAMUXI RURAL", 13: "ORIENTE RURAL", 15: "ALUMBRADO PUBLICO",
+    19: "CENTRO (SECCIONALES - RURAL)", 21: "NORTE RURAL", 22: "OCCIDENTE RURAL",
+    23: "RICAURTE RURAL", 33: "USUARIOS NO REGULADOS", 38: "PUERTO BOYACA RURAL",
+    50: "AUTOGENERADORES", 90: "SERVICIOS EBSA", 91: "ARRENDAMIENTO INMUEBLES",
+    94: "OTROS SERVICIOS", 96: "ARRENDAMIENTO INFRAESTRUCTURA", 97: "OTROS COMERCIALIZADORES",
+    98: "AREAS DE DISTRIBUCION", 99: "CARGOS PARA EL USO DEL STR",
+}
+
+
+def etiqueta_ciclo(ciclo: Any) -> str:
+    """'0' -> '00 — CENTRO' (etiqueta_ciclo del Streamlit: dos dígitos y el nombre del glosario)."""
+    try:
+        n = int(str(ciclo))
+    except (TypeError, ValueError):
+        return str(ciclo)
+    return f"{n:02d} — {ZONA_POR_CICLO.get(n, 'sin nombre en glosario')}"
 
 _MUNICIPIOS_LISTA: dict[str, dict[str, str]] = {}
 
@@ -781,7 +803,7 @@ def fuga(
             "alto_medio": sum(1 for fila in filas if fila["riesgo"] in ("ALTO", "MEDIO")),
             "corte": filas[0]["corte"] if filas else "",
             # Los indicadores son de la lista filtrada (como en el original); el total y el
-            # ALTO/MEDIO son de la lista completa, que es lo que pide la linea de conteo.
+            # ALTO/MEDIO son de la lista completa, que es lo que pide la línea de conteo.
             "resumen": {
                 "clientes": len(seleccion),
                 "consumo_6m": sum(fila["consumo_6m"] for fila in seleccion),
@@ -933,7 +955,7 @@ def locations_by_niu(db: Session, nius: list[str]) -> dict[str, dict[str, Any]]:
     for start in range(0, len(unique), 1000):
         chunk = unique[start : start + 1000]
         for row in db.scalars(select(ClientLocation).where(ClientLocation.niu.in_(chunk)).order_by(ClientLocation.id)).all():
-            result[row.niu] = {"municipio": row.municipio, "direccion": row.direccion, "latitud": row.latitud, "longitud": row.longitud}
+            result[row.niu] = {"municipio": row.municipio, "direccion": row.direccion, "latitud": row.latitud, "longitud": row.longitud, "coordenadas_validas": row.coordenadas_validas}
     return result
 
 
@@ -1016,26 +1038,75 @@ def descargar_exporte(
 
 
 @router.get("/route")
-def visit_route(cycle: int | None = None, limit: int = Query(500, ge=1, le=5000), db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles("SOPORTE", "ADMIN_MODELO"))) -> dict[str, Any]:
-    """Lista de gestión por ciclo de lectura con ubicación, para las visitas de campo."""
+def visit_route(
+    cycle: int | None = None,
+    zona: str | None = None,
+    limit: int = Query(500, ge=1, le=5000),
+    db: Session = Depends(get_db),
+    _: dict[str, Any] = Depends(require_roles("SOPORTE", "ADMIN_MODELO")),
+) -> dict[str, Any]:
+    """Ruta de visitas por ciclo de lectura (sección Visitas por ciclo). Devuelve los ciclos
+    disponibles —acotados a la zona regional si se pide, como base_c del original—, las zonas de la
+    lista y los clientes del ciclo con su ubicación y las columnas de negocio de la tabla. La zona
+    solo decide qué ciclos se ofrecen: los clientes se filtran por el ciclo elegido, igual que en
+    el Streamlit."""
     try:
-        cycles = [
-            {"ciclo": ciclo, "ciclo_etiqueta": etiqueta, "clientes": int(clientes)}
-            for ciclo, etiqueta, clientes in db.execute(
-                select(OperationalManagement.ciclo, OperationalManagement.ciclo_etiqueta, func.count()).group_by(OperationalManagement.ciclo, OperationalManagement.ciclo_etiqueta).order_by(OperationalManagement.ciclo)
+        # Conteos por ciclo sobre la lista entera: linea_conteo los usa como "en el ciclo sin filtros".
+        conteo_global = {
+            (ciclo, ciclo_etiqueta): int(clientes)
+            for ciclo, ciclo_etiqueta, clientes in db.execute(
+                select(OperationalManagement.ciclo, OperationalManagement.ciclo_etiqueta, func.count())
+                .group_by(OperationalManagement.ciclo, OperationalManagement.ciclo_etiqueta)
+                .order_by(OperationalManagement.ciclo)
             ).all()
+        }
+        # La zona regional vive en el catálogo del cliente; en el original es operativa["zona_regional"].
+        disponibles = set(conteo_global)
+        if zona:
+            disponibles = set(
+                db.execute(
+                    select(OperationalManagement.ciclo, OperationalManagement.ciclo_etiqueta)
+                    .join(Client, Client.niu == OperationalManagement.niu)
+                    .where(Client.zona_regional == zona)
+                    .distinct()
+                ).all()
+            )
+        cycles = [
+            {
+                "ciclo": ciclo,
+                "ciclo_etiqueta": ciclo_etiqueta,
+                "etiqueta": etiqueta_ciclo(ciclo),
+                "clientes": conteo_global[(ciclo, ciclo_etiqueta)],
+            }
+            for ciclo, ciclo_etiqueta in conteo_global
+            if (ciclo, ciclo_etiqueta) in disponibles
         ]
-        query = select(OperationalManagement)
+        # Las zonas salen del catálogo de los clientes de la lista, sin depender del ciclo pedido.
+        zonas_lista = {
+            valor
+            for valor in db.scalars(select(Client.zona_regional).where(Client.niu.in_(select(OperationalManagement.niu))).distinct()).all()
+            if valor
+        }
+        # Sin ciclo elegido solo se piden las opciones (ciclos y zonas): la lista completa son decenas de
+        # miles de filas que el navegador no necesita para pintar los dos desplegables.
+        items: list[dict[str, Any]] = []
+        rows = []
+        consulta_items = select(OperationalManagement)
         if cycle is not None:
-            query = query.where(OperationalManagement.ciclo == cycle)
-        rows = db.scalars(query.order_by(nulls_last(OperationalManagement.orden_en_ciclo.asc()), OperationalManagement.valor_riesgo_mes.desc()).limit(limit)).all()
-        nius = [row.niu for row in rows]
-        locations = locations_by_niu(db, nius)
-        clients = clients_by_niu(db, nius)
-        items = []
+            consulta_items = consulta_items.where(OperationalManagement.ciclo == cycle)
+            rows = db.scalars(
+                consulta_items.order_by(nulls_last(OperationalManagement.orden_en_ciclo.asc()), OperationalManagement.valor_riesgo_mes.desc()).limit(limit)
+            ).all()
+        locations = locations_by_niu(db, [row.niu for row in rows])
+        clients = clients_by_niu(db, [row.niu for row in rows])
         for item in rows:
             ubicacion = locations.get(item.niu, {})
             atributos = clients.get(item.niu, {})
+            payload = item.payload or {}
+            # Gravedad de negocio y referencia de la caída: mismos cálculos que _drops_lista y referencia_caida.
+            reciente = float(payload.get("consumo_reciente_kwh") or 0)
+            perdida = float(item.perdida_kwh_mes or 0)
+            referencia = reciente + perdida
             items.append(
                 {
                     "niu": item.niu,
@@ -1047,12 +1118,112 @@ def visit_route(cycle: int | None = None, limit: int = Query(500, ge=1, le=5000)
                     "direccion": ubicacion.get("direccion"),
                     "latitud": float(ubicacion["latitud"]) if ubicacion.get("latitud") is not None else None,
                     "longitud": float(ubicacion["longitud"]) if ubicacion.get("longitud") is not None else None,
-                    "payload": {**(item.payload or {}), **{key: value for key, value in atributos.items() if value}, **{key: value for key, value in ubicacion.items() if value}},
+                    "coordenadas_validas": bool(ubicacion.get("coordenadas_validas")),
+                    "orden_en_ciclo": item.orden_en_ciclo,
+                    "clase": str(payload.get("clase_servicio_nombre") or payload.get("clase_servicio") or "SIN CLASIFICAR"),
+                    "lectura": str(payload.get("tipo_lectura_nombre") or ""),
+                    "veredicto": str(payload.get("veredicto") or ""),
+                    "gravedad": _gravedad(item.severidad, payload.get("veredicto")),
+                    "referencia_kwh": referencia,
+                    "consumo_reciente_kwh": reciente,
+                    "caida_pct": ((reciente - referencia) / referencia * 100) if referencia > 0 else None,
+                    "valor_riesgo_mes": float(item.valor_riesgo_mes or 0),
+                    "trayectoria": str(item.trayectoria or ""),
+                    "prioridad": str(item.prioridad_gestion or ""),
+                    "situacion": str(item.estado_en_lista or ""),
+                    "payload": {**payload, **{key: value for key, value in atributos.items() if value}, **{key: value for key, value in ubicacion.items() if value}},
                 }
             )
-        return {"cycles": cycles, "items": items, "total": len(items), "cycle": cycle}
+        return {
+            "cycles": cycles,
+            "zonas": [valor for valor in ZONAS_REGIONALES if valor in zonas_lista] + sorted(zonas_lista - set(ZONAS_REGIONALES)),
+            "items": items,
+            "total": len(items),
+            "total_lista": int(db.scalar(select(func.count()).select_from(OperationalManagement)) or 0),
+            "cycle": cycle,
+        }
     except OperationalError as exc:
         raise schema_error(exc) from exc
+
+
+@router.get("/search")
+def buscar_en_lista(
+    municipio: str | None = None,
+    gravedad: str | None = None,
+    trayectoria: str | None = None,
+    db: Session = Depends(get_db),
+    _: dict[str, Any] = Depends(require_roles(*ALL_ROLES)),
+) -> dict[str, Any]:
+    """Buscar clientes de la lista de caída por municipio, gravedad o tendencia. Es el expander
+    "¿No tienes el NIU? Buscar por municipio o situación" de la sección Consultar un cliente:
+    quien no tiene el NIU lo copia de aquí. Filtra la lista COMPLETA en el servidor (igual que
+    el pandas del original) sobre la caché de _drops_lista, que ya trae el municipio del TC1."""
+    try:
+        registros = _drops_lista(db, _corte_operativo(db))
+        candidatos = registros["registros"]
+        if municipio:
+            candidatos = [registro for registro in candidatos if registro["municipio"] == municipio]
+        if gravedad:
+            candidatos = [registro for registro in candidatos if registro["gravedad"] == gravedad]
+        if trayectoria:
+            candidatos = [registro for registro in candidatos if registro["trayectoria"] == trayectoria]
+        candidatos = sorted(candidatos, key=lambda registro: registro["valor_riesgo_mes"], reverse=True)[:50]
+        return {
+            "total": len(candidatos),
+            # Los municipios salen de la lista COMPLETA (munis del original), sin filtrar.
+            "municipios": [entrada["municipio"] for entrada in registros["municipios"]],
+            "items": [
+                {
+                    "niu": registro["niu"],
+                    "municipio": registro["municipio"],
+                    "clase": registro["clase"],
+                    "gravedad": registro["gravedad"],
+                    "trayectoria": registro["trayectoria"],
+                    "valor_riesgo_mes": registro["valor_riesgo_mes"],
+                }
+                for registro in candidatos
+            ],
+        }
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+
+
+def _texto_a_numero(valor: str | None) -> Any:
+    """Los CSV del resumen llegan como texto: enteros y decimales pasan a número, el resto queda texto."""
+    texto = (valor or "").strip()
+    if not texto:
+        return texto
+    try:
+        numero = float(texto)
+    except ValueError:
+        return texto
+    return int(numero) if numero.is_integer() and "." not in texto else numero
+
+
+@router.get("/retro")
+def resultados_de_las_visitas(
+    db: Session = Depends(get_db),
+    _: dict[str, Any] = Depends(require_roles(*ALL_ROLES)),
+) -> dict[str, Any]:
+    """Resultados de las visitas contra la lista (sección "Retroalimentación" del Streamlit).
+
+    Primero se lee el resumen real (dataset retro_resumen, Evaluacion_retroalimentacion_gestion.ipynb);
+    si no hay ninguno se cae al ejemplo simulado del disco —igual que hace el original con
+    R.gestion/retroalimentacion/ejemplo_simulado— y la respuesta lo marca con `ejemplo`."""
+    try:
+        filas, total = dataset_service.query_dataset(db, "retro_resumen", 2000, 0)
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+    if total:
+        return {"filas": [registro["payload"] for registro in filas], "ejemplo": False}
+    base = _directorio_datos()
+    ruta = base / "07_gestion_caida" / "retroalimentacion" / "ejemplo_simulado" / "EJEMPLO_SIMULADO_evaluacion_resumen.csv"
+    if not (ruta.is_file() and _dentro_de(ruta, base)):
+        return {"filas": [], "ejemplo": False}
+    with ruta.open(encoding="utf-8-sig", newline="") as archivo:
+        lector = csv.DictReader(archivo)
+        filas = [{clave: _texto_a_numero(valor) for clave, valor in fila.items() if clave} for fila in lector]
+    return {"filas": filas, "ejemplo": True}
 
 
 MAP_METRICS = (
