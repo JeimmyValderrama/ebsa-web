@@ -2,14 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
-import { DatasetCatalog, DatasetTable, DatasetView, MiniBars, type Row } from "../components/DataExplorer";
+import { DatasetTable, DatasetView, type Row } from "../components/DataExplorer";
 import { MapaBoyaca } from "../components/MapaBoyaca";
 import { useCorte } from "../lib/useCorte";
 import { Proyeccion } from "../components/Projection";
 import { Descargas } from "../components/Descargas";
-import { Sensitive, usePresentation } from "../app/Presentation";
 import { useSectionNav } from "../app/SectionNav";
 import { fechaCo, fmtN, limpiarNiu, mesCorto } from "../lib/format";
+import { ResumenAdmin } from "./admin/ResumenAdmin";
+import { GestionCiclo } from "./admin/GestionCiclo";
+import { RankingGerencial } from "./admin/RankingGerencial";
 
 type AdminUser = { uid: string; email?: string; disabled: boolean; email_verified: boolean; role?: string };
 type Run = { id?: number; period: string; status?: string; files_total?: number; rows_imported: number; completed_at?: string };
@@ -24,11 +26,10 @@ const tabs = [
   ["buscar", "Buscar cliente"],
   ["pronostico", "Pronóstico 6 meses"],
   ["proyeccion", "Proyección de consumo"],
+  ["descargas", "Descargas por grupo"],
   ["seguimiento", "Seguimiento"],
   ["feedback", "Retroalimentación"],
   ["pipeline", "Estado del pipeline"],
-  ["descargas", "Descargas por grupo"],
-  ["datasets", "Todas las salidas"],
   ["usuarios", "Usuarios y roles"],
 ] as const;
 
@@ -60,9 +61,8 @@ const GRUPOS: Array<{ nombre: string; items: Array<{ clave: Tab; etiqueta: strin
   {
     nombre: "Operación",
     items: [
-      { clave: "pipeline", etiqueta: "Estado del pipeline" },
       { clave: "descargas", etiqueta: "Descargas por grupo" },
-      { clave: "datasets", etiqueta: "Todas las salidas" },
+      { clave: "pipeline", etiqueta: "Estado del pipeline" },
     ],
   },
   { nombre: "Sistema", items: [{ clave: "usuarios", etiqueta: "Usuarios y roles" }] },
@@ -71,27 +71,20 @@ const GRUPOS: Array<{ nombre: string; items: Array<{ clave: Tab; etiqueta: strin
 export default function AdminPage() {
   const { idToken } = useAuth();
   const [tab, setTab] = useState<Tab>("resumen");
-  const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
-  const elegirTab = useCallback((clave: Tab) => {
-    setTab(clave);
-    if (clave !== "datasets") setSelectedDataset(null);
-  }, []);
+  const elegirTab = useCallback((clave: Tab) => setTab(clave), []);
   useSectionNav(GRUPOS, tab, elegirTab);
-  const [summary, setSummary] = useState<{ latest_run?: Run | null; counts: Record<string, number> } | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { measure } = usePresentation();
   const corte = useCorte(idToken);
 
   useEffect(() => {
     if (!idToken) return;
     let cancelled = false;
-    Promise.all([api.summary(idToken), api.runs(idToken), api.adminUsers(idToken)])
-      .then(([resumenData, corridas, administrados]) => {
+    Promise.all([api.runs(idToken), api.adminUsers(idToken)])
+      .then(([corridas, administrados]) => {
         if (cancelled) return;
-        setSummary(resumenData);
         setRuns(corridas as Run[]);
         setUsers(administrados as AdminUser[]);
       })
@@ -119,32 +112,16 @@ export default function AdminPage() {
 
   return (
     <div className="page-content">
-      <section className="page-intro">
-        <div>
-          <div className="eyebrow accent-eyebrow">ADMINISTRADOR DEL MODELO / CONTROL</div>
-          <h1>El pipeline, de punta a punta.</h1>
-          <p>Controla corridas, calidad, modelos, listas, retroalimentación y usuarios desde las salidas importadas.</p>
-        </div>
-      </section>
-
       {message && <div className="notice notice-warning">{message}</div>}
 
-      {tab === "resumen" && <Resumen summary={summary} runs={runs} />}
-      {tab === "gestion" && (
-        <div className="stack">
-          <DatasetView token={idToken} datasetKey="cycle_summary" title="Resumen de gestión por ciclo" description="Cuántos clientes entran, gestionan y salen de la lista en cada ciclo." prioritarias={["ciclo", "corte", "en_lista", "gestionados"]} />
-          <DatasetView token={idToken} datasetKey="managerial" title="Ranking gerencial por valor en riesgo" description="Vista gerencial de la lista operativa con priorización, zona y valor mensual." filters={[{ key: "zona_nombre", label: "Zona" }, { key: "prioridad_gestion", label: "Prioridad" }]} />
-        </div>
-      )}
-      {tab === "ranking" && (
-        <DatasetView token={idToken} datasetKey="managerial" title="Ranking gerencial por valor en riesgo" description="Ordenado por valor mensual en riesgo, con zona, ciclo y prioridad de gestión." filters={[{ key: "zona_nombre", label: "Zona" }, { key: "prioridad_gestion", label: "Prioridad" }]} prioritarias={["NIU", "prioridad_gestion", "valor_riesgo_mes", "zona_nombre", "ciclo_etiqueta"]} />
-      )}
+      {tab === "resumen" && <ResumenAdmin token={idToken} />}
+      {tab === "gestion" && <GestionCiclo token={idToken} />}
+      {tab === "ranking" && <RankingGerencial token={idToken} />}
       {tab === "fuga" && (
         <div className="stack">
           <DatasetView token={idToken} datasetKey="churn_scores" title="Clientes con riesgo de fuga" description="Probabilidad de salida a 6 meses, valor esperado de pérdida y señales del modelo." filters={[{ key: "nivel_riesgo", label: "Nivel de riesgo" }]} prioritarias={["NIU", "nivel_riesgo", "prob_fuga_6m", "valor_esperado_perdida_mes"]} />
           <DatasetView token={idToken} datasetKey="churn_feature_importance" title="Importancia de variables del modelo de fuga" />
-          <DatasetView token={idToken} datasetKey="cluster_risk" title="Riesgo por clúster" />
-          <DatasetView token={idToken} datasetKey="churn_model_metrics" title="Métricas del modelo de fuga" />
+          <DatasetView token={idToken} datasetKey="churn_metrics" title="Métricas del modelo de fuga" />
         </div>
       )}
       {tab === "cortes" && (
@@ -182,88 +159,7 @@ export default function AdminPage() {
       {tab === "feedback" && <Retroalimentacion token={idToken} />}
       {tab === "pipeline" && <Pipeline token={idToken} runs={runs} />}
       {tab === "descargas" && <Descargas token={idToken} />}
-      {tab === "datasets" && (
-        <section className="data-module">
-          <header className="module-heading">
-            <div>
-              <div className="eyebrow">CATÁLOGO</div>
-              <h2>Todas las salidas importadas</h2>
-              <p>Selecciona un dataset para verlo con búsqueda, filtros y descarga.</p>
-            </div>
-          </header>
-          <DatasetCatalog token={idToken} onSelect={setSelectedDataset} />
-          {selectedDataset && <DatasetView token={idToken} datasetKey={selectedDataset} title={`Vista previa: ${selectedDataset}`} pageSize={25} />}
-        </section>
-      )}
       {tab === "usuarios" && <Users rows={users} onUpdate={updateUser} />}
-
-      {tab === "resumen" && summary?.latest_run && (
-        <p className="quiet-note">
-          Corte vigente: {summary.latest_run.period} · {fmtN(summary.latest_run.rows_imported)} filas importadas {measure === "Consumo" ? "" : "(las cifras de energía se muestran en su unidad original)"}.
-        </p>
-      )}
-    </div>
-  );
-}
-
-function Resumen({ summary, runs }: { summary: { latest_run?: Run | null; counts: Record<string, number> } | null; runs: Run[] }) {
-  return (
-    <div className="stack">
-      <div className="metric-grid">
-        <Metric label="Clientes" value={summary?.counts.clients} />
-        <Metric label="Lista operativa" value={summary?.counts.operational} />
-        <Metric label="Riesgo de fuga" value={summary?.counts.churn_risks} />
-        <Metric label="Estudios de caída" value={summary?.counts.drop_analysis} />
-        <Metric label="Ubicaciones" value={summary?.counts.locations} />
-      </div>
-      <div className="split-panel">
-        <div className="mini-chart">
-          <div className="eyebrow">ÚLTIMO CORTE</div>
-          <h3>{summary?.latest_run?.period ?? "Sin importar"}</h3>
-          <MiniBars
-            data={summary?.latest_run
-              ? [
-                  { label: "Filas importadas", value: summary.latest_run.rows_imported },
-                  { label: "Clientes", value: summary.counts.clients ?? 0 },
-                  { label: "Lista operativa", value: summary.counts.operational ?? 0 },
-                ]
-              : []}
-          />
-        </div>
-        <div className="admin-note">
-          <div className="eyebrow">CÓMO FUNCIONA</div>
-          <h3>La aplicación consulta resultados precalculados.</h3>
-          <p>El pipeline se ejecuta fuera de Vercel. Aquí se revisan sus salidas, calidad, versiones, seguimiento y retroalimentación de campo.</p>
-        </div>
-      </div>
-      <div className="table-card">
-        <table>
-          <thead>
-            <tr>
-              <th>Periodo</th>
-              <th>Estado</th>
-              <th>Archivos</th>
-              <th>Filas</th>
-              <th>Completada</th>
-            </tr>
-          </thead>
-          <tbody>
-            {runs.map((row) => (
-              <tr key={String(row.id)}>
-                <td>
-                  <strong>{row.period}</strong>
-                </td>
-                <td>
-                  <span className="badge">{row.status}</span>
-                </td>
-                <td>{row.files_total}</td>
-                <td>{fmtN(row.rows_imported)}</td>
-                <td>{row.completed_at ? fechaCo(row.completed_at) : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
@@ -330,17 +226,13 @@ function Retroalimentacion({ token }: { token?: string | null }) {
   return (
     <div className="stack">
       <DatasetView
-        token={idTokenSafe(token)}
+        token={token ?? undefined}
         datasetKey="feedback_summary"
         title="Evaluación de la retroalimentación de campo"
         description="Comparación entre lo que el modelo preveía y lo que ocurrió realmente en las cuentas visitadas."
       />
     </div>
   );
-}
-
-function idTokenSafe(token?: string | null): string | undefined {
-  return token ?? undefined;
 }
 
 type PipelineData = Awaited<ReturnType<typeof api.pipeline>>;
@@ -499,15 +391,5 @@ function Users({ rows, onUpdate }: { rows: AdminUser[]; onUpdate: (uid: string, 
         </table>
       </div>
     </section>
-  );
-}
-
-function Metric({ label, value }: { label: string; value?: number | string | null }) {
-  return (
-    <article className="metric-card">
-      <div className="metric-label">{label}</div>
-      <div className="metric-value">{value == null ? "—" : typeof value === "number" ? fmtN(value) : value}</div>
-      <div className="metric-detail">Azure SQL · último corte</div>
-    </article>
   );
 }

@@ -52,6 +52,47 @@ export const ESTADO_OTRO_TEXTO: Record<string, string> = {
 
 export const ZONAS_REGIONALES = ["CENTRO", "TUNDAMA", "SUGAMUXI", "OCCIDENTE", "ORIENTE", "NORTE", "RICAURTE", "PUERTO BOYACA"];
 
+/** ZONA_POR_CICLO del glosario (hojas COLUMNA BR/BT): nombre de cada ciclo de lectura. */
+export const ZONA_POR_CICLO: Record<number, string> = {
+  0: "CENTRO",
+  1: "TUNDAMA",
+  2: "SUGAMUXI",
+  3: "OCCIDENTE",
+  4: "ORIENTE",
+  5: "NORTE",
+  6: "RICAURTE",
+  7: "PUERTO BOYACA",
+  9: "CENTRO (SECCIONALES - URBANO)",
+  10: "CENTRO RURAL",
+  11: "TUNDAMA RURAL",
+  12: "SUGAMUXI RURAL",
+  13: "ORIENTE RURAL",
+  15: "ALUMBRADO PUBLICO",
+  19: "CENTRO (SECCIONALES - RURAL)",
+  21: "NORTE RURAL",
+  22: "OCCIDENTE RURAL",
+  23: "RICAURTE RURAL",
+  33: "USUARIOS NO REGULADOS",
+  38: "PUERTO BOYACA RURAL",
+  50: "AUTOGENERADORES",
+  90: "SERVICIOS EBSA",
+  91: "ARRENDAMIENTO INMUEBLES",
+  94: "OTROS SERVICIOS",
+  96: "ARRENDAMIENTO INFRAESTRUCTURA",
+  97: "OTROS COMERCIALIZADORES",
+  98: "AREAS DE DISTRIBUCION",
+  99: "CARGOS PARA EL USO DEL STR",
+};
+
+/** '0' -> '00 — CENTRO' (etiqueta_ciclo del Streamlit: dos dígitos y el nombre del glosario). */
+export function etiquetaCiclo(ciclo: unknown): string {
+  const texto = String(ciclo ?? "");
+  if (!texto || texto === "nan" || texto === "None") return "—";
+  const numero = Number.parseInt(texto, 10);
+  if (Number.isNaN(numero)) return texto;
+  return `${String(numero).padStart(2, "0")} — ${ZONA_POR_CICLO[numero] ?? "sin nombre en glosario"}`;
+}
+
 export const GRUPOS_CONSUMO_ORDEN = ["Grande", "Mediano", "Pequeño", "Intermitente", "Sin historia suficiente"];
 
 /** Qué define a cada grupo de consumo (GRUPO_CONSUMO_DESCRIPCION del glosario). */

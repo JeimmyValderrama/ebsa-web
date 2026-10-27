@@ -23,3 +23,26 @@ export function periodoTexto(cortes: Record<string, string>): string {
   return `Periodo facturado: **urbano ${mesLargo(cortes.URBANO || "—")}** · **rural ${mesLargo(cortes.RURAL || "—")}** `
     + "(los rurales se leen por trimestres, por eso su periodo puede ir un par de meses atrás).";
 }
+
+/** TRAYECTORIA_TEXTO: qué significa cada trayectoria del pronóstico (expander del Resumen). */
+export const TRAYECTORIA_TEXTO: Record<string, string> = {
+  CAIDA_ACELERANDO: "El modelo prevé que el mes que viene siga bajando. Máxima urgencia.",
+  SIN_RECUPERACION_PREVISTA: "El modelo no prevé cambio mayor a su propio error: se queda en el nivel caído.",
+  RECUPERACION_PREVISTA: "El modelo prevé que vuelva. Vigilar, no despachar.",
+  NO_EVALUABLE_RURAL: "Rural excluido de trayectoria por sesgo del pronóstico en el borde.",
+  SIN_PRONOSTICO: "El cliente no tiene fila en el pronóstico (historia insuficiente).",
+};
+
+/** NIVEL_FUGA_TEXTO: qué significa cada nivel de riesgo de fuga (expander de la lista de fuga). */
+export const NIVEL_FUGA_TEXTO: Record<string, string> = {
+  ALTO: "Está en el 1 % de clientes con mayor puntaje del modelo (y por encima del riesgo promedio). Contactar primero.",
+  MEDIO: "Está entre el 1 % y el 5 % con mayor puntaje del modelo. Vigilar y contactar según valor.",
+  BAJO: "Sin señales por encima de la población.",
+};
+
+/** ORDEN_SEVERIDAD: orden en que el Streamlit enumera la severidad de la caída. */
+export const ORDEN_SEVERIDAD = ["CRITICA", "FUERTE", "MODERADA"];
+
+/** Bajada de la tarjeta de severidad (Resumen y Gestión por ciclo). */
+export const BAJADA_SEVERIDAD =
+  "Severidad relativa al segmento: CRITICA ≥ 2 escalas por encima del umbral, FUERTE ≥ 1, MODERADA el resto";
