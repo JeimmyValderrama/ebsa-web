@@ -651,7 +651,8 @@ function PanelFiltrosVisita({
 /** Cortes del resumen de retroalimentación, en el orden del original. */
 const CORTES_RETRO = ["TOTAL", "severidad", "trayectoria", "estado_en_lista", "tramo_consumo", "zona", "cluster_id"];
 
-function Retroalimentacion({ token }: { token?: string | null }) {
+/** La usa Soporte ("Registrar resultado de visitas") y el Administrador ("Retroalimentación"): es el mismo panel. */
+export function Retroalimentacion({ token }: { token?: string | null }) {
   const [respuesta, setRespuesta] = useState<RetroData | null>(null);
   const [cargando, setCargando] = useState(true);
 
