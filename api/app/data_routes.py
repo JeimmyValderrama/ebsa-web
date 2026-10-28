@@ -245,7 +245,12 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
                 select(operational.prioridad_gestion, func.count(), func.sum(operational.perdida_kwh_mes), func.sum(operational.valor_riesgo_mes)).group_by(operational.prioridad_gestion)
             ).all()
         }
-        por_severidad = {str(severidad): int(clientes) for severidad, clientes in db.execute(select(operational.severidad, func.count()).group_by(operational.severidad)).all()}
+        por_severidad = {
+            str(severidad): {"clientes": int(clientes), "perdida_kwh_mes": float(perdida or 0), "valor_riesgo_mes": float(valor or 0)}
+            for severidad, clientes, perdida, valor in db.execute(
+                select(operational.severidad, func.count(), func.sum(operational.perdida_kwh_mes), func.sum(operational.valor_riesgo_mes)).group_by(operational.severidad)
+            ).all()
+        }
 
         # Una sola pasada por la lista: la gravedad que ve negocio (una caída sostenida es "antigua"),
         # las entradas del ciclo y los agregados por zona regional, clase de servicio y tamaño (limpiar_lista + gravedad).

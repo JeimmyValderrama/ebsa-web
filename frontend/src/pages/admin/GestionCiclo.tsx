@@ -380,7 +380,7 @@ export function GestionCiclo({ token }: { token?: string | null }) {
               </div>
               {verSev === "General" ? (
                 <Barras
-                  serie={severidades.map((nivel) => [nivel, panorama?.por_severidad[nivel] ?? 0])}
+                  serie={severidades.map((nivel) => [nivel, panorama?.por_severidad[nivel]?.clientes ?? 0])}
                   opciones={{ color: AZUL, nombreValor: "Clientes", nombreCategoria: "Severidad", altoFila: 34 }}
                 />
               ) : (

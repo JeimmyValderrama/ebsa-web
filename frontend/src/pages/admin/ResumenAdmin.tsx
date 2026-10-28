@@ -19,11 +19,12 @@ import {
 /**
  * Réplica de la sección "Resumen" del administrador (app_ebsa_v2.py, seccion == "Resumen").
  *
- * Usa solo datos que la API ya sirve: /panorama (listas, fuga, zonas, severidad, estado),
- * /drops por trayectoria (clientes y valor) y los datasets pequeños (cycle_summary,
- * list_entries_exits). Desviaciones documentadas por falta de endpoint: la tabla de estado en
- * lista y la de severidad muestran solo clientes (no kWh ni valor por grupo) y se omite el
- * aviso de "clientes sin tarifa en el sistema comercial".
+ * Usa solo datos que la API ya sirve: /panorama (listas, prioridades, severidad, gravedad,
+ * zonas, fuga y cortes), /drops por trayectoria (clientes y valor) y los datasets pequeños
+ * (cycle_summary, list_entries_exits). Severidad igual al original: /panorama la agrupa con
+ * clientes, kWh y valor. Desviación documentada por falta de endpoint: la tabla de estado en
+ * lista muestra solo clientes (no kWh ni valor por estado) y se omite el aviso de "clientes sin
+ * tarifa en el sistema comercial".
  */
 
 type Panorama = Awaited<ReturnType<typeof api.panorama>>;
@@ -151,10 +152,13 @@ export function ResumenAdmin({ token }: { token?: string | null }) {
         .sort((a, b) => Number(b[columnaMedidaCiclo] ?? 0) - Number(a[columnaMedidaCiclo] ?? 0))
     : [];
 
+  // /panorama agrupa severidad con clientes, kWh y valor, igual que el groupby del original.
   const filasSeveridad = panorama
     ? ORDEN_SEVERIDAD.filter((nivel) => panorama.por_severidad[nivel] !== undefined).map((nivel) => ({
         severidad: nivel,
-        clientes: panorama.por_severidad[nivel],
+        clientes: panorama.por_severidad[nivel].clientes,
+        kwh_mes: panorama.por_severidad[nivel].perdida_kwh_mes,
+        valor_mes: panorama.por_severidad[nivel].valor_riesgo_mes,
       }))
     : [];
 
@@ -268,9 +272,9 @@ export function ResumenAdmin({ token }: { token?: string | null }) {
           <Tarjeta titulo="Severidad" bajada={BAJADA_SEVERIDAD} plegable>
             {filasSeveridad.length ? (
               <TablaSimple
-                columnas={["severidad", "clientes"]}
+                columnas={["severidad", "clientes", "kwh_mes", "valor_mes"]}
                 filas={filasSeveridad}
-                formato={formatoTabla(filasSeveridad, ["severidad", "clientes"])}
+                formato={formatoTabla(filasSeveridad, ["severidad", "clientes", "kwh_mes", "valor_mes"])}
               />
             ) : (
               <div className="empty-state">Sin datos de severidad.</div>

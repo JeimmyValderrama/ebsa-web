@@ -319,7 +319,7 @@ export const api = {
     request<{
       lista: { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number };
       por_prioridad: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number }>;
-      por_severidad: Record<string, number>;
+      por_severidad: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number }>;
       gravedad: Record<string, number>;
       estado_en_lista: Record<string, number>;
       por_zona: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number; gravedad: Record<string, number> }>;
