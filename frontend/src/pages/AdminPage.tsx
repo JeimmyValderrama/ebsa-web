@@ -139,7 +139,7 @@ export default function AdminPage() {
       {tab === "seguimiento" && <SeguimientoAdmin token={idToken} />}
       {tab === "feedback" && <Retroalimentacion token={idToken} />}
       {tab === "pipeline" && <PipelineAdmin token={idToken} />}
-      {tab === "descargas" && <Descargas token={idToken} />}
+      {tab === "descargas" && <Descargas token={idToken} esAdmin />}
       {tab === "usuarios" && <Users rows={users} onUpdate={updateUser} />}
     </div>
   );

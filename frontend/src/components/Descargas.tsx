@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useAuthOptional } from "../auth/AuthProvider";
 import { api, type ExporteFila, type ExportesData } from "../lib/api";
 import { formatoTabla, fmtN } from "../lib/format";
 import { GRUPO_CONSUMO_DESCRIPCION, GRUPOS_CONSUMO_ORDEN } from "../lib/negocio";
@@ -10,8 +9,11 @@ import { Aviso, TablaSimple, Tarjeta, TituloPagina } from "./v2/ui";
  * Sección "Descargas por grupo" (Comercial la llama "Descargas"): el índice que deja el pipeline
  * (11_exportes_negocio/indice_exportes.csv) y una tabla por producto con su botón de descarga por
  * archivo (petición de la vista Comercial); cada archivo se lee del disco recién cuando se pide,
- * los grandes pesan ~145 MB. El aviso de calidad (los archivos traen el NIU) es solo para las
- * vistas que no son "Administrador del modelo", igual que en el original.
+ * los grandes pesan ~145 MB.
+ *
+ * La tarjeta "Calidad de los datos" (los archivos traen el NIU) se pinta solo en la vista
+ * Comercial: el original la muestra con `if vista != "Administrador del modelo"`, así que el
+ * Administrador no la ve. Se pasa como prop `esAdmin` para que el rol de quien entra no la oculte.
  *
  * Es el mismo componente para la subpestaña Comercial y para "Descargas por grupo" del
  * Administrador, que en el Streamlit eran dos copias de la misma sección.
@@ -45,10 +47,7 @@ function filaTabla(fila: ExporteFila): Record<string, unknown> {
   };
 }
 
-export function Descargas({ token }: { token?: string | null }) {
-  const auth = useAuthOptional();
-  const tecnico = auth?.currentUser?.role === "ADMIN_MODELO";
-
+export function Descargas({ token, esAdmin = false }: { token?: string | null; esAdmin?: boolean }) {
   const [indice, setIndice] = useState<ExportesData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorDescarga, setErrorDescarga] = useState<string | null>(null);
@@ -139,8 +138,13 @@ export function Descargas({ token }: { token?: string | null }) {
 
       {errorDescarga ? <Aviso texto={errorDescarga} tipo="alerta" /> : null}
       {!disponibles ? <Aviso texto="No hay archivos disponibles para descargar." /> : null}
-      {/* El original lo pinta solo cuando la vista no es "Administrador del modelo": es para Comercial. */}
-      {disponibles && !tecnico ? <Aviso texto={NIU} tipo="calidad" /> : null}
+      {/* En el Streamlit el aviso(...) "calidad" vivía dentro de una tarjeta y solo se pintaba
+          cuando la vista no era "Administrador del modelo". */}
+      {disponibles && !esAdmin ? (
+        <Tarjeta titulo="Calidad de los datos">
+          <p>{NIU}</p>
+        </Tarjeta>
+      ) : null}
 
       {productos.map((producto) => {
         const filas = producto.filas.map(filaTabla);
