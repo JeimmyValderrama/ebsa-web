@@ -8,9 +8,10 @@ import { Aviso, TablaSimple, Tarjeta, TituloPagina } from "./v2/ui";
 
 /**
  * Sección "Descargas por grupo" (Comercial la llama "Descargas"): el índice que deja el pipeline
- * (11_exportes_negocio/indice_exportes.csv), la tarjeta para elegir y descargar un archivo y una
- * tabla por producto con su botón de descarga por archivo (petición de la vista Comercial); cada
- * archivo se lee del disco recién cuando se pide, los grandes pesan ~145 MB.
+ * (11_exportes_negocio/indice_exportes.csv) y una tabla por producto con su botón de descarga por
+ * archivo (petición de la vista Comercial); cada archivo se lee del disco recién cuando se pide,
+ * los grandes pesan ~145 MB. El aviso de calidad (los archivos traen el NIU) es solo para las
+ * vistas que no son "Administrador del modelo", igual que en el original.
  *
  * Es el mismo componente para la subpestaña Comercial y para "Descargas por grupo" del
  * Administrador, que en el Streamlit eran dos copias de la misma sección.
@@ -52,9 +53,7 @@ export function Descargas({ token }: { token?: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [errorDescarga, setErrorDescarga] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
-  // Archivo elegido en el selector de la tarjeta "Descargar un archivo" (st.selectbox, vacío al entrar).
-  const [elegido, setElegido] = useState("");
-  // Rutas que se están descargando ahora mismo (selector o botón de fila).
+  // Rutas que se están descargando ahora mismo (el botón de la fila que está pulsado).
   const [bajando, setBajando] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
@@ -134,56 +133,14 @@ export function Descargas({ token }: { token?: string | null }) {
 
   const disponibles = productos.some((producto) => producto.filas.some((fila) => fila.estado === "disponible"));
 
-  // Las opciones del selector: solo los archivos que están en disco (como `if existe:` del Streamlit).
-  const opciones: Array<{ etiqueta: string; ruta: string; archivo: string }> = [];
-  productos.forEach((producto) => {
-    producto.filas.forEach((fila) => {
-      if (fila.estado !== "disponible") return;
-      opciones.push({
-        etiqueta: `${NOMBRES_PRODUCTO[producto.producto] ?? producto.producto} — ${fila.grupo_consumo} (${fila.archivo})`,
-        ruta: fila.ruta,
-        archivo: fila.archivo,
-      });
-    });
-  });
-  const seleccionado = opciones.find((opcion) => opcion.ruta === elegido) ?? null;
-
   return (
     <div className="stack">
       {cabecera}
 
       {errorDescarga ? <Aviso texto={errorDescarga} tipo="alerta" /> : null}
-
-      <Tarjeta titulo="Descargar un archivo" bajada="Elige el archivo; solo se lee del disco el que escojas">
-        {!disponibles ? (
-          <Aviso texto="No hay archivos disponibles para descargar." />
-        ) : (
-          <>
-            <div className="campo">
-              <span>Archivo</span>
-              <select className="filter-select" value={elegido} onChange={(evento) => setElegido(evento.target.value)}>
-                <option value="">Elige el archivo que quieres descargar</option>
-                {opciones.map((opcion) => (
-                  <option key={opcion.ruta} value={opcion.ruta}>
-                    {opcion.etiqueta}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {seleccionado ? (
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => void descargar(seleccionado.ruta, seleccionado.archivo)}
-                disabled={bajando.has(seleccionado.ruta)}
-              >
-                {bajando.has(seleccionado.ruta) ? "Descargando…" : `Descargar ${seleccionado.archivo}`}
-              </button>
-            ) : null}
-            {!tecnico ? <Aviso texto={NIU} tipo="calidad" /> : null}
-          </>
-        )}
-      </Tarjeta>
+      {!disponibles ? <Aviso texto="No hay archivos disponibles para descargar." /> : null}
+      {/* El original lo pinta solo cuando la vista no es "Administrador del modelo": es para Comercial. */}
+      {disponibles && !tecnico ? <Aviso texto={NIU} tipo="calidad" /> : null}
 
       {productos.map((producto) => {
         const filas = producto.filas.map(filaTabla);
