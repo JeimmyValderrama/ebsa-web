@@ -8,8 +8,12 @@ import { Aviso, TablaSimple, Tarjeta, TituloPagina } from "./v2/ui";
 
 /**
  * Sección "Descargas por grupo" (Comercial la llama "Descargas"): el índice que deja el pipeline
- * (11_exportes_negocio/indice_exportes.csv), la tarjeta para elegir y descargar un archivo (que se
- * lee del disco recién cuando se pide, los grandes pesan ~145 MB) y una tabla por producto.
+ * (11_exportes_negocio/indice_exportes.csv), la tarjeta para elegir y descargar un archivo y una
+ * tabla por producto con su botón de descarga por archivo (petición de la vista Comercial); cada
+ * archivo se lee del disco recién cuando se pide, los grandes pesan ~145 MB.
+ *
+ * Es el mismo componente para la subpestaña Comercial y para "Descargas por grupo" del
+ * Administrador, que en el Streamlit eran dos copias de la misma sección.
  */
 
 /** NOMBRES_PRODUCTO del Streamlit. */
@@ -50,7 +54,7 @@ export function Descargas({ token }: { token?: string | null }) {
   const [cargando, setCargando] = useState(true);
   // Archivo elegido en el selector de la tarjeta "Descargar un archivo" (st.selectbox, vacío al entrar).
   const [elegido, setElegido] = useState("");
-  // Rutas que se están descargando ahora mismo (la del selector de la tarjeta).
+  // Rutas que se están descargando ahora mismo (selector o botón de fila).
   const [bajando, setBajando] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
@@ -192,7 +196,28 @@ export function Descargas({ token }: { token?: string | null }) {
         };
         return (
           <Tarjeta key={producto.producto} titulo={NOMBRES_PRODUCTO[producto.producto] ?? producto.producto}>
-            <TablaSimple columnas={COLUMNAS} filas={filas} formato={formato} />
+            <TablaSimple
+              columnas={COLUMNAS}
+              filas={filas}
+              formato={formato}
+              tituloAcciones="Descarga"
+              acciones={(_fila, indiceFila) => {
+                const origen = producto.filas[indiceFila];
+                // Solo los que están en disco ofrecen descarga (como `if existe:` del Streamlit).
+                if (origen.estado !== "disponible") return null;
+                const bajandoEsta = bajando.has(origen.ruta);
+                return (
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => void descargar(origen.ruta, origen.archivo)}
+                    disabled={bajandoEsta}
+                  >
+                    {bajandoEsta ? "Descargando…" : "Descargar"}
+                  </button>
+                );
+              }}
+            />
           </Tarjeta>
         );
       })}
