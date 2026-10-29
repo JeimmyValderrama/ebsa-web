@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { api, type ExporteFila } from "../../lib/api";
+import { api, type ExporteFila, type ProyectadoData } from "../../lib/api";
 import { Aviso, Kpis, TablaSimple, Tarjeta, TituloPagina, type ItemKpi } from "../../components/v2/ui";
-import { Barras } from "../../charts/Graficas";
+import { Barras, ColumnasTiempo } from "../../charts/Graficas";
+import { EXPR_DEC1 } from "../../charts/vegaSpec";
 import { md } from "../../charts/textos";
 import { AZUL } from "../../charts/paleta";
 import { fmtN, formatoTabla } from "../../lib/format";
@@ -11,20 +12,17 @@ import { GRUPO_CONSUMO_DESCRIPCION, GRUPOS_CONSUMO_ORDEN } from "../../lib/negoc
  * Réplica de la sección "Pronóstico 6 meses" del administrador (app_ebsa_v2.py,
  * seccion == "Pronóstico 6 meses").
  *
- * Usa solo datos que la API ya sirve: /panorama (el corte facturado de cada zona),
- * /exportes (los archivos que dejó el pipeline por grupo, con sus clientes) y los
- * datasets forecast_profile_metrics, forecast_naive_comparison,
- * forecast_model_selection, model_versions y model_usage.
+ * Usa solo datos que la API sirve: /panorama (el corte de datos de cada zona),
+ * /proyectado (la suma del consumo proyectado por mes calendario), /exportes (los
+ * archivos que dejó el pipeline por grupo, con sus clientes) y los datasets
+ * forecast_profile_metrics, forecast_naive_comparison, forecast_model_selection,
+ * model_versions y model_usage.
  *
  * Desviaciones documentadas por falta de endpoint servido:
- *  - Se omite la tarjeta "Consumo total proyectado por mes": la suma por mes calendario
- *    recorre los 3,5 millones de filas del archivo de predicciones, que la API no sirve.
  *  - Se omite el pie "N clientes con la regla de cero sostenido": se cuenta sobre la
- *    columna modelo_1m del archivo de predicciones, tampoco servida.
- *  - "Clientes pronosticados" sale de la suma de clientes de los archivos de pronóstico
- *    del índice de exportes (parten el archivo por grupo), no de contar las filas.
- *  - El "Corte de datos" (urbano y rural) se toma de /panorama, que trae el mes facturado
- *    de cada zona.
+ *    columna modelo_1m del archivo de predicciones, que la API no sirve.
+ *  - El "Corte de datos" (urbano y rural) se toma de /panorama, que trae el mes
+ *    facturado de cada zona (la misma fuente que cortes_zona del original).
  */
 
 type Panorama = Awaited<ReturnType<typeof api.panorama>>;
@@ -78,6 +76,7 @@ function ultimoUso(uso: FilaDataset[], modelo: string): FilaDataset | null {
 
 export function PronosticoAdmin({ token }: { token?: string | null }) {
   const [panorama, setPanorama] = useState<Panorama | null>(null);
+  const [proyectado, setProyectado] = useState<ProyectadoData | null>(null);
   const [exportes, setExportes] = useState<ExportesData | null>(null);
   const [metricas, setMetricas] = useState<FilaDataset[] | null>(null);
   const [ingenuos, setIngenuos] = useState<FilaDataset[] | null>(null);
@@ -93,6 +92,12 @@ export function PronosticoAdmin({ token }: { token?: string | null }) {
       .panorama(token)
       .then((valor) => {
         if (!cancelado) setPanorama(valor);
+      })
+      .catch(() => undefined);
+    api
+      .proyectado(token)
+      .then((valor) => {
+        if (!cancelado) setProyectado(valor);
       })
       .catch(() => undefined);
     api
@@ -128,6 +133,15 @@ export function PronosticoAdmin({ token }: { token?: string | null }) {
   const pronostico: ExporteFila[] = (exportes?.productos ?? []).find((producto) => producto.producto === "pronostico_6_meses")?.filas ?? [];
   const usoPron = uso ? ultimoUso(uso, "pronostico") : null;
 
+  // El índice de exportes trae una fila "Todos" (el archivo completo) además de las de cada
+  // grupo: sumar todas las filas duplica el total (1.158.802 en vez de 579.401). Se cuenta la
+  // de "Todos", que es exactamente len(pred6) del original, o si no está, la suma de los grupos
+  // (que da el mismo número porque los grupos parten el mismo archivo).
+  const esTodos = (fila: ExporteFila): boolean => String(fila.grupo_consumo ?? "").trim().toLowerCase() === "todos";
+  const clientesPronosticados = pronostico.some(esTodos)
+    ? pronostico.filter(esTodos).reduce((suma, fila) => suma + Number(fila.clientes ?? 0), 0)
+    : pronostico.reduce((suma, fila) => suma + Number(fila.clientes ?? 0), 0);
+
   // Corte facturado de cada zona, en el orden alfabético del groupby del original (rural, urbano).
   const corteDatos = panorama
     ? Object.keys(panorama.cortes_zona)
@@ -137,7 +151,7 @@ export function PronosticoAdmin({ token }: { token?: string | null }) {
     : "—";
 
   const kpis: ItemKpi[] = [
-    { titulo: "Clientes pronosticados", valor: fmtN(pronostico.reduce((suma, fila) => suma + Number(fila.clientes ?? 0), 0)), tono: "marca" },
+    { titulo: "Clientes pronosticados", valor: fmtN(clientesPronosticados), tono: "marca" },
     { titulo: "Corte de datos", valor: corteDatos, texto: true, ayuda: AYUDA_CORTE },
     { titulo: "Modelo entrenado con corte", valor: usoPron ? String(usoPron.fecha_corte_modelo ?? "—") : "—", texto: true },
     { titulo: "Modo de la última corrida", valor: usoPron ? String(usoPron.modo ?? "—") : "—", texto: true },
@@ -169,6 +183,16 @@ export function PronosticoAdmin({ token }: { token?: string | null }) {
       "Ventaja del modelo (puntos)": redondea1(fila.mejora_vs_mejor_ingenuo_pp),
     }));
 
+  // Consumo proyectado por mes: la tabla de al lado del gráfico (kWh exactos, con la columna
+  // llamada "kWh" como en el original) y el pie con el corte por zona (CORTE_ZONA sale de
+  // cortes_zona, la misma fuente que /panorama).
+  const filasMes = (proyectado?.meses ?? []).map((fila) => ({ mes: fila.mes, kWh: fila.kwh }));
+  const pieCorteZona =
+    proyectado && panorama && Object.keys(panorama.cortes_zona ?? {}).length
+      ? `Urbanos pronosticados desde ${panorama.cortes_zona.URBANO ?? "—"}; rurales desde ${panorama.cortes_zona.RURAL ?? "—"} `
+        + "(los meses rurales ya pasados se rellenan con el pronóstico hasta que llegue la lectura trimestral)."
+      : "";
+
   // Clientes por grupo: los archivos de pronóstico del índice parten el archivo por grupo.
   const filasGrupos = GRUPOS_CONSUMO_ORDEN.map((grupo) => ({
     grupo_consumo: grupo,
@@ -183,12 +207,47 @@ export function PronosticoAdmin({ token }: { token?: string | null }) {
 
       <Kpis items={kpis} compacto />
 
+      {proyectado?.meses.length ? (
+        <Tarjeta titulo="Consumo total proyectado por mes">
+          <div className="fila-2-1">
+            <div className="stack">
+              <ColumnasTiempo
+                serie={proyectado.meses.map((fila) => [fila.mes, fila.kwh / 1e6])}
+                opciones={{
+                  color: AZUL,
+                  nombreValor: "Consumo proyectado",
+                  alto: 260,
+                  formato: (valor) => `${fmtN(valor, 2)} GWh`,
+                  ejeExpr: EXPR_DEC1,
+                }}
+              />
+              <p className="v2-caption">{md("Gráfico en GWh (millones de kWh); la tabla trae los kWh exactos.")}</p>
+            </div>
+            <TablaSimple
+              columnas={["mes", "kWh"]}
+              filas={filasMes}
+              formato={formatoTabla(filasMes, ["mes", "kWh"])}
+            />
+          </div>
+          {proyectado.omitidos > 0 ? (
+            <p className="v2-caption">
+              {`Se omiten ${proyectado.omitidos} mes(es) de los extremos que solo traen una de las dos zonas (urbana o rural): su total no es comparable.`}
+            </p>
+          ) : null}
+          {pieCorteZona ? <p className="v2-caption">{pieCorteZona}</p> : null}
+        </Tarjeta>
+      ) : null}
+
       {filasPivote.length ? (
         <Tarjeta
           titulo="Precisión esperada (backtest) por grupo de consumo y horizonte"
           bajada="Error porcentual ponderado (WAPE %); columnas = meses adelante"
         >
-          <TablaSimple columnas={COLUMNAS_PIVOTE} filas={filasPivote} formato={formatoTabla(filasPivote, COLUMNAS_PIVOTE)} />
+          <TablaSimple
+            columnas={COLUMNAS_PIVOTE}
+            filas={filasPivote}
+            formato={formatoBacktest(filasPivote, COLUMNAS_PIVOTE, COLUMNAS_PIVOTE.slice(1))}
+          />
           <p className="v2-caption">{md(AYUDA_WAPE)}</p>
           <p className="v2-pie">
             {md(GRUPOS_CONSUMO_ORDEN.map((grupo) => `**${grupo}**: ${GRUPO_CONSUMO_DESCRIPCION[grupo] ?? ""}`).join(" · "))}
@@ -201,7 +260,11 @@ export function PronosticoAdmin({ token }: { token?: string | null }) {
           <TablaSimple
             columnas={COLUMNAS_INGENUOS}
             filas={filasIngenuos}
-            formato={formatoTabla(filasIngenuos, COLUMNAS_INGENUOS)}
+            formato={formatoBacktest(
+              filasIngenuos,
+              COLUMNAS_INGENUOS,
+              COLUMNAS_INGENUOS.filter((columna) => columna !== "Meses adelante" && columna !== "Mejor pronóstico simple"),
+            )}
           />
           <Aviso texto={AVISO_INGENUOS} tipo="limite" />
         </Tarjeta>
@@ -259,6 +322,23 @@ export function PronosticoAdmin({ token }: { token?: string | null }) {
       {!exportes && !error ? <div className="empty-state">Consultando los archivos del pronóstico…</div> : null}
     </div>
   );
+}
+
+/**
+ * Celdas numéricas con los decimales del original: estas dos tablas se piden con .round(1) y
+ * st.dataframe las pinta tal cual (44,1 / 15,3), mientras que formatoTabla por defecto deja
+ * enteros porque fmtN arranca en 0 decimales. Las columnas enteras (meses adelante) van sin decimal.
+ */
+function formatoBacktest(
+  filas: Array<Record<string, unknown>>,
+  columnas: string[],
+  conDecimal: string[],
+): (valor: unknown, columna: string) => string {
+  const base = formatoTabla(filas, columnas);
+  return (valor, columna) => {
+    if (typeof valor === "number" && Number.isFinite(valor)) return fmtN(valor, conDecimal.includes(columna) ? 1 : 0);
+    return base(valor, columna);
+  };
 }
 
 /** round(1) del Streamlit: un decimal para las cifras de backtest. */

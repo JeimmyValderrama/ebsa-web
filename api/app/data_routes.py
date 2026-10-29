@@ -327,6 +327,51 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
 
 
 # ---------------------------------------------------------------------------
+# Consumo total proyectado por mes: tarjeta "Consumo total proyectado por mes"
+# de la seccion "Pronóstico 6 meses"
+# ---------------------------------------------------------------------------
+# El original recorre los 3,5 millones de filas del archivo de predicciones (fecha_pred_1m..6m
+# con pred_1m..6m_kwh) y suma por mes calendario; en la BD esos mismos pares ya están en
+# client_forecasts (un renglón por cliente y horizonte). Cada zona arranca en meses distintos,
+# así que el primer y el último mes solo traen una de las dos zonas: se descartan los que no
+# alcanzan el 98 % de los clientes del mes más completo, igual que _total_proyectado del
+# original. La suma sobre 3,5 millones de filas cuesta unos segundos: se memoriza por corte
+# y entra en el precalentamiento para que la primera visita no la espere.
+_PROYECTADO_CACHE: dict[int, dict[str, Any]] = {}
+
+
+@router.get("/proyectado")
+def consumo_proyectado(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
+    """Consumo total proyectado por mes calendario (kWh): los meses completos que dibuja la
+    tarjeta del pronóstico y cuántos de los extremos se omitieron por traer solo una zona."""
+    try:
+        corte_id = _corte_operativo(db)
+        cache = _PROYECTADO_CACHE.get(corte_id)
+        if cache is not None:
+            return cache
+        filas = db.execute(
+            select(
+                ClientForecast.periodo_pronosticado,
+                func.sum(ClientForecast.consumo_pronosticado_kwh),
+                func.count(),
+            )
+            .group_by(ClientForecast.periodo_pronosticado)
+            .order_by(ClientForecast.periodo_pronosticado)
+        ).all()
+        # El mes se arma desde la fecha: en SQLite y en Azure SQL el date casteado da "AAAA-MM-DD".
+        totales = [(f"{fecha:%Y-%m}", float(suma or 0), int(clientes)) for fecha, suma, clientes in filas if fecha]
+        maximo = max((clientes for _, _, clientes in totales), default=0)
+        completos = [(mes, kwh) for mes, kwh, clientes in totales if clientes >= 0.98 * maximo]
+        valor = {
+            "meses": [{"mes": mes, "kwh": kwh} for mes, kwh in completos],
+            "omitidos": len(totales) - len(completos),
+        }
+        return _memoiza_corte(_PROYECTADO_CACHE, corte_id, valor)
+    except OperationalError as exc:
+        raise schema_error(exc) from exc
+
+
+# ---------------------------------------------------------------------------
 # Lista de caída: sección "Caídas de consumo" de Comercial y de Soporte
 # ---------------------------------------------------------------------------
 
@@ -1518,13 +1563,14 @@ def _metricas_municipio(db: Session) -> dict[str, Any]:
 
 def precalentar(db: Session) -> None:
     """Rellena en segundo plano las cachés de las secciones más pesadas (panorama, caídas,
-    cero, métricas del mapa y fuga) para que la primera visita no espere al primer cálculo.
-    Se lanza en un hilo desde el arranque de uvicorn; cualquier fallo es inocuo."""
+    cero, métricas del mapa, fuga y consumo proyectado) para que la primera visita no espere
+    al primer cálculo. Se lanza en un hilo desde el arranque de uvicorn; cualquier fallo es inocuo."""
     try:
         panorama(db=db, _={})
         drops(medida="Consumo", n=200, db=db, _={})
         zero(db=db, _={})
         municipality_metrics(db=db, _={})
         _fuga_lista(db, _corte_operativo(db))
+        consumo_proyectado(db=db, _={})
     except Exception:  # noqa: BLE001 - el precalentamiento nunca debe tumbar el arranque
         pass

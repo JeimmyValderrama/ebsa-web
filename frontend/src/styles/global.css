@@ -565,6 +565,8 @@ textarea.search-input {
 .fila-1-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; margin-top: 16px; }
 /* st.columns([1, 2]) del Streamlit: la zona regional ocupa un tercio y el ciclo los dos restantes. */
 .fila-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; }
+/* st.columns([2, 1]) del Streamlit: el gráfico a dos tercios y la tabla al tercio restante. */
+.fila-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; align-items: start; }
 /* st.columns(3) del Streamlit: tres columnas iguales (la fila de Municipio / Gravedad / Tendencia). */
 .fila-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .v2-fila-medida { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; margin-bottom: 14px; }
@@ -649,7 +651,7 @@ textarea.search-input {
 /* ---------- tableta y celular (mismos cortes que el Streamlit) ---------- */
 @media (max-width: 1080px) {
   .v2-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .fila-3-2, .fila-1-1, .fila-1-2, .fila-3, .v2-fila-medida, .split-panel { grid-template-columns: minmax(0, 1fr); }
+  .fila-3-2, .fila-1-1, .fila-1-2, .fila-2-1, .fila-3, .v2-fila-medida, .split-panel { grid-template-columns: minmax(0, 1fr); }
   /* La banda nunca se aplasta: mínimo 150 px por segmento y, si no caben, salta a otra fila. */
   .v2-banda { flex-wrap: wrap; }
   .v2-seg { min-width: min(150px, 100%); }

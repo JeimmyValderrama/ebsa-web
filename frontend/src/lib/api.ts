@@ -331,6 +331,13 @@ export type RetroData = {
   ejemplo: boolean;
 };
 
+/** Consumo total proyectado por mes (kWh) de la tarjeta del pronóstico (/api/data/proyectado). */
+export type ProyectadoData = {
+  meses: Array<{ mes: string; kwh: number }>;
+  /** Meses de los extremos omitidos por traer solo una de las dos zonas (urbana o rural). */
+  omitidos: number;
+};
+
 export const api = {
   health: () => request<{ status: string; service: string; timestamp: string }>("/api/health"),
   status: () => request<{ status: string; database_configured: boolean; database_engine: string; firebase_configured: boolean }>("/api/status"),
@@ -341,6 +348,8 @@ export const api = {
   forecast: (token: string | undefined, niu: string) => request<Array<{ horizonte: number | null; periodo_pronosticado: string | null; consumo_pronosticado_kwh: number | null; grupo_consumo?: string | null; fecha_corte?: string | null; modelo?: string | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/forecast`, { token }),
   locations: (token: string | undefined, limit = 5000) => request<Array<Record<string, unknown>>>(`/api/data/locations${query({ limit })}`, { token }),
   catalog: (token: string | undefined) => request<Array<{ dataset_key: string; rows: number }>>("/api/data/datasets/catalog", { token }),
+  /** Consumo total proyectado por mes: la tarjeta "Consumo total proyectado por mes" del pronóstico. */
+  proyectado: (token: string | undefined) => request<ProyectadoData>("/api/data/proyectado", { token }),
   panorama: (token: string | undefined) =>
     request<{
       lista: { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number };
