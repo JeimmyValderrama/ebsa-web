@@ -215,7 +215,7 @@ export function ResumenAdmin({ token }: { token?: string | null }) {
             <Kpis
               compacto
               items={[
-                { titulo: "Clientes puntuados", valor: fmtN(Object.values(panorama.fuga.por_nivel).reduce((total, valor) => total + valor, 0)), tono: "marca" },
+                { titulo: "Clientes puntuados", valor: fmtN(panorama.fuga.clientes), tono: "marca" },
                 { titulo: "Riesgo ALTO", valor: fmtN(panorama.fuga.por_nivel.ALTO ?? 0), tono: "alerta", ayuda: NIVEL_FUGA_TEXTO.ALTO },
                 { titulo: "Riesgo MEDIO", valor: fmtN(panorama.fuga.por_nivel.MEDIO ?? 0), tono: "aviso", ayuda: NIVEL_FUGA_TEXTO.MEDIO },
                 {

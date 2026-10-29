@@ -393,6 +393,7 @@ export function FugaAdmin({ token }: { token?: string | null }) {
 
   const kpis: ItemKpi[] = panorama
     ? [
+        // El Streamlit pone len(fuga): todos los puntuados por el modelo, BAJO incluido.
         { titulo: "Clientes puntuados", valor: fmtN(panorama.fuga.clientes), tono: "marca" },
         { titulo: "Riesgo ALTO", valor: fmtN(panorama.fuga.por_nivel.ALTO ?? 0), tono: "alerta" },
         { titulo: "Riesgo MEDIO", valor: fmtN(panorama.fuga.por_nivel.MEDIO ?? 0), tono: "aviso" },

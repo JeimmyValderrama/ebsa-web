@@ -325,7 +325,7 @@ export const api = {
       por_zona: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number; gravedad: Record<string, number> }>;
       por_clase: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number; gravedad: Record<string, number> }>;
       por_grupo: Record<string, { clientes: number; perdida_kwh_mes: number; valor_riesgo_mes: number; gravedad: Record<string, number> }>;
-      fuga: { clientes: number; perdida_esperada_mes: number; valor_en_riesgo_mes: number; consumo_alto_medio_kwh: number; por_nivel: Record<string, number> };
+      fuga: { clientes: number; alto_medio: number; perdida_esperada_mes: number; valor_en_riesgo_mes: number; consumo_alto_medio_kwh: number; por_nivel: Record<string, number> };
       cero_sostenido: number;
       cero_sostenido_resumen: { clientes: number; consumo_referencia_kwh: number; valor_facturaba_antes_mes: number };
       otro_comercializador: number;

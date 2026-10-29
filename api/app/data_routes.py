@@ -306,7 +306,9 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
             "por_clase": por_clase,
             "por_grupo": por_grupo,
             "fuga": {
-                "clientes": int(fuga[0] or 0),
+                # Puntuados por el modelo: todos los niveles (ALTO+MEDIO+BAJO), como len(fuga) del Streamlit.
+                "clientes": int(sum(fuga_niveles.values())),
+                "alto_medio": int(fuga[0] or 0),
                 "perdida_esperada_mes": float(fuga[1] or 0),
                 "valor_en_riesgo_mes": float(fuga[2] or 0),
                 "consumo_alto_medio_kwh": fuga_consumo_kwh,
