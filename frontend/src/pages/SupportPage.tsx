@@ -312,7 +312,9 @@ function PanelEjemplos({ token }: { token?: string | null }) {
     "NIU", "municipio", "ciclo_etiqueta", "zona_nombre", "grupo_consumo", "cluster_id", "zona",
     "mediana_12m_kwh", "veredicto", "severidad", "trayectoria", "valor_riesgo_mes", "riesgo_fuga", "prob_fuga_6m",
   ];
-  const filas = datos?.items ?? [];
+  // Las columnas llevan los nombres crudos del original ("NIU" con mayúscula), así que se
+  // añade esa clave a cada fila: el resto de campos ya coinciden con su nombre de columna.
+  const filas = (datos?.items ?? []).map((item) => ({ ...item, NIU: item.niu }));
   const formato = formatoTabla(filas, columnas);
 
   return (
