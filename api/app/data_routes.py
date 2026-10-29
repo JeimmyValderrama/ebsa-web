@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import FileResponse
-from sqlalchemy import func, nulls_last, select
+from sqlalchemy import String, case, cast, func, nulls_last, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -1153,19 +1153,177 @@ def visit_route(
         raise schema_error(exc) from exc
 
 
+# ---------------------------------------------------------------------------
+# Ejemplos: el expander "¿No tienes un NIU a mano?" de la sección "Buscar cliente"
+# ---------------------------------------------------------------------------
+# El original arma en pandas una tabla de TODOS los clientes segmentados (R.clusters, ~596 mil)
+# cruzada con el pronóstico (perfil -> grupo de consumo), el ciclo del TC1, la ubicación, la
+# lista de caída y la fuga; el propio código avisa que "se arman solo cuando se piden: cruzan
+# las tablas de todos los clientes y tardan unos segundos". Aquí se replica en SQL sobre las
+# mismas tablas. El municipio y el grupo de las 50 filas visibles se piden aparte (50 lookups)
+# en vez de cruzar las dos tablas grandes completas: unir client_locations y client_forecasts
+# a los 596 mil clientes se pasa del tiempo máximo de la función en Vercel.
+EJEMPLOS_LIMITE = 50
+SIN_LISTA = "No está en la lista de caída"
+SIN_HISTORIA = "Sin historia suficiente"
+NO_PUNTUADO = "No puntuado"
+_EJEMPLOS_OPCIONES_CACHE: dict[int, dict[str, Any]] = {}
+_EJEMPLOS_CACHE: dict[tuple[int, tuple[tuple[str, str], ...]], dict[str, Any]] = {}
+
+
+def _ejemplos_opciones(db: Session) -> dict[str, Any]:
+    """Valores de los seis filtros del expander, memorizados por corte."""
+    corte_id = _corte_operativo(db)
+    cache = _EJEMPLOS_OPCIONES_CACHE.get(corte_id)
+    if cache is not None:
+        return cache
+    grupos = {str(g) for g in db.scalars(select(ClientForecast.grupo_consumo).where(ClientForecast.horizonte == 1).distinct()) if g}
+    filas_segmento, _ = dataset_service.query_dataset(db, "segment_catalog", 200, 0)
+    segmentos = sorted({str(fila["payload"].get("cluster_id")) for fila in filas_segmento if fila["payload"].get("cluster_id")})
+    ciclos = sorted({int(c) for c in db.scalars(select(Client.ciclo).where(Client.ciclo.is_not(None)).distinct())})
+    municipios = sorted({str(m) for m in db.scalars(select(ClientLocation.municipio).distinct()) if m})
+    trayectorias = sorted({str(t) for t in db.scalars(select(OperationalManagement.trayectoria).distinct()) if t})
+    opciones = {
+        "grupo": [g for g in GRUPOS_CONSUMO_ORDEN if g in grupos] + sorted(grupos - set(GRUPOS_CONSUMO_ORDEN)),
+        "segmento": segmentos,
+        "ciclo": [f"{ciclo:02d}" for ciclo in ciclos],
+        "municipio": municipios,
+        "trayectoria": trayectorias + [SIN_LISTA],
+        "fuga": ["ALTO", "MEDIO", "BAJO", NO_PUNTUADO],
+    }
+    return _memoiza_corte(_EJEMPLOS_OPCIONES_CACHE, corte_id, opciones)
+
+
+def _json_campo(db: Session, columna: Any, ruta: str) -> Any:
+    """Un campo del JSON del payload con la función que entiende cada motor: JSON_EXTRACT en
+    SQLite (local) y JSON_VALUE en Azure SQL. La extracción por índice de SQLAlchemy
+    (columna["$.campo"]) no se compila a ninguna de las dos y devuelve NULL."""
+    if db.get_bind().dialect.name == "mssql":
+        return func.json_value(columna, ruta)
+    return func.json_extract(columna, ruta)
+
+
+def _ejemplos_buscar(db: Session, filtros: dict[str, str]) -> dict[str, Any]:
+    """Conteo y primeras 50 filas de los ejemplos, memorizados por corte y filtros."""
+    corte_id = _corte_operativo(db)
+    clave = (corte_id, tuple(sorted((k, v) for k, v in filtros.items() if v)))
+    cache = _EJEMPLOS_CACHE.get(clave)
+    if cache is not None:
+        return cache
+
+    dr, cli, om, cr = DatasetRecord, Client, OperationalManagement, ClientChurnRisk
+    condiciones: list[Any] = [dr.dataset_key == "clusters", dr.niu.is_not(None)]
+    if filtros.get("segmento"):
+        # Igual que _payload_equals de datasets.py: LIKE sobre el JSON serializado, portable a Azure SQL.
+        condiciones.append(cast(dr.payload, String).like(f'%"cluster_id": "{filtros["segmento"]}"%'))
+    if filtros.get("ciclo"):
+        try:
+            condiciones.append(cli.ciclo == int(filtros["ciclo"]))
+        except ValueError:
+            pass
+    if filtros.get("municipio"):
+        condiciones.append(dr.niu.in_(select(ClientLocation.niu).where(ClientLocation.municipio == filtros["municipio"])))
+    grupo = filtros.get("grupo")
+    if grupo == SIN_HISTORIA:
+        # El fillna del original: son los que no tienen fila de pronóstico más los marcados como tales.
+        condiciones.append(dr.niu.not_in(select(ClientForecast.niu).where(ClientForecast.horizonte == 1, ClientForecast.grupo_consumo != SIN_HISTORIA)))
+    elif grupo:
+        condiciones.append(dr.niu.in_(select(ClientForecast.niu).where(ClientForecast.horizonte == 1, ClientForecast.grupo_consumo == grupo)))
+    if filtros.get("trayectoria") == SIN_LISTA:
+        condiciones.append(om.niu.is_(None))
+    elif filtros.get("trayectoria"):
+        condiciones.append(om.trayectoria == filtros["trayectoria"])
+    if filtros.get("fuga") == NO_PUNTUADO:
+        condiciones.append(cr.niu.is_(None))
+    elif filtros.get("fuga"):
+        condiciones.append(cr.nivel_riesgo == filtros["fuga"])
+
+    def cruces(columnas: list[Any]) -> Any:
+        return (
+            select(*columnas)
+            .select_from(dr)
+            .join(cli, cli.niu == dr.niu)
+            .outerjoin(om, om.niu == dr.niu)
+            .outerjoin(cr, cr.niu == dr.niu)
+            .where(*condiciones)
+        )
+
+    total = int(db.scalar(select(func.count()).select_from(cruces([dr.niu]).subquery())) or 0)
+
+    mediana = _json_campo(db, dr.payload, "$.mediana_12m_kwh")
+    cluster = _json_campo(db, dr.payload, "$.cluster_id")
+    zona = _json_campo(db, dr.payload, "$.zona")
+    veredicto = _json_campo(db, om.payload, "$.veredicto")
+    # Orden del original: valor_riesgo_mes y mediana descendentes, con los vacíos al final
+    # (na_position="last"); el CASE es la forma portable de "NULLS LAST" en SQLite y Azure SQL.
+    sin_valor = case((om.valor_riesgo_mes.is_(None), 1), else_=0)
+    sin_mediana = case((mediana.is_(None), 1), else_=0)
+    registros = db.execute(
+        cruces([dr.niu, cli.ciclo, cli.zona_nombre, mediana, cluster, zona,
+                veredicto, om.severidad, om.trayectoria, om.valor_riesgo_mes,
+                cr.nivel_riesgo, cr.prob_fuga_6m])
+        .order_by(sin_valor, om.valor_riesgo_mes.desc(), sin_mediana, mediana.desc())
+        .limit(EJEMPLOS_LIMITE)
+    ).all()
+
+    # Municipio y grupo solo de las 50 filas visibles: 50 lookups en vez de cruzar las tablas enteras.
+    nius = [registro[0] for registro in registros]
+    municipios = {niu: municipio for niu, municipio in db.execute(select(ClientLocation.niu, ClientLocation.municipio).where(ClientLocation.niu.in_(nius)))} if nius else {}
+    grupos_niu = {niu: g for niu, g in db.execute(select(ClientForecast.niu, ClientForecast.grupo_consumo).where(ClientForecast.horizonte == 1, ClientForecast.niu.in_(nius)))} if nius else {}
+
+    items = [
+        {
+            "niu": niu,
+            "municipio": municipios.get(niu) or "",
+            "ciclo_etiqueta": f"{int(ciclo):02d}" if ciclo is not None else "SIN_CICLO",
+            "zona_nombre": zona_nombre or "",
+            "grupo_consumo": grupos_niu.get(niu) or SIN_HISTORIA,
+            "cluster_id": cluster_id or "",
+            "zona": zona_ or "",
+            "mediana_12m_kwh": float(mediana_) if mediana_ is not None else None,
+            "veredicto": veredicto or SIN_LISTA,
+            "severidad": severidad or SIN_LISTA,
+            "trayectoria": trayectoria_ or SIN_LISTA,
+            "valor_riesgo_mes": float(valor) if valor is not None else None,
+            "riesgo_fuga": nivel_riesgo or NO_PUNTUADO,
+            "prob_fuga_6m": float(prob) if prob is not None else None,
+        }
+        for niu, ciclo, zona_nombre, mediana_, cluster_id, zona_, veredicto, severidad, trayectoria_, valor, nivel_riesgo, prob in registros
+    ]
+    respuesta = {"total": total, "limite": EJEMPLOS_LIMITE, "opciones": _ejemplos_opciones(db), "items": items}
+    if len(_EJEMPLOS_CACHE) >= 64:
+        _EJEMPLOS_CACHE.clear()
+    _EJEMPLOS_CACHE[clave] = respuesta
+    return respuesta
+
+
 @router.get("/search")
 def buscar_en_lista(
+    universo: str | None = None,
     municipio: str | None = None,
     gravedad: str | None = None,
     trayectoria: str | None = None,
+    grupo: str | None = None,
+    segmento: str | None = None,
+    ciclo: str | None = None,
+    fuga: str | None = None,
     db: Session = Depends(get_db),
     _: dict[str, Any] = Depends(require_roles(*ALL_ROLES)),
 ) -> dict[str, Any]:
-    """Buscar clientes de la lista de caída por municipio, gravedad o tendencia. Es el expander
-    "¿No tienes el NIU? Buscar por municipio o situación" de la sección Consultar un cliente:
-    quien no tiene el NIU lo copia de aquí. Filtra la lista COMPLETA en el servidor (igual que
-    el pandas del original) sobre la caché de _drops_lista, que ya trae el municipio del TC1."""
+    """Buscar clientes por municipio o situación. Es el expander "¿No tienes el NIU?" de las
+    secciones Consultar/Buscar un cliente: quien no tiene el NIU lo copia de aquí.
+
+    Dos universos, como en el original:
+     - `universo=ejemplos` (Administrador): TODOS los clientes segmentados, con los filtros de
+       grupo, segmento, ciclo, municipio, situación en caída y riesgo de fuga.
+     - por defecto (Soporte): la lista de caída completa por municipio, gravedad o tendencia,
+       sobre la caché de _drops_lista, que ya trae el municipio del TC1."""
     try:
+        if universo == "ejemplos":
+            return _ejemplos_buscar(db, {
+                "municipio": municipio or "", "trayectoria": trayectoria or "", "grupo": grupo or "",
+                "segmento": segmento or "", "ciclo": ciclo or "", "fuga": fuga or "",
+            })
         registros = _drops_lista(db, _corte_operativo(db))
         candidatos = registros["registros"]
         if municipio:

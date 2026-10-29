@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
-import { api, type BusquedaData, type CicloRuta, type RetroData, type RutaData } from "../lib/api";
+import { api, type BusquedaData, type CicloRuta, type EjemplosData, type RetroData, type RutaData } from "../lib/api";
 import { useSectionNav } from "../app/SectionNav";
 import { useCorte } from "../lib/useCorte";
 import { csvCelda, fmtN, formatoTabla, limpiarNiu, pesos, queRevisar } from "../lib/format";
@@ -13,7 +13,7 @@ import { TablaPro, type Fila } from "../components/v2/TablaPro";
 import { Conteo, Leyenda, md, useEsMovil } from "../charts/textos";
 import { MapaPuntos, type PuntoMapa } from "../components/MapaPuntos";
 import { COLOR_GRAVEDAD, SEVERIDAD_SIMPLE } from "../charts/paleta";
-import { ESTADO_LISTA_SIMPLE, PRIORIDAD_SIMPLE, TRAYECTORIA_SIMPLE, etiqueta } from "../lib/negocio";
+import { ESTADO_LISTA_SIMPLE, GRUPO_CONSUMO_DESCRIPCION, PRIORIDAD_SIMPLE, TRAYECTORIA_SIMPLE, etiqueta, etiquetaCiclo } from "../lib/negocio";
 
 const sections = [
   ["cliente", "Consultar un cliente"],
@@ -69,8 +69,10 @@ export default function SupportPage() {
 
 /**
  * Consulta de un cliente por NIU con su ficha completa. La usan Soporte ("Consultar un cliente")
- * y el Administrador ("Buscar un cliente"), que solo cambian los títulos: el original tenía dos
- * copias prácticamente iguales (seccion "Consultar un cliente" y seccion "Buscar cliente").
+ * y el Administrador ("Buscar un cliente"): el original tenía dos copias casi iguales (seccion
+ * "Consultar un cliente" y seccion "Buscar cliente") y difieren en el expander de ejemplos —
+ * Soporte busca en la lista de caída y el Administrador, con `ejemplos`, entre todos los
+ * clientes segmentados—, en los títulos y en la bajada.
  */
 export function ClientLookup({
   token,
@@ -78,12 +80,15 @@ export function ClientLookup({
   titulo = "Consultar un cliente",
   bajada = "Escribe el NIU y verás, en una sola página, dónde está, qué le pasa al consumo, qué probabilidad de fuga tiene y qué conviene revisar o decirle.",
   resumenEjemplos = "¿No tienes el NIU? Buscar por municipio o situación",
+  ejemplos = false,
 }: {
   token?: string | null;
   initialNiu?: string;
   titulo?: string;
   bajada?: string;
   resumenEjemplos?: string;
+  /** El Administrador busca entre TODOS los clientes segmentados; Soporte, solo en la lista de caída. */
+  ejemplos?: boolean;
 }) {
   const [busqueda, setBusqueda] = useState(initialNiu);
   const [niu, setNiu] = useState(initialNiu);
@@ -149,7 +154,7 @@ export function ClientLookup({
         <details className="v2-exp">
           <summary>{resumenEjemplos}</summary>
           <div className="v2-exp-cuerpo">
-            <BuscaPorMunicipio token={token} />
+            {ejemplos ? <PanelEjemplos token={token} /> : <BuscaPorMunicipio token={token} />}
           </div>
         </details>
       </Tarjeta>
@@ -254,6 +259,151 @@ function BuscaPorMunicipio({ token }: { token?: string | null }) {
 
       {filas.length > 0 && <TablaSimple columnas={columnas} filas={filas} formato={formato} alto={360} />}
       {filas.length === 0 && !error && <div className="empty-state">Ningún cliente cumple estos filtros. Prueba a quitar alguno.</div>}
+    </div>
+  );
+}
+
+/**
+ * Expander "¿No tienes un NIU a mano?" del Administrador: la tabla de ejemplos sobre TODOS los
+ * clientes segmentados (app_ebsa_v2.py, sección "Buscar cliente"), con sus seis filtros y sus
+ * 14 columnas. El de Soporte busca solo en la lista de caída; este busca en la segmentación
+ * completa y el servidor tarda unos segundos en la primera consulta de cada combinación de
+ * filtros, igual que en el original ("cruzan las tablas de todos los clientes y tardan").
+ */
+function PanelEjemplos({ token }: { token?: string | null }) {
+  const VACIO = { grupo: "", segmento: "", ciclo: "", municipio: "", trayectoria: "", fuga: "" };
+  const [filtros, setFiltros] = useState(VACIO);
+  const [datos, setDatos] = useState<EjemplosData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    setCargando(true);
+    api
+      .searchEjemplos(token ?? undefined, filtros)
+      .then((respuesta) => {
+        if (!cancelado) {
+          setDatos(respuesta);
+          setError(null);
+        }
+      })
+      .catch((cause: unknown) => {
+        if (!cancelado) setError(cause instanceof Error ? cause.message : "No fue posible buscar ejemplos.");
+      })
+      .finally(() => {
+        if (!cancelado) setCargando(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [filtros, token]);
+
+  const cambiar =
+    (clave: keyof typeof VACIO) =>
+    (evento: { target: { value: string } }): void =>
+      setFiltros((previo) => ({ ...previo, [clave]: evento.target.value }));
+
+  const opciones = datos?.opciones;
+  const ayudaGrupo = Object.entries(GRUPO_CONSUMO_DESCRIPCION)
+    .map(([grupo, descripcion]) => `${grupo}: ${descripcion}`)
+    .join(" · ");
+  const columnas = [
+    "NIU", "municipio", "ciclo_etiqueta", "zona_nombre", "grupo_consumo", "cluster_id", "zona",
+    "mediana_12m_kwh", "veredicto", "severidad", "trayectoria", "valor_riesgo_mes", "riesgo_fuga", "prob_fuga_6m",
+  ];
+  const filas = datos?.items ?? [];
+  const formato = formatoTabla(filas, columnas);
+
+  return (
+    <div className="stack">
+      <div className="fila-3">
+        <label className="campo">
+          Grupo de consumo
+          <select className="filter-select" value={filtros.grupo} onChange={cambiar("grupo")} title={ayudaGrupo}>
+            <option value="">(todos)</option>
+            {(opciones?.grupo ?? []).map((grupo) => (
+              <option key={grupo} value={grupo}>
+                {grupo}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="campo">
+          Segmento de negocio
+          <select className="filter-select" value={filtros.segmento} onChange={cambiar("segmento")}>
+            <option value="">(todos)</option>
+            {(opciones?.segmento ?? []).map((segmento) => (
+              <option key={segmento} value={segmento}>
+                {segmento}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="campo">
+          Ciclo
+          <select className="filter-select" value={filtros.ciclo} onChange={cambiar("ciclo")}>
+            <option value="">(todos)</option>
+            {(opciones?.ciclo ?? []).map((ciclo) => (
+              <option key={ciclo} value={ciclo}>
+                {etiquetaCiclo(ciclo)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="campo">
+          Municipio
+          <select
+            className="filter-select"
+            value={filtros.municipio}
+            onChange={cambiar("municipio")}
+            title={(opciones?.municipio ?? []).length === 1 ? "Necesita el cruce con el TC1 (python cruzar_ubicacion_tc1.py)" : undefined}
+          >
+            <option value="">(todos)</option>
+            {(opciones?.municipio ?? []).map((municipio) => (
+              <option key={municipio} value={municipio}>
+                {municipio}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="campo">
+          Situación en caída
+          <select className="filter-select" value={filtros.trayectoria} onChange={cambiar("trayectoria")}>
+            <option value="">(todas)</option>
+            {(opciones?.trayectoria ?? []).map((trayectoria) => (
+              <option key={trayectoria} value={trayectoria}>
+                {trayectoria}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="campo">
+          Riesgo de fuga
+          <select className="filter-select" value={filtros.fuga} onChange={cambiar("fuga")}>
+            <option value="">(todos)</option>
+            {(opciones?.fuga ?? ["ALTO", "MEDIO", "BAJO", "No puntuado"]).map((fuga) => (
+              <option key={fuga} value={fuga}>
+                {fuga}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {error && <div className="empty-state">{error}</div>}
+      {!error && (
+        <p className="v2-caption">
+          {cargando
+            ? "Buscando los clientes que cumplen el filtro…"
+            : md(`${fmtN(datos?.total ?? 0)} clientes cumplen el filtro. Se muestran hasta 50; copia el NIU y pégalo abajo.`)}
+        </p>
+      )}
+
+      {filas.length > 0 && <TablaSimple columnas={columnas} filas={filas} formato={formato} alto={360} />}
+      {filas.length === 0 && !error && !cargando && (
+        <div className="empty-state">Ningún cliente cumple estos filtros. Prueba a quitar alguno.</div>
+      )}
     </div>
   );
 }

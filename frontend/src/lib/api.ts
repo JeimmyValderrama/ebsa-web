@@ -259,6 +259,32 @@ export type BusquedaData = {
   items: BusquedaItem[];
 };
 
+/** Un cliente de la tabla de ejemplos del Administrador (universo="ejemplos"), con sus 14 columnas. */
+export type EjemplosItem = {
+  niu: string;
+  municipio: string;
+  ciclo_etiqueta: string;
+  zona_nombre: string;
+  grupo_consumo: string;
+  cluster_id: string;
+  zona: string;
+  mediana_12m_kwh: number | null;
+  veredicto: string;
+  severidad: string;
+  trayectoria: string;
+  valor_riesgo_mes: number | null;
+  riesgo_fuga: string;
+  prob_fuga_6m: number | null;
+};
+
+/** Respuesta de /api/data/search?universo=ejemplos: TODOS los clientes segmentados, no solo la lista de caída. */
+export type EjemplosData = {
+  total: number;
+  limite: number;
+  opciones: { grupo: string[]; segmento: string[]; ciclo: string[]; municipio: string[]; trayectoria: string[]; fuga: string[] };
+  items: EjemplosItem[];
+};
+
 /** Ciclo de lectura disponible en la ruta de visitas (etiqueta = "00 — CENTRO", como en el original). */
 export type CicloRuta = { ciclo: number; ciclo_etiqueta: string; etiqueta: string; clientes: number };
 
@@ -399,6 +425,12 @@ export const api = {
   route: (token: string | undefined, options: { cycle?: number; zona?: string; limit?: number } = {}) => request<RutaData>(`/api/data/route${query(options)}`, { token }),
   search: (token: string | undefined, options: { municipio?: string; gravedad?: string; trayectoria?: string } = {}) =>
     request<BusquedaData>(`/api/data/search${query(options)}`, { token }),
+
+  /** Ejemplos del Administrador: busca sobre todos los clientes segmentados, no sobre la lista de caída. */
+  searchEjemplos: (
+    token: string | undefined,
+    options: { municipio?: string; trayectoria?: string; grupo?: string; segmento?: string; ciclo?: string; fuga?: string } = {},
+  ) => request<EjemplosData>(`/api/data/search${query({ universo: "ejemplos", ...options })}`, { token }),
   /** Resultados de las visitas: el resumen real o, si no hay ninguno, el ejemplo simulado del disco. */
   retro: (token?: string) => request<RetroData>("/api/data/retro", { token }),
   municipalityMetrics: (token: string | undefined) => request<{ metrics: Array<{ key: string; label: string; unidad: string }>; rows: Array<Record<string, unknown>> }>("/api/data/municipalities/metrics", { token }),
