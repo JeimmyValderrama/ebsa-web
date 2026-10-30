@@ -884,6 +884,8 @@ textarea.search-input {
 .actualizando { color: var(--carbon); font-weight: 600; }
 .ctl-fila { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; align-items: center; }
 .ctl-fila > *:last-child { justify-self: end; min-width: 170px; }
+/* La búsqueda de la tabla ocupa todo el ancho de su columna (antes quedaba en el ancho intrínseco del input). */
+.ctl-fila .search-input { width: 100%; }
 /* "Ordenar y columnas": el menú flota sobre la tabla (menú emergente) en vez de empujarla. */
 .v2-pop { position: relative; justify-self: end; }
 .v2-pop summary { list-style: none; margin: 0; cursor: pointer; }
