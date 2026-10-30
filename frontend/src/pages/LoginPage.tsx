@@ -36,7 +36,7 @@ export default function LoginPage() {
 
   if (loading) return (
     <div className="auth-page">
-      <div className="topbar"><div className="marca"><i /><div><b>Analítica de consumo</b><small>Proyecto académico UPTC · no oficial de EBSA</small></div></div></div>
+      <div className="topbar"><div className="marca"><img className="marca-logo" src="/img/logo-monograma.png" alt="" /><div><b>Analítica de consumo</b><small>Proyecto académico UPTC · no oficial de EBSA</small></div></div></div>
       <div className="auth-card"><span className="eyebrow">EBSA / AUTENTICACIÓN</span><h1>Comprobando sesión…</h1></div>
     </div>
   );
@@ -57,9 +57,10 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <div className="topbar"><div className="marca"><i /><div><b>Analítica de consumo</b><small>Proyecto académico UPTC · no oficial de EBSA</small></div></div></div>
+      <div className="topbar"><div className="marca"><img className="marca-logo" src="/img/logo-monograma.png" alt="" /><div><b>Analítica de consumo</b><small>Proyecto académico UPTC · no oficial de EBSA</small></div></div></div>
       <div className="auth-decoration" aria-hidden="true"><span>EBSA</span><b>⚡</b></div>
       <section className="auth-card">
+        <img className="auth-logo" src="/img/logo-ebsa.png" alt="EBSA — Empresa de Energía de Boyacá S.A. E.S.P." />
         <div className="eyebrow accent-eyebrow">ACCESO SEGURO</div>
         <h1>Analítica de consumo de clientes</h1>
         <p className="auth-intro">Caídas de consumo, probabilidad de fuga y proyección de consumo en Boyacá. Usa la cuenta individual habilitada para consultar la información de EBSA.</p>

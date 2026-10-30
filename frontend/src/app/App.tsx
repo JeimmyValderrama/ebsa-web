@@ -138,7 +138,7 @@ function ProtectedLayout() {
             </svg>
           </button>
           <div className="marca">
-            <i />
+            <img className="marca-logo" src="/img/logo-monograma.png" alt="" />
             <div>
               <b>Analítica de consumo</b>
               <small>Proyecto académico UPTC · no oficial de EBSA</small>

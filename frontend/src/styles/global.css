@@ -70,7 +70,11 @@
 
 /* ---------- base ---------- */
 * { box-sizing: border-box; }
-html, body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--plano); }
+/* El gris del canvas vive en html; body queda transparente para que body::before
+   (el patrón de monogramas, z-index -1) no lo tape. */
+html, body { margin: 0; min-width: 320px; min-height: 100vh; }
+html { background: var(--plano); }
+body { background: transparent; }
 body {
   font-family: var(--txt);
   color: var(--ink);
@@ -78,6 +82,19 @@ body {
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Fondo de marca en toda la app: patrón de monogramas EBSA, invertido a negro y muy
+   tenue, fijo detrás del contenido (tarjetas y tablas siguen legibles encima). */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('/img/fondo.png') center / cover no-repeat;
+  filter: invert(1);
+  opacity: .14;
+  z-index: -1;
+  pointer-events: none;
 }
 button, input, select, textarea { font-family: var(--txt); color: inherit; }
 button { cursor: pointer; }
@@ -110,7 +127,8 @@ p { margin: 0; }
   background: var(--marca);
   border-radius: 0 29px 29px 0;
 }
-.marca i { display: block; width: 10px; height: 34px; background: #000; border-radius: 2px; }
+/* Monograma EBSA en la placa: se aplana a negro para contrastar con el dorado. */
+.marca-logo { display: block; height: 34px; width: auto; filter: brightness(0); }
 .marca b { display: block; font-family: var(--disp); font-weight: 600; font-size: 19px; line-height: 1.1; letter-spacing: .2px; }
 .marca small { display: block; font-size: 12px; color: rgba(0, 0, 0, .68); line-height: 1.25; }
 /* Hamburguesa del drawer lateral: se ve solo en celular (como stSidebarCollapsedControl). */
@@ -952,7 +970,7 @@ textarea.search-input {
 /* ---------- acceso ---------- */
 .auth-page {
   min-height: 100vh;
-  background: var(--plano);
+  background: transparent; /* deja ver el fondo de marca del body */
   display: grid;
   place-items: center;
   padding: calc(var(--alto-barra) + 34px) 28px 44px;
@@ -972,6 +990,8 @@ textarea.search-input {
   position: relative;
   z-index: 1;
 }
+/* Logo EBSA completo al inicio de la tarjeta de acceso. */
+.auth-logo { display: block; height: 66px; width: auto; margin-bottom: 16px; }
 .auth-brand { padding: 0 0 22px; display: flex; gap: 12px; align-items: center; }
 .auth-card h1 { font-size: 30px; margin: 12px 0 10px; }
 .auth-intro { color: var(--ink2); font-size: 14px; line-height: 1.6; }
@@ -1074,7 +1094,7 @@ textarea.search-input {
   .page-content { padding: calc(var(--alto-barra) + 16px) 14px calc(40px + env(safe-area-inset-bottom)); }
   .marca { padding: 0 16px 0 12px; gap: 9px; }
   .marca small { display: none; }
-  .marca i { width: 8px; height: 26px; }
+  .marca-logo { height: 26px; }
   .marca b { font-size: 16px; max-width: 92px; white-space: normal; line-height: 1.02; }
   .vistas { flex: 1 1 auto; min-width: 0; margin-left: 8px; gap: 4px; overflow-x: auto; scrollbar-width: none; }
   .vistas::-webkit-scrollbar { display: none; }
