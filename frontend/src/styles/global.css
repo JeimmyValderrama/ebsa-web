@@ -85,57 +85,62 @@ h1, h2, h3, h4 { font-family: var(--disp); font-weight: 600; letter-spacing: .1p
 p { margin: 0; }
 :focus-visible { outline: 3px solid var(--marca); outline-offset: 2px; }
 
-/* ---------- barra superior (la franja carbón del Streamlit) ---------- */
+/* ---------- barra superior (base negra con placa dorada, como el header de ebsa.com.co) ---------- */
 .topbar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   height: var(--alto-barra);
-  background: var(--carbon);
+  background: #000000;
   z-index: 999;
   display: flex;
   align-items: stretch;
 }
+/* Placa de la marca: franja dorada con el extremo derecho redondeado
+   (logo-area::after del sitio corporativo: border-radius 0 80px 80px 0). */
 .marca {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 20px;
-  color: #fff;
+  padding: 0 24px 0 20px;
+  color: #000;
   white-space: nowrap;
+  background: var(--marca);
+  border-radius: 0 29px 29px 0;
 }
-.marca i { display: block; width: 10px; height: 34px; background: var(--marca); border-radius: 2px; }
+.marca i { display: block; width: 10px; height: 34px; background: #000; border-radius: 2px; }
 .marca b { display: block; font-family: var(--disp); font-weight: 600; font-size: 19px; line-height: 1.1; letter-spacing: .2px; }
-.marca small { display: block; font-size: 12px; color: #c9cbc3; line-height: 1.25; }
+.marca small { display: block; font-size: 12px; color: rgba(0, 0, 0, .68); line-height: 1.25; }
 /* Hamburguesa del drawer lateral: se ve solo en celular (como stSidebarCollapsedControl). */
 .menu-lateral { display: none; }
 
-.vistas { display: flex; align-items: stretch; height: var(--alto-barra); margin-left: 26px; gap: 4px; }
+.vistas { display: flex; align-items: center; height: var(--alto-barra); margin-left: 26px; gap: 6px; }
+/* Pestañas como píldoras: la activa en dorado con texto negro (mecánica de los botones del sitio). */
 .vista-tab {
   background: transparent;
   border: 0;
-  border-bottom: 3px solid transparent;
-  padding: 0 16px;
-  color: #d6d8d0;
+  border-radius: 999px;
+  padding: 7px 16px;
+  color: #fff;
   font-weight: 600;
   font-size: 15px;
   white-space: nowrap;
-  /* el enlace se estira a la altura de la franja: el texto va centrado, como en el Streamlit */
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background .12s ease, color .12s ease;
 }
-.vista-tab:hover { color: #fff; }
-.vista-tab.activa { color: #fff; border-bottom-color: var(--marca); }
+.vista-tab:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+.vista-tab.activa { background: var(--marca); color: #000; }
 
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; padding: 0 18px; }
 .corte-chip {
   font-size: 13px;
   padding: 5px 11px;
-  border: 1px solid #5a5b55;
+  border: 1px solid rgba(255, 198, 41, .55);
   border-radius: 999px;
-  color: #eceee6;
+  color: var(--marca);
   white-space: nowrap;
 }
 .usuario { position: relative; display: flex; align-items: center; }
@@ -143,36 +148,39 @@ p { margin: 0; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--carbon2);
-  border: 0;
+  background: rgba(255, 255, 255, .1);
+  border: 1px solid rgba(255, 255, 255, .26);
   color: #fff;
   border-radius: 999px;
   min-height: 34px;
   padding: 2px 12px;
   font-weight: 600;
   font-size: 13px;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
-.user-pill:hover { background: #43433d; }
+.user-pill:hover { background: var(--marca); border-color: var(--marca); color: #000; }
+/* Menú del usuario: desplegable dorado claro con texto negro (dropdown-menu del sitio). */
 .user-menu {
   position: absolute;
   right: 0;
   top: 44px;
   width: 270px;
-  background: var(--sup);
-  border: 1px solid var(--linea);
+  background: #f5e1b6;
+  border: 1px solid #e8d2a4;
   border-radius: 8px;
-  box-shadow: 0 12px 34px rgba(35, 35, 34, .2);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .28);
   padding: 13px 15px;
   display: grid;
   gap: 7px;
   z-index: 1000;
   text-align: left;
+  color: #000;
 }
 .user-menu b { font-family: var(--disp); font-size: 17px; font-weight: 600; }
-.user-menu .correo { font-size: 13px; color: var(--ink2); overflow-wrap: anywhere; }
-.user-menu .rol { font-size: 11.5px; color: var(--ink3); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
-.user-menu .separador { border-top: 1px solid var(--linea2); margin: 3px 0; }
-.user-menu .enlace { background: transparent; border: 0; padding: 0; text-align: left; font-size: 14px; font-weight: 600; color: var(--ink2); }
+.user-menu .correo { font-size: 13px; color: rgba(0, 0, 0, .72); overflow-wrap: anywhere; }
+.user-menu .rol { font-size: 11.5px; color: rgba(0, 0, 0, .55); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+.user-menu .separador { border-top: 1px solid rgba(0, 0, 0, .16); margin: 3px 0; }
+.user-menu .enlace { background: transparent; border: 0; padding: 0; text-align: left; font-size: 14px; font-weight: 600; color: #000; }
 .user-menu .enlace:hover { color: var(--alerta); }
 
 /* ---------- barra lateral (menú de secciones agrupado) ---------- */
@@ -1011,7 +1019,7 @@ textarea.search-input {
 @media (max-width: 1080px) {
   .corte-chip { display: none; }
   .vistas { margin-left: 12px; }
-  .vista-tab { padding: 0 12px; font-size: 14.5px; }
+  .vista-tab { padding: 7px 12px; font-size: 14.5px; }
 }
 
 @media (max-width: 900px) {
@@ -1028,7 +1036,7 @@ textarea.search-input {
     display: grid; place-items: center; flex: 0 0 auto; width: 44px;
     background: transparent; border: 0; border-right: 1px solid rgba(255, 255, 255, .14); color: #fff;
   }
-  .menu-lateral:hover { background: var(--carbon2); }
+  .menu-lateral:hover { background: rgba(255, 255, 255, .14); }
   .sidebar {
     width: min(300px, 86vw);
     transform: translateX(-101%);
@@ -1047,13 +1055,13 @@ textarea.search-input {
     padding: 0; border: 0; background: rgba(35, 35, 34, .4); cursor: pointer;
   }
   .page-content { padding: calc(var(--alto-barra) + 16px) 14px calc(40px + env(safe-area-inset-bottom)); }
-  .marca { padding: 0 12px; gap: 9px; }
+  .marca { padding: 0 16px 0 12px; gap: 9px; }
   .marca small { display: none; }
   .marca i { width: 8px; height: 26px; }
   .marca b { font-size: 16px; max-width: 92px; white-space: normal; line-height: 1.02; }
-  .vistas { flex: 1 1 auto; min-width: 0; margin-left: 8px; gap: 0; overflow-x: auto; scrollbar-width: none; }
+  .vistas { flex: 1 1 auto; min-width: 0; margin-left: 8px; gap: 4px; overflow-x: auto; scrollbar-width: none; }
   .vistas::-webkit-scrollbar { display: none; }
-  .vista-tab { flex: 0 0 auto; padding: 0 8px; font-size: 14px; }
+  .vista-tab { flex: 0 0 auto; padding: 6px 9px; font-size: 14px; }
   .topbar-right { padding: 0 8px; gap: 8px; }
   .user-pill .usuario-nombre { display: none; }
   .page-intro { display: block; }
@@ -1088,9 +1096,9 @@ textarea.search-input {
 }
 
 @media (max-width: 420px) {
-  .marca { padding: 0 10px; gap: 7px; }
+  .marca { padding: 0 13px 0 10px; gap: 7px; }
   .marca b { font-size: 14.5px; max-width: 76px; }
-  .vista-tab { padding: 0 7px; font-size: 13.5px; }
+  .vista-tab { padding: 6px 8px; font-size: 13.5px; }
   .topbar-right { padding: 0 6px; gap: 6px; }
   .v2-kpis { grid-template-columns: minmax(0, 1fr); }
   .v2-kpis.compacto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
