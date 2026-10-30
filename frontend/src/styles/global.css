@@ -266,7 +266,9 @@ h2 { font-size: 24px; padding: .3rem 0 .1rem; }
 h3 { font-size: 20px; }
 .section-status { color: var(--vo); font-size: 13px; display: flex; gap: 8px; align-items: center; }
 
-.stack { display: grid; gap: 16px; margin-top: 22px; }
+/* Suelo minmax(0,1fr): una columna auto se dimensionaría por el min-content de sus
+   hijos y las tablas con min-width interno ensancharían toda la página en móvil. */
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 22px; }
 
 /* ---------- tarjetas ---------- */
 .data-module,
