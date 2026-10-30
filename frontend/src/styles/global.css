@@ -411,9 +411,9 @@ h3 { font-size: 20px; }
 .quiet-note { color: var(--ink3); font-size: 12.5px; line-height: 1.5; }
 
 /* ---------- tablas ---------- */
-.table-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; overflow-x: auto; }
+.table-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; }
 .data-module .table-card { max-height: 620px; overflow: auto; }
-.table-card table { border-collapse: collapse; width: 100%; min-width: 650px; font-size: 13.5px; }
+.table-card table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 /* Encabezado negro con línea dorada (cabeceras de tabla del sitio corporativo). */
 .table-card th {
   text-align: left;
@@ -599,17 +599,17 @@ textarea.search-input {
 .v2-ch p { margin: 3px 0 0; color: var(--ink2); font-size: 14px; line-height: 1.6; max-width: 86ch; }
 .v2-hero-h h3 { font-size: 26px; }
 .v2-hero-h p { font-size: 15.5px; }
-.fila-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: start; margin-top: 16px; }
+.fila-3-2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; align-items: start; margin-top: 16px; }
 /* Panorama: la columna lateral (top 10 + resumen por zona) estira para emparejar la altura
    de la tarjeta del mapa y no deja hueco de fondo; el resumen por zona crece hasta el borde. */
 .fila-mapa > * { align-self: stretch; }
 .fila-mapa .mapa-lateral { display: grid; grid-template-rows: auto 1fr; gap: 14px; }
-.fila-2-3 { display: grid; grid-template-columns: 2fr 3fr; gap: 14px; align-items: start; }
-.fila-1-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; margin-top: 16px; }
+.fila-2-3 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 14px; align-items: start; }
+.fila-1-1 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; margin-top: 16px; }
 /* st.columns([1, 2]) del Streamlit: la zona regional ocupa un tercio y el ciclo los dos restantes. */
-.fila-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; }
+.fila-1-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; align-items: start; }
 /* st.columns([2, 1]) del Streamlit: el gráfico a dos tercios y la tabla al tercio restante. */
-.fila-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; align-items: start; }
+.fila-2-1 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 /* La tabla solo recibe un tercio del ancho: sin el mínimo global de 650 px de .table-card se
    sale de la vista por el scroll horizontal y la columna kWh (la segunda) queda invisible. */
 .fila-2-1 .table-card table { min-width: 0; }
