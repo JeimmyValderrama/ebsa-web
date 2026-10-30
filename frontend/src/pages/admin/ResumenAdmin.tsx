@@ -252,7 +252,7 @@ export function ResumenAdmin({ token }: { token?: string | null }) {
 
           {filasCiclo.length > 0 && (
             <Tarjeta titulo="Dónde está el valor: ciclos de lectura" plegable>
-              <div className="fila-1-1">
+              <div className="stack">
                 <Barras
                   serie={filasCiclo.map((fila) => [fila.zona_nombre, Number(fila[columnaMedidaCiclo] ?? 0)])}
                   opciones={{
