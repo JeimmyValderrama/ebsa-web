@@ -392,25 +392,29 @@ h3 { font-size: 20px; }
 .table-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; overflow-x: auto; }
 .data-module .table-card { max-height: 620px; overflow: auto; }
 .table-card table { border-collapse: collapse; width: 100%; min-width: 650px; font-size: 13.5px; }
+/* Encabezado negro con línea dorada (cabeceras de tabla del sitio corporativo). */
 .table-card th {
   text-align: left;
   font-weight: 600;
   font-size: 13.5px;
-  color: var(--ink);
-  background: var(--sup);
+  color: #fff;
+  background: #000000;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--linea);
+  border-bottom: 2px solid var(--marca);
   white-space: nowrap;
   position: sticky;
   top: 0;
   z-index: 1;
 }
 .table-card td { padding: 9px 12px; border-bottom: 1px solid var(--linea2); color: var(--ink); vertical-align: top; }
+/* Filas alternas en gris claro (tabla rayada del sitio): va antes de los realces para que
+   hover/selection puedan ganarle por especificidad. */
+.table-card tbody tr:nth-child(even) td { background: #f9f9f9; }
 .table-card tr:last-child td { border-bottom: 0; }
 .table-card td strong { color: var(--ink); }
 .table-card select { border: 1px solid var(--linea); border-radius: 6px; background: var(--sup); padding: 7px 10px; font-size: 13.5px; }
 .clickable-row { cursor: pointer; }
-.clickable-row:hover td { background: var(--plano); }
+.table-card tbody tr.clickable-row:hover td { background: #fef1cc; }
 .table-action { background: transparent; border: 0; color: var(--s); cursor: pointer; font-size: 13.5px; font-weight: 600; padding: 0; }
 .table-action:hover { text-decoration: underline; }
 
@@ -872,8 +876,10 @@ textarea.search-input {
   box-shadow: 0 12px 28px rgba(18, 22, 28, .18);
 }
 .tabla-pie { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; }
-.table-card th.destacada, .table-card td.destacada { background: var(--neutro-f); font-weight: 700; }
-.table-card tr.fila-sel td { background: var(--plano); }
+/* Columna/encabezado destacado: el th va en dorado (legible) y las celdas en gris claro. */
+.table-card th.destacada { background: var(--marca); color: #000; font-weight: 700; }
+.table-card td.destacada { background: var(--neutro-f); font-weight: 700; }
+.table-card tbody tr.fila-sel td { background: #f5e1b6; }
 .v2-tarjetas { display: grid; gap: 8px; }
 .ficha-en-tabla { margin-top: 14px; }
 
