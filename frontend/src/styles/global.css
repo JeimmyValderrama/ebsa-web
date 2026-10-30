@@ -424,6 +424,9 @@ h3 { font-size: 20px; }
   padding: 10px 12px;
   border-bottom: 2px solid var(--marca);
   white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
   position: sticky;
   top: 0;
   z-index: 1;
