@@ -185,13 +185,15 @@ p { margin: 0; }
 .user-menu .enlace:hover { color: var(--alerta); }
 
 /* ---------- barra lateral (menú de secciones agrupado) ---------- */
+/* Columna de secciones en gris claro (banda .header-bottom-area del sitio) con la
+   sección activa como placa dorada. */
 .sidebar {
   position: fixed;
   top: var(--alto-barra);
   left: 0;
   bottom: 0;
   width: var(--lateral);
-  background: var(--sup);
+  background: var(--plano);
   border-right: 1px solid var(--linea);
   z-index: 900;
   display: flex;
@@ -215,12 +217,12 @@ p { margin: 0; }
   font-weight: 600;
   font-size: 15px;
 }
-.side-item:hover { background: var(--plano); color: var(--ink); }
-.side-item.activo { background: var(--plano); color: var(--ink); border-left-color: var(--marca); }
+.side-item:hover { background: var(--sup); color: var(--ink); }
+.side-item.activo { background: var(--marca); color: #000; border-left-color: #000; font-weight: 700; }
 .side-bottom {
   margin-top: auto;
   padding-top: 14px;
-  border-top: 1px solid var(--linea2);
+  border-top: 1px solid var(--linea);
   display: grid;
   gap: 11px;
 }
@@ -956,13 +958,15 @@ textarea.search-input {
   overflow: hidden;
 }
 .auth-page .topbar { position: fixed; }
+/* Tarjeta de acceso con el acento superior dorado de las portadas del sitio. */
 .auth-card {
   width: min(100%, 430px);
   background: var(--sup);
   border: 1px solid var(--linea);
+  border-top: 4px solid var(--marca);
   border-radius: 8px;
   padding: 30px 32px 26px;
-  box-shadow: 0 12px 40px rgba(35, 35, 34, .08);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .1);
   position: relative;
   z-index: 1;
 }
@@ -1010,7 +1014,7 @@ textarea.search-input {
   letter-spacing: .3em;
   font-size: 13px;
 }
-.auth-decoration:before { content: ''; position: absolute; inset: 32px; border: 1px solid rgba(42, 120, 214, .3); border-radius: 50%; }
+.auth-decoration:before { content: ''; position: absolute; inset: 32px; border: 1px solid rgba(255, 198, 41, .4); border-radius: 50%; }
 .auth-decoration b { position: absolute; top: 63px; left: 63px; color: rgba(255, 198, 41, .8); }
 .brand-lockup { display: flex; gap: 12px; align-items: center; }
 .brand-mark {
