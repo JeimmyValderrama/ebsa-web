@@ -126,15 +126,7 @@ export default function AdminPage() {
           <MapaBoyaca token={idToken} modo="tecnico" altura={600} corte={corte} />
         </div>
       )}
-      {tab === "buscar" && (
-        <ClientLookup
-          token={idToken}
-          titulo="Buscar un cliente"
-          bajada="Todo lo que el proyecto sabe de un NIU: ubicación, segmento, caída, pronóstico y riesgo de fuga."
-          resumenEjemplos="¿No tienes un NIU a mano? Buscar ejemplos por grupo, segmento, ciclo, municipio o situación"
-          ejemplos
-        />
-      )}
+      {tab === "buscar" && <ClientLookup token={idToken} />}
       {tab === "pronostico" && <PronosticoAdmin token={idToken} />}
       {tab === "proyeccion" && <Proyeccion token={idToken} />}
       {tab === "seguimiento" && <SeguimientoAdmin token={idToken} />}
