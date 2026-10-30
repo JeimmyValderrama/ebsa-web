@@ -27,30 +27,31 @@
   src: url('/fuentes/source-sans-3-latin-600-normal.woff2') format('woff2');
 }
 
+/* Paleta del sitio corporativo ebsa.com.co (negro, grises claros y dorado marca):
+   los tonos semánticos de estado (bien/aviso/alerta) se conservan como están. */
 :root {
-  /* Paleta del Streamlit (idéntica a :root de _CSS) */
-  --carbon: #232322;
-  --carbon2: #33332f;
+  --carbon: #000000;
+  --carbon2: #2b2b2b;
   --ink: #1d1d1b;
   --ink2: #55584f;
   --ink3: #7b7e75;
-  --plano: #f1f2ee;
+  --plano: #f9f9f9;
   --sup: #ffffff;
-  --linea: #dcdfd6;
-  --linea2: #eceee8;
+  --linea: #e5e1e6;
+  --linea2: #f2f2f2;
   --marca: #ffc629;
   --g: #eb6834;
   --s: #2a78d6;
   --v: #1baf7a;
   --vo: #12855c;
-  --mudo: #9a9d96;
+  --mudo: #7f8080;
   --bien: #0a7d0a;
   --bien-f: #e5f3e3;
   --aviso: #8a5a00;
   --aviso-f: #fdf0cf;
   --alerta: #b3261e;
   --alerta-f: #fbe6e3;
-  --neutro-f: #edeee9;
+  --neutro-f: #f2f2f2;
   --disp: 'Barlow Semi Condensed', 'Arial Narrow', Arial, sans-serif;
   --txt: 'Source Sans 3', 'Segoe UI', Arial, sans-serif;
   --alto-barra: 58px;
@@ -250,7 +251,9 @@ p { margin: 0; }
 .page-content { max-width: var(--ancho); margin: 0 auto; padding: calc(var(--alto-barra) + 24px) 32px 56px; }
 
 .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink3); }
-.accent-eyebrow { color: var(--g); }
+/* El acento usa el marrón dorado del sitio (#7a4d05) en vez del naranja: el amarillo puro
+   no tiene contraste sobre blanco. */
+.accent-eyebrow { color: #7a4d05; }
 
 .page-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding-bottom: 22px; border-bottom: 1px solid var(--linea); }
 .page-intro h1 { font-size: 34px; line-height: 1.05; margin: 8px 0 6px; }
@@ -318,7 +321,7 @@ h3 { font-size: 20px; }
   overflow: hidden;
   background: var(--sup);
   border: 1px solid var(--linea);
-  border-top: 4px solid var(--carbon);
+  border-top: 4px solid var(--marca);
   border-radius: 8px;
   padding: 24px 28px 22px;
   color: var(--ink);
@@ -430,20 +433,22 @@ h3 { font-size: 20px; }
 .badge-baja, .badge-bajo { background: var(--bien-f); color: var(--bien); }
 
 /* ---------- botones y controles ---------- */
+/* Botón principal dorado con texto negro; al pasar el cursor se invierte (negro con dorado),
+   igual que los botones de énfasis del sitio corporativo. */
 .primary-button {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: var(--carbon);
-  border: 1px solid var(--carbon);
-  color: #fff;
+  background: var(--marca);
+  border: 1px solid var(--marca);
+  color: #000;
   border-radius: 6px;
   padding: 9px 15px;
   font-weight: 600;
   font-size: 14.5px;
   white-space: nowrap;
 }
-.primary-button:hover:not(:disabled) { background: var(--carbon2); border-color: var(--carbon2); }
+.primary-button:hover:not(:disabled) { background: #000; border-color: #000; color: var(--marca); }
 .primary-button:disabled { opacity: .5; cursor: not-allowed; }
 .ghost-button,
 .secondary-button {
@@ -491,7 +496,7 @@ textarea.search-input {
 .segmented-option:first-of-type { border-radius: 6px 0 0 6px; }
 .segmented-option:last-of-type { border-radius: 0 6px 6px 0; }
 .segmented-option:hover { color: var(--ink); border-color: var(--ink3); }
-.segmented-active { background: var(--carbon); border-color: var(--carbon); color: #fff !important; }
+.segmented-active { background: var(--marca); border-color: var(--marca); color: #000 !important; }
 
 .toggle-row {
   display: grid;
@@ -563,7 +568,7 @@ textarea.search-input {
 .v2-ph h1 { font-family: var(--disp); font-weight: 600; font-size: 34px; line-height: 1.05; margin: 0 0 4px; padding: 0; color: var(--ink); letter-spacing: .1px; }
 .v2-ph p { margin: 0; color: var(--ink2); font-size: 15.5px; line-height: 1.6; max-width: 96ch; }
 .v2-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 16px 18px 14px; min-width: 0; }
-.v2-hero { background: var(--sup); border: 1px solid var(--linea); border-top: 4px solid var(--carbon); border-radius: 8px; padding: 18px 22px 14px; min-width: 0; }
+.v2-hero { background: var(--sup); border: 1px solid var(--linea); border-top: 4px solid var(--marca); border-radius: 8px; padding: 18px 22px 14px; min-width: 0; }
 .v2-ch h3 { font-family: var(--disp); font-weight: 600; font-size: 20px; line-height: 1.2; margin: 0; padding: 0; color: var(--ink); }
 .v2-ch p { margin: 3px 0 0; color: var(--ink2); font-size: 14px; line-height: 1.6; max-width: 86ch; }
 .v2-hero-h h3 { font-size: 26px; }
