@@ -92,7 +92,7 @@ body::before {
   inset: 0;
   background: url('/img/fondo.png') center / cover no-repeat;
   filter: invert(1);
-  opacity: .14;
+  opacity: .09;
   z-index: -1;
   pointer-events: none;
 }
