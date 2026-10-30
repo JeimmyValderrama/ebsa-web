@@ -60,10 +60,13 @@ export default function LoginPage() {
       <div className="topbar"><div className="marca"><img className="marca-logo" src="/img/logo-monograma.png" alt="" /><div><b>Analítica de consumo</b><small>Proyecto académico UPTC · no oficial de EBSA</small></div></div></div>
       <div className="auth-decoration" aria-hidden="true"><span>EBSA</span><b>⚡</b></div>
       <section className="auth-card">
-        <img className="auth-logo" src="/img/logo-ebsa.png" alt="EBSA — Empresa de Energía de Boyacá S.A. E.S.P." />
-        <div className="eyebrow accent-eyebrow">ACCESO SEGURO</div>
-        <h1>Analítica de consumo de clientes</h1>
-        <p className="auth-intro">Caídas de consumo, probabilidad de fuga y proyección de consumo en Boyacá. Usa la cuenta individual habilitada para consultar la información de EBSA.</p>
+        <div className="auth-cabecera">
+          <img className="auth-logo" src="/img/logo-ebsa.png" alt="EBSA — Empresa de Energía de Boyacá S.A. E.S.P." />
+          <div className="auth-titulos">
+            <div className="eyebrow accent-eyebrow">ACCESO SEGURO</div>
+            <h1>Analítica de consumo de clientes</h1>
+          </div>
+        </div>
         {!configured && <div className="notice notice-warning">Firebase todavía no está configurado. En la siguiente entrega se agregarán las variables del proyecto y podrás iniciar sesión.</div>}
         {authError && <div className="notice notice-error">{authError}</div>}
         {error && <div className="notice notice-error">{error}</div>}
@@ -88,9 +91,9 @@ export default function LoginPage() {
               </button>
             </span>
           </label>
-          <button className="primary-button auth-submit" type="submit" disabled={!isFirebaseConfigured || submitting}>{submitting ? "Validando…" : "Ingresar"}<span>→</span></button>
+          <button className="primary-button auth-submit" type="submit" disabled={!isFirebaseConfigured || submitting}>{submitting ? "Validando…" : "Ingresar"}</button>
         </form>
-        <div className="auth-footnote">Proyecto académico (UPTC) aplicado a datos de EBSA. No es un producto oficial de la empresa. La autorización de cada módulo se valida también en el backend.</div>
+        <div className="auth-footnote">Proyecto académico (UPTC) aplicado a datos de EBSA. No es un producto oficial de la empresa.</div>
       </section>
     </div>
   );

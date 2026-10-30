@@ -92,7 +92,7 @@ body::before {
   inset: 0;
   background: url('/img/fondo.png') center / cover no-repeat;
   filter: invert(1);
-  opacity: .09;
+  opacity: .07;
   z-index: -1;
   pointer-events: none;
 }
@@ -990,14 +990,18 @@ textarea.search-input {
   position: relative;
   z-index: 1;
 }
-/* Logo EBSA completo al inicio de la tarjeta de acceso. */
-.auth-logo { display: block; height: 66px; width: auto; margin-bottom: 16px; }
+/* Logo EBSA completo: en la cabecera de la tarjeta va junto al título de la app. */
+.auth-logo { display: block; width: auto; height: 60px; flex: none; }
 .auth-brand { padding: 0 0 22px; display: flex; gap: 12px; align-items: center; }
 .auth-card h1 { font-size: 30px; margin: 12px 0 10px; }
-.auth-intro { color: var(--ink2); font-size: 14px; line-height: 1.6; }
+.auth-cabecera { display: flex; align-items: center; gap: 16px; }
+.auth-titulos { min-width: 0; }
+.auth-titulos .eyebrow { margin-top: 4px; }
+.auth-cabecera h1 { font-size: 26px; margin: 4px 0 0; line-height: 1.2; }
 .auth-form { display: grid; gap: 15px; margin-top: 20px; }
 .auth-form label { color: var(--ink); font-size: 13.5px; font-weight: 600; display: grid; gap: 7px; }
 .auth-form input {
+  width: 100%; /* mismo ancho exacto para correo y contraseña */
   border: 1px solid var(--linea);
   border-radius: 6px;
   padding: 10px 12px;
@@ -1019,7 +1023,8 @@ textarea.search-input {
 }
 .ojo-pass:hover, .ojo-pass[aria-pressed="true"] { color: var(--carbon); background: var(--neutro-f); }
 .ojo-pass:disabled { opacity: .58; cursor: default; }
-.auth-submit { justify-content: space-between; width: 100%; margin-top: 6px; }
+/* Ingresar: texto en mayúsculas, centrado y un poco más grande. */
+.auth-submit { justify-content: center; width: 100%; margin-top: 6px; text-transform: uppercase; font-size: 16.5px; letter-spacing: .04em; }
 .auth-submit:disabled { cursor: not-allowed; }
 .auth-footnote { color: var(--ink3); border-top: 1px solid var(--linea); margin-top: 22px; padding-top: 14px; font-size: 12.5px; line-height: 1.55; }
 .auth-decoration {
