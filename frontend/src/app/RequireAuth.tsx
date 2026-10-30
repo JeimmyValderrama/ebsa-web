@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth, type UserRole } from "../auth/AuthProvider";
+import AuthCargando from "../components/AuthCargando";
 
 const ALL_ROLES: UserRole[] = ["COMERCIAL", "SOPORTE", "ADMIN_MODELO"];
 
@@ -13,7 +14,12 @@ export default function RequireAuth({ roles = ALL_ROLES }: { roles?: UserRole[] 
   const { currentUser, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <div className="auth-page"><div className="auth-card"><span className="eyebrow">EBSA / AUTENTICACIÓN</span><h1>Validando acceso…</h1></div></div>;
+  if (loading) return (
+    <div className="auth-page">
+      <div className="auth-decoration" aria-hidden="true"><span>EBSA</span><b>⚡</b></div>
+      <AuthCargando />
+    </div>
+  );
   if (!currentUser) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   if (!hasRole(currentUser.role, roles)) return <Navigate to="/" replace />;
   return <Outlet />;

@@ -998,6 +998,17 @@ textarea.search-input {
 .auth-titulos { min-width: 0; }
 .auth-titulos .eyebrow { margin-top: 4px; }
 .auth-cabecera h1 { font-size: 26px; margin: 4px 0 0; line-height: 1.2; }
+/* Pantalla de espera de autenticación: logo EBSA pulsando sobre una barra
+   con una luz dorada que la recorre (sin texto visible). */
+.auth-carga { display: grid; place-items: center; align-content: center; gap: 28px; min-height: 320px; }
+.auth-logo-carga { height: 74px; animation: logo-pulso 1.5s ease-in-out infinite; }
+.carga-barra { position: relative; display: block; width: 168px; height: 4px; border-radius: 4px; background: var(--neutro-f); overflow: hidden; }
+.carga-barra::after { content: ''; position: absolute; top: 0; bottom: 0; left: 30%; width: 40%; border-radius: 4px; background: var(--marca); animation: barra-viaje 1.15s ease-in-out infinite; }
+@keyframes logo-pulso { 0%, 100% { opacity: .35; transform: scale(.97); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes barra-viaje { 0% { left: -40%; } 100% { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .auth-logo-carga, .carga-barra::after { animation: none; } }
+/* Texto disponible solo para lectores de pantalla. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .auth-form { display: grid; gap: 15px; margin-top: 20px; }
 .auth-form label { color: var(--ink); font-size: 13.5px; font-weight: 600; display: grid; gap: 7px; }
 .auth-form input {
