@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
 import type { Row } from "../components/DataExplorer";
 import { Descargas } from "../components/Descargas";
-import { MapaBoyaca, type InfoMapa } from "../components/MapaBoyaca";
+import { MapaBoyaca, TablaMunicipioMapa, TablaZonaMapa, type InfoMapa } from "../components/MapaBoyaca";
 import { ListaCaida } from "../components/ListaCaida";
 import { SinConsumo } from "../components/SinConsumo";
 import { Fuga } from "../components/Fuga";
@@ -328,18 +328,36 @@ function Panorama({ token }: { token?: string | null }) {
       <Kpis items={fila1} columnas={4} />
       <Kpis items={fila2} columnas={Math.max(fila2.length, 3)} compacto />
 
-      <div className="fila-3-2">
+      <div className="fila-3-2 fila-mapa">
         <Tarjeta titulo="Dónde está pasando" bajada="Municipios de Boyacá con sus límites oficiales">
-          <MapaBoyaca token={token} corte={corte} onCalculo={setInfoMapa} />
+          <MapaBoyaca token={token} corte={corte} onCalculo={setInfoMapa} tablasFuera />
         </Tarjeta>
-        {infoMapa ? (
-          <TopDiez info={infoMapa} />
-        ) : (
-          <Tarjeta titulo="Los diez municipios con más">
-            <div className="empty-state">Cargando mapa…</div>
-          </Tarjeta>
-        )}
+        <div className="mapa-lateral">
+          {infoMapa ? (
+            <TopDiez info={infoMapa} />
+          ) : (
+            <Tarjeta titulo="Los diez municipios con más">
+              <div className="empty-state">Cargando mapa…</div>
+            </Tarjeta>
+          )}
+          {infoMapa && (
+            <Tarjeta
+              titulo="Resumen por zona"
+              bajada={`${infoMapa.metNombre}${infoMapa.enProporcion ? ` (${infoMapa.unidad})` : ""}, agregado por zona EBSA`}
+            >
+              <TablaZonaMapa info={infoMapa} />
+            </Tarjeta>
+          )}
+        </div>
       </div>
+      {infoMapa && (
+        <details className="v2-exp mapa-detalle" open>
+          <summary>Ver la tabla por municipio</summary>
+          <div className="mapa-detalle-cuerpo">
+            <TablaMunicipioMapa info={infoMapa} corte={corte} />
+          </div>
+        </details>
+      )}
 
       <Tarjeta
         titulo="Caídas de consumo por zona regional"

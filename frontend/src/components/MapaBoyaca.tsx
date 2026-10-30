@@ -110,8 +110,14 @@ export interface InfoMapa {
   filas: Array<{ municipio: string; valor: number; valor_total: number; valor_texto: string }>;
   enProporcion: boolean;
   metNombre: string;
+  /** Columna de la métrica elegida (para formatear las celdas de las tablas). */
+  metCol: string;
   unidad: string;
   municipios: number;
+  /** Tabla "Por zona": agregado por zona EBSA de la cifra elegida. */
+  tablaZona: { filas: Array<{ clave: string; Zona: string; municipios: number; clientes: number; valor: number }>; nombreValorZona: string } | null;
+  /** Tabla "Por municipio": columnas renombradas y filas ordenadas por la cifra elegida. */
+  tablaMunicipio: { filas: Array<Record<string, unknown>>; columnas: string[] } | null;
 }
 
 export function MapaBoyaca({
@@ -120,6 +126,7 @@ export function MapaBoyaca({
   altura = 520,
   corte,
   onCalculo,
+  tablasFuera = false,
 }: {
   token?: string | null;
   modo?: "comercial" | "tecnico";
@@ -127,6 +134,8 @@ export function MapaBoyaca({
   corte?: string | null;
   /** Devuelve el mapa ya calculado (la página lo usa para la tarjeta del top 10, que va al lado). */
   onCalculo?: (info: InfoMapa | null) => void;
+  /** La página ubica las tablas fuera de esta tarjeta (Panorama comercial); en el administrador siguen aquí. */
+  tablasFuera?: boolean;
 }) {
   const { measure } = usePresentation();
   const movil = useEsMovil();
@@ -213,27 +222,6 @@ export function MapaBoyaca({
     });
     return { d: conValor, enProporcion, unidad, unidadTotal, totalVal, puedeProporcion, metNombre: metrica.nombre, metCol: metrica.col };
   }, [comparar, filas, metrica, zonasSel]);
-
-  // La tarjeta "Los diez municipios con más" va al lado del mapa (mismas columnas 3:2 que el Streamlit);
-  // el mapa le pasa su cálculo para que use exactamente la cifra y el modo elegidos aquí.
-  useEffect(() => {
-    onCalculo?.(
-      calculo
-        ? {
-            filas: calculo.d.map((fila) => ({
-              municipio: String(fila.municipio ?? ""),
-              valor: fila.valor,
-              valor_total: fila.valor_total,
-              valor_texto: fila.valor_texto,
-            })),
-            enProporcion: calculo.enProporcion,
-            metNombre: calculo.metNombre,
-            unidad: calculo.unidad,
-            municipios: calculo.d.length,
-          }
-        : null,
-    );
-  }, [calculo, onCalculo]);
 
   const spec = useMemo(() => {
     if (!calculo || !geometrias) return null;
@@ -332,7 +320,7 @@ export function MapaBoyaca({
       return { Zona: tituloPropio(zona), municipios: item.municipios, clientes: item.clientes, valor, clave: zona };
     });
     zonas.sort((a, b) => b.valor - a.valor);
-    const nombreValorZona = calculo.metNombre + (calculo.enProporcion ? ` (${calculo.unidad})` : "");
+    const nombreValorZona = calculo.enProporcion ? calculo.unidad : calculo.unidadTotal;
     // Por municipio (mismas columnas y renombres que el Streamlit).
     const columnasM = [
       "municipio", "provincia", "zona_ebsa", "clientes_tc1", "caida_clientes", "caida_criticos", "caida_kwh_mes",
@@ -359,8 +347,36 @@ export function MapaBoyaca({
     return { zonas, nombreValorZona, municipios, columnasM: disponibles.map((columna) => renombre[columna] ?? columna), crudas: disponibles };
   }, [calculo]);
 
+  // Lo que la página necesita para armar su lado: el top 10, la tabla por zona y la de municipios,
+  // todos con la cifra y el modo elegidos aquí (mismas columnas 3:2 que el Streamlit).
+  const info = useMemo<InfoMapa | null>(
+    () =>
+      calculo && tablas
+        ? {
+            filas: calculo.d.map((fila) => ({
+              municipio: String(fila.municipio ?? ""),
+              valor: fila.valor,
+              valor_total: fila.valor_total,
+              valor_texto: fila.valor_texto,
+            })),
+            enProporcion: calculo.enProporcion,
+            metNombre: calculo.metNombre,
+            metCol: calculo.metCol,
+            unidad: calculo.unidad,
+            municipios: calculo.d.length,
+            tablaZona: { filas: tablas.zonas, nombreValorZona: tablas.nombreValorZona },
+            tablaMunicipio: { filas: tablas.municipios, columnas: tablas.columnasM },
+          }
+        : null,
+    [calculo, tablas],
+  );
+
+  useEffect(() => {
+    onCalculo?.(info);
+  }, [info, onCalculo]);
+
   if (error) return <div className="empty-state">{error}</div>;
-  if (!filas || !calculo || !spec || !tablas) return <div className="empty-state">Cargando mapa…</div>;
+  if (!filas || !calculo || !spec || !info) return <div className="empty-state">Cargando mapa…</div>;
 
   return (
     <div className="mapa-v2">
@@ -414,7 +430,7 @@ export function MapaBoyaca({
       )}
 
       <p className="v2-conteo">
-        <b>{fmtN(calculo.d.length)}</b> municipios de Boyacá · {calculo.metNombre}:{" "}
+        <b>{fmtN(calculo.d.length)}</b> municipios de Boyacá ·{" "}
         <b>{calculo.unidadTotal !== "%" ? fmtMetrica(calculo.totalVal, calculo.unidadTotal) : "—"}</b>
         {corte ? ` · corte ${corte}` : ""}
       </p>
@@ -434,97 +450,121 @@ export function MapaBoyaca({
         }
       />
 
-      <Pie
-        texto={
-          <>
-            {md("Límites municipales: DANE, Marco Geoestadístico Nacional (vía geoBoundaries, CC BY 4.0), simplificados para la pantalla. ")}
+      <Pie texto={md("Límites municipales: DANE, Marco Geoestadístico Nacional (vía geoBoundaries, CC BY 4.0), simplificados para la pantalla.")} />
+
+      <details className="v2-exp">
+        <summary>Cómo leer este mapa</summary>
+        <div className="v2-exp-cuerpo">
+          <p>
             {md(
               calculo.enProporcion
                 ? "El color de cada municipio es la cifra dividida entre sus clientes: más oscuro, más pesa el problema para su tamaño. Un municipio con muy pocos clientes puede salir oscuro por unos pocos casos: mira también cuántos clientes tiene."
                 : "Cada círculo es un municipio (tamaño = la cifra elegida, color = zona EBSA). Los municipios con más clientes salen siempre más grandes; cambia a *En proporción* para ver dónde pesa más.",
             )}
-            {md(" Pasa el mouse o toca un municipio para ver su nombre y su cifra.")}
-            {md(" La **zona** de cada municipio es la del ciclo de lectura en que la empresa factura a la mayoría de sus clientes, no su provincia: por eso un municipio puede aparecer en una zona que no es la de su ubicación (por ejemplo, Cubará en Centro).")}
-          </>
-        }
-      />
-
-      <details className="v2-exp" open>
-        <summary>Ver la tabla por zona y por municipio</summary>
-        <div className="mapa-tablas">
-          <div>
-            <p className="tabla-titulo">
-              <b>Por zona</b>
-            </p>
-            <div className="table-card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Zona</th>
-                    <th>municipios</th>
-                    <th>clientes</th>
-                    <th>{tablas.nombreValorZona}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tablas.zonas.map((zona) => (
-                    <tr key={zona.clave}>
-                      <td>{zona.Zona}</td>
-                      <td>{fmtN(zona.municipios)}</td>
-                      <td>{fmtN(zona.clientes)}</td>
-                      <td>{calculo.enProporcion ? fmtN(zona.valor, 1) : fmtCelda(zona.valor, calculo.metCol)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div>
-            <p className="tabla-titulo">
-              <b>Por municipio</b>
-            </p>
-            <div className="table-card tabla-alta">
-              <table>
-                <thead>
-                  <tr>
-                    {tablas.columnasM.map((columna) => (
-                      <th key={columna}>{columna}</th>
-                    ))}
-                    <th>{calculo.metNombre}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tablas.municipios.map((fila, index) => (
-                    <tr key={index}>
-                      {tablas.columnasM.map((columna) => (
-                        <td key={columna}>{typeof fila[columna] === "string" ? String(fila[columna]) : fmtCelda(fila[columna], columna)}</td>
-                      ))}
-                      <td>{calculo.enProporcion ? fmtN(Number(fila._valor), 1) : fmtMetrica(Number(fila._valor), calculo.unidad)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <button
-              type="button"
-              className="table-action"
-              onClick={() => {
-                const contenido = csvEs(
-                  [...tablas.columnasM, calculo.metNombre],
-                  tablas.municipios.map((fila) => ({ ...fila, [calculo.metNombre]: fila._valor })),
-                );
-                const enlace = document.createElement("a");
-                enlace.href = URL.createObjectURL(new Blob([contenido], { type: "text/csv;charset=utf-8" }));
-                enlace.download = `mapa_municipios_${corte ?? ""}.csv`;
-                enlace.click();
-                URL.revokeObjectURL(enlace.href);
-              }}
-            >
-              Descargar municipios (CSV)
-            </button>
-          </div>
+          </p>
+          <p>{md("Pasa el mouse o toca un municipio para ver su nombre y su cifra.")}</p>
+          <p>{md("La **zona** de cada municipio es la del ciclo de lectura en que la empresa factura a la mayoría de sus clientes, no su provincia: por eso un municipio puede aparecer en una zona que no es la de su ubicación (por ejemplo, Cubará en Centro).")}</p>
         </div>
       </details>
+
+      {!tablasFuera && (
+        <details className="v2-exp" open>
+          <summary>Ver la tabla por zona y por municipio</summary>
+          <div className="mapa-tablas">
+            <div>
+              <p className="tabla-titulo">
+                <b>Por zona</b>
+              </p>
+              <TablaZonaMapa info={info} />
+            </div>
+            <div>
+              <p className="tabla-titulo">
+                <b>Por municipio</b>
+              </p>
+              <TablaMunicipioMapa info={info} corte={corte} />
+            </div>
+          </div>
+        </details>
+      )}
     </div>
+  );
+}
+
+/** Tabla "Por zona" del mapa: la página decide dónde va (en Panorama, en la columna lateral). */
+export function TablaZonaMapa({ info }: { info: InfoMapa }) {
+  const tabla = info.tablaZona;
+  if (!tabla) return null;
+  return (
+    <div className="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Zona</th>
+            <th>municipios</th>
+            <th>clientes</th>
+            <th>{tabla.nombreValorZona}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tabla.filas.map((zona) => (
+            <tr key={zona.clave}>
+              <td>{zona.Zona}</td>
+              <td>{fmtN(zona.municipios)}</td>
+              <td>{fmtN(zona.clientes)}</td>
+              <td>{info.enProporcion ? fmtN(zona.valor, 1) : fmtCelda(zona.valor, info.metCol)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Tabla "Por municipio" del mapa con su botón de CSV (en Panorama va a ancho completo bajo la fila del mapa). */
+export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: string | null }) {
+  const tabla = info.tablaMunicipio;
+  if (!tabla) return null;
+  return (
+    <>
+      <div className="table-card tabla-alta">
+        <table>
+          <thead>
+            <tr>
+              {tabla.columnas.map((columna) => (
+                <th key={columna}>{columna}</th>
+              ))}
+              <th>{info.metNombre}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tabla.filas.map((fila, index) => (
+              <tr key={index}>
+                {tabla.columnas.map((columna) => (
+                  <td key={columna}>{typeof fila[columna] === "string" ? String(fila[columna]) : fmtCelda(fila[columna], columna)}</td>
+                ))}
+                <td>{info.enProporcion ? fmtN(Number(fila._valor), 1) : fmtMetrica(Number(fila._valor), info.unidad)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button
+        type="button"
+        className="table-action"
+        onClick={() => {
+          const contenido = csvEs(
+            [...tabla.columnas, info.metNombre],
+            tabla.filas.map((fila) => ({ ...fila, [info.metNombre]: fila._valor })),
+          );
+          const enlace = document.createElement("a");
+          enlace.href = URL.createObjectURL(new Blob([contenido], { type: "text/csv;charset=utf-8" }));
+          enlace.download = `mapa_municipios_${corte ?? ""}.csv`;
+          enlace.click();
+          URL.revokeObjectURL(enlace.href);
+        }}
+      >
+        Descargar municipios (CSV)
+      </button>
+    </>
   );
 }
