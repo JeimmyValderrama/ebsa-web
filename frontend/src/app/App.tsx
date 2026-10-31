@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { NavLink, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth, type UserRole } from "../auth/AuthProvider";
 import { HideIdsToggle, MeasureSelector } from "./Presentation";
@@ -78,6 +78,10 @@ function ProtectedLayout() {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [lateralAbierto, setLateralAbierto] = useState(false);
   const usuarioRef = useRef<HTMLDivElement | null>(null);
+  const hamburguesaRef = useRef<HTMLButtonElement | null>(null);
+  const lateralRef = useRef<HTMLElement | null>(null);
+  const lateralAbiertoAntes = useRef(false);
+  const ubicacion = useLocation();
   const role = currentUser?.role ?? "COMERCIAL";
   const visibleItems = navItems.filter((item) => item.roles.includes(role));
   const nombre = currentUser?.name ?? currentUser?.email ?? "Cuenta EBSA";
@@ -122,13 +126,32 @@ function ProtectedLayout() {
     return () => document.removeEventListener("keydown", alEscDrawer);
   }, [lateralAbierto]);
 
+  // El foco entra al panel al abrirlo y vuelve a la hamburguesa al cerrarlo: sin esto,
+  // al ocultarse el panel el foco caía al body y se perdía la posición de navegación.
+  useEffect(() => {
+    if (lateralAbierto) {
+      lateralRef.current?.querySelector<HTMLButtonElement>("button.side-item")?.focus();
+      lateralAbiertoAntes.current = true;
+    } else if (lateralAbiertoAntes.current) {
+      lateralAbiertoAntes.current = false;
+      hamburguesaRef.current?.focus();
+    }
+  }, [lateralAbierto]);
+
+  // Al cambiar de vista (pestaña superior) la página nueva arranca desde arriba.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [ubicacion.pathname]);
+
   return (
     <SectionNavProvider>
       <div className="app-shell">
         <header className="topbar">
+          <a className="skip-link" href="#contenido">Saltar al contenido</a>
           <button
             type="button"
             className="menu-lateral"
+            ref={hamburguesaRef}
             aria-expanded={lateralAbierto}
             aria-controls="menu-lateral-panel"
             aria-label={lateralAbierto ? "Cerrar el menú de secciones" : "Abrir el menú de secciones"}
@@ -194,7 +217,7 @@ function ProtectedLayout() {
           </div>
         </header>
 
-        <aside id="menu-lateral-panel" className={`sidebar${lateralAbierto ? " abierta" : ""}`}>
+        <aside id="menu-lateral-panel" ref={lateralRef} className={`sidebar${lateralAbierto ? " abierta" : ""}`}>
           <div className="side-scroll">
             <SectionMenu alElegir={() => setLateralAbierto(false)} />
             <div className="side-bottom">
@@ -215,7 +238,7 @@ function ProtectedLayout() {
           <button type="button" className="side-velo" aria-label="Cerrar el menú de secciones" onClick={() => setLateralAbierto(false)} />
         )}
 
-        <main className="main-content">
+        <main id="contenido" tabIndex={-1} className="main-content">
           <Outlet />
         </main>
       </div>

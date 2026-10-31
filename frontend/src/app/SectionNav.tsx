@@ -40,6 +40,9 @@ export function useSectionNav<K extends string>(
   const { publicar } = ctx;
   useEffect(() => {
     publicar({ grupos, actual, elegir: elegir as (clave: string) => void });
+    // Al cambiar de sección, la página nueva arranca desde arriba (si no, el scroll
+    // anterior deja al usuario en una posición arbitraria del contenido nuevo).
+    window.scrollTo({ top: 0 });
     return () => publicar(null);
   }, [grupos, actual, elegir, publicar]);
 }

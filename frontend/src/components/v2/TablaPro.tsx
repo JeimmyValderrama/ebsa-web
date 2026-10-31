@@ -252,6 +252,18 @@ export function TablaPro({
                   key={indice}
                   className={`${ficha ? "clickable-row" : ""}${idDe(fila) && idDe(fila) === elegido ? " fila-sel" : ""}`}
                   onClick={ficha ? () => setElegido(idDe(fila)) : undefined}
+                  tabIndex={ficha ? 0 : undefined}
+                  onKeyDown={
+                    ficha
+                      ? (evento) => {
+                          // Misma acción que el click: abrir la ficha con Enter o Espacio.
+                          if (evento.key === "Enter" || evento.key === " ") {
+                            evento.preventDefault();
+                            setElegido(idDe(fila));
+                          }
+                        }
+                      : undefined
+                  }
                 >
                   {campos.map((columna) => (
                     <td key={columna} className={claseDe(columna)}>
@@ -266,7 +278,7 @@ export function TablaPro({
       )}
 
       <div className="tabla-pie">
-        <p className="v2-conteo">{textoPie}</p>
+        <p className="v2-conteo" aria-live="polite">{textoPie}</p>
         <button type="button" className="ghost-button" disabled={paginaActual <= 1} onClick={() => setPag(paginaActual - 1)}>
           Anterior
         </button>

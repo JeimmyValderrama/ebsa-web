@@ -67,9 +67,9 @@ export default function LoginPage() {
             <h1>Analítica de consumo de clientes</h1>
           </div>
         </div>
-        {!configured && <div className="notice notice-warning">Firebase todavía no está configurado. En la siguiente entrega se agregarán las variables del proyecto y podrás iniciar sesión.</div>}
-        {authError && <div className="notice notice-error">{authError}</div>}
-        {error && <div className="notice notice-error">{error}</div>}
+        {!configured && <div className="notice notice-warning" role="status">Firebase todavía no está configurado. En la siguiente entrega se agregarán las variables del proyecto y podrás iniciar sesión.</div>}
+        {authError && <div className="notice notice-error" role="alert">{authError}</div>}
+        {error && <div className="notice notice-error" role="alert">{error}</div>}
         <form onSubmit={handleSubmit} className="auth-form">
           <label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required disabled={!isFirebaseConfigured || submitting} /></label>
           <label>Contraseña

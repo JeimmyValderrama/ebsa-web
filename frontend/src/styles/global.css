@@ -107,6 +107,24 @@ p { margin: 0; }
   outline-offset: 2px;
   box-shadow: 0 0 0 5px rgba(255, 198, 41, .55);
 }
+/* Enlace "saltar al contenido": invisible hasta que recibe el foco (primer tab de la página). */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1002;
+  background: var(--marca);
+  color: #000;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .35);
+  transform: translateY(-260%);
+}
+.skip-link:focus { transform: none; }
+/* El destino del salto recibe el foco en programación: no debe pintar anillo. */
+[tabindex="-1"]:focus { outline: none; box-shadow: none; }
 
 /* ---------- barra superior (base negra con placa dorada, como el header de ebsa.com.co) ---------- */
 .topbar {

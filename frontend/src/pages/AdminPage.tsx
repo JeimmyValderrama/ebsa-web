@@ -113,7 +113,7 @@ export default function AdminPage() {
 
   return (
     <div className="page-content">
-      {message && <div className="notice notice-warning">{message}</div>}
+      {message && <div className="notice notice-warning" role="status">{message}</div>}
 
       {tab === "resumen" && <ResumenAdmin token={idToken} />}
       {tab === "gestion" && <GestionCiclo token={idToken} />}

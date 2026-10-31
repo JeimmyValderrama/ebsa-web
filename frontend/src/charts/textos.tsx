@@ -65,7 +65,7 @@ export function Conteo({
   queUniverso?: string;
 }) {
   return (
-    <p className="v2-conteo">
+    <p className="v2-conteo" aria-live="polite">
       {mostrados !== filtrados ? (
         <Fragment>
           Se incluyen <b>{fmtN(mostrados)}</b> de{" "}
