@@ -101,7 +101,12 @@ button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
 h1, h2, h3, h4 { font-family: var(--disp); font-weight: 600; letter-spacing: .1px; color: var(--ink); margin: 0; }
 p { margin: 0; }
-:focus-visible { outline: 3px solid var(--marca); outline-offset: 2px; }
+:focus-visible {
+  /* Anillo doble: borde carbón (contraste sobre dorado y blanco) + halo dorado de marca. */
+  outline: 2px solid var(--carbon);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(255, 198, 41, .55);
+}
 
 /* ---------- barra superior (base negra con placa dorada, como el header de ebsa.com.co) ---------- */
 .topbar {
@@ -598,6 +603,8 @@ textarea.search-input {
   animation: barra-luz 1.15s ease-in-out infinite;
 }
 .empty-state.cargando::before { width: min(168px, 60%); margin: 0 auto 14px; }
+/* Error: la misma caja pero en tono alerta, para no confundirla con "sin datos". */
+.empty-state.error { background: var(--alerta-f); border-color: var(--alerta); color: var(--alerta); }
 .v2-pie.cargando::before { width: 140px; margin: 0 0 8px; }
 @keyframes barra-luz {
   0% { background-position: -100% 0; }
@@ -700,10 +707,12 @@ textarea.search-input {
 
 /* ---------- banda de prioridades (v2-banda del Streamlit, componentes_v2.py:301-307) ---------- */
 .v2-banda { display: flex; gap: 3px; margin-top: 14px; }
-.v2-seg { min-width: 0; padding: 9px 16px; color: #fff; display: flex; flex-direction: column; gap: 0; overflow: hidden; }
+.v2-seg { min-width: 0; padding: 9px 16px; color: #fff; display: flex; flex-direction: column; gap: 0; overflow: hidden;
+  /* el texto blanco necesita apoyo sobre los tonos claros de serie */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .38); }
 .v2-seg:first-child { border-radius: 6px 0 0 6px; }
 .v2-seg:last-child { border-radius: 0 6px 6px 0; }
-.v2-seg-n { font-weight: 600; font-size: 14.5px; line-height: 1.25; }
+.v2-seg-n { font-weight: 700; font-size: 14.5px; line-height: 1.25; }
 .v2-seg-v { font-family: var(--disp); font-weight: 600; font-size: 38px; line-height: 1.02; white-space: nowrap; }
 .v2-seg-v small { font-size: 16px; font-weight: 600; opacity: .92; }
 .v2-seg-c { font-size: 14px; opacity: .96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -848,7 +857,17 @@ textarea.search-input {
   display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-left: 6px;
   border: 1px solid var(--linea); border-radius: 50%; background: var(--sup);
   font-size: 10px; font-weight: 700; color: var(--ink3); cursor: help; font-style: normal;
+  position: relative;
 }
+/* Ayuda: globo propio (mismo estilo que .v2-ay) en vez de title, que se duplicaba en los lectores. */
+.ayuda-info::after {
+  content: attr(data-t); position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 70;
+  width: 250px; max-width: 70vw; padding: 8px 10px; background: var(--carbon); color: #fff;
+  font-size: 12.5px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: normal;
+  border-radius: 6px; text-align: left; opacity: 0; visibility: hidden; transition: opacity .15s;
+  pointer-events: none;
+}
+.ayuda-info:hover::after, .ayuda-info:focus-visible::after { opacity: 1; visibility: visible; }
 .chip-x { border: 0; background: none; color: inherit; font-size: 14px; line-height: 1; padding: 0 0 0 5px; cursor: pointer; }
 .v2-ms-btn { margin-left: auto; border: 0; background: transparent; color: var(--ink2); font-size: 13px; padding: 2px 6px; cursor: pointer; }
 .v2-ms-btn:hover { color: var(--ink); }
@@ -1191,6 +1210,9 @@ textarea.search-input {
   .mapa-controles { grid-template-columns: minmax(0, 1fr); }
   /* Objetivos táctiles: lo mínimo cómodo para el dedo. */
   .v2-ms-btn { min-width: 36px; min-height: 36px; padding: 4px 8px; }
+  .vista-tab { min-height: 40px; }
+  .side-item { min-height: 42px; padding: 10px; align-items: center; }
+  .table-action { padding: 8px 6px; }
   .ojo-pass { width: 36px; height: 36px; }
   .chip-x { padding: 6px; margin: -6px -4px -6px -4px; }
 }

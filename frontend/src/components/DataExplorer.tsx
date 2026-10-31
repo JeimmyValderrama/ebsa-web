@@ -258,8 +258,8 @@ export function DatasetView({ token, datasetKey, title, description, filters = [
         onDownload={download}
         downloading={downloading}
       />
-      {loading && <div className="empty-state cargando">Cargando registros…</div>}
-      {error && <div className="empty-state">{error}</div>}
+      {loading && <div className="empty-state cargando" role="status">Cargando registros…</div>}
+      {error && <div className="empty-state error" role="alert">{error}</div>}
       {!loading && !error && items.length === 0 && <div className="empty-state">{emptyText ?? "No hay registros para este corte o filtro."}</div>}
       {items.length > 0 && (
         <>
@@ -295,7 +295,7 @@ export function DatasetCatalog({ token, onSelect }: { token?: string | null; onS
     };
   }, [token]);
 
-  if (error) return <div className="empty-state">{error}</div>;
+  if (error) return <div className="empty-state error" role="alert">{error}</div>;
   if (!items.length) return <div className="empty-state">Aún no hay datasets cargados en la base.</div>;
 
   return (

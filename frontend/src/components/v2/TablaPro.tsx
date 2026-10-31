@@ -214,7 +214,7 @@ export function TablaPro({
       </div>
 
       {n === 0 ? (
-        <p className="v2-pie">
+        <p className="empty-state">
           {q ? `Ninguna fila contiene «${q}». Borra la búsqueda para ver las ${fmtN(total)} ${que}.` : `No hay ${que} para mostrar.`}
         </p>
       ) : esMovil ? (

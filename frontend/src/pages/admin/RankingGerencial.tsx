@@ -187,7 +187,7 @@ export function RankingGerencial({ token }: { token?: string | null }) {
         extra={<Deslizador etiqueta="Mostrar top" min={25} max={1000} step={25} valor={n} onChange={setN} />}
       />
 
-      {!datos && !error ? <div className="empty-state cargando">Consultando el ranking…</div> : null}
+      {!datos && !error ? <div className="empty-state cargando" role="status">Consultando el ranking…</div> : null}
 
       {datos && (
         <>

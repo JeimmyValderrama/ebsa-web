@@ -173,7 +173,7 @@ export function ListaCaida({ token }: { token?: string | null }) {
     />
   );
 
-  if (error) return <div className="empty-state">{error}</div>;
+  if (error) return <div className="empty-state error" role="alert">{error}</div>;
   if (!datos) {
     return (
       <div className="stack">
@@ -182,7 +182,7 @@ export function ListaCaida({ token }: { token?: string | null }) {
           <p className="v2-caption">{md(`Periodo facturado **${mesLargo(corte || "—")}**. ${caption}`)}</p>
         </div>
         {panel}
-        <div className={cargando ? "empty-state cargando" : "empty-state"}>{cargando ? "Consultando la lista de caída del corte vigente…" : "Todavía no hay lista de caída (paso 11 del pipeline)."}</div>
+        <div className={cargando ? "empty-state cargando" : "empty-state"} role={cargando ? "status" : undefined}>{cargando ? "Consultando la lista de caída del corte vigente…" : "Todavía no hay lista de caída (paso 11 del pipeline)."}</div>
       </div>
     );
   }

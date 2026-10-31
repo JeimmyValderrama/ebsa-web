@@ -167,7 +167,7 @@ export function FichaCliente({ token, niu }: { token?: string | null; niu: strin
   }, [datos]);
 
   if (error) return <Aviso texto={error} tipo="alerta" />;
-  if (!datos) return cargando ? <p className="v2-pie cargando">Consultando el corte vigente…</p> : null;
+  if (!datos) return cargando ? <p className="v2-pie cargando" role="status">Consultando el corte vigente…</p> : null;
 
   const esConsumo = measure === "Consumo";
   // Gravedad de negocio: una caída que lleva meses deja de contar como urgente y pasa a "antigua".

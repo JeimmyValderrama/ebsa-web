@@ -375,8 +375,8 @@ export function MapaBoyaca({
     onCalculo?.(info);
   }, [info, onCalculo]);
 
-  if (error) return <div className="empty-state">{error}</div>;
-  if (!filas || !calculo || !spec || !info) return <div className="empty-state cargando">Cargando mapa…</div>;
+  if (error) return <div className="empty-state error" role="alert">{error}</div>;
+  if (!filas || !calculo || !spec || !info) return <div className="empty-state cargando" role="status">Cargando mapa…</div>;
 
   return (
     <div className="mapa-v2">

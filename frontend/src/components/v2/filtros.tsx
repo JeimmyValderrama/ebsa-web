@@ -65,7 +65,7 @@ export function Multiselect({
       <span id={tituloId}>
         {etiqueta}
         {ayuda ? (
-          <span className="ayuda-info" title={ayuda} aria-label={ayuda}>
+          <span className="ayuda-info" data-t={ayuda} aria-label={ayuda}>
             i
           </span>
         ) : null}
@@ -134,7 +134,7 @@ export function Deslizador({
       <span>
         {etiqueta}
         {ayuda ? (
-          <span className="ayuda-info" title={ayuda} aria-label={ayuda}>
+          <span className="ayuda-info" data-t={ayuda} aria-label={ayuda}>
             i
           </span>
         ) : null}

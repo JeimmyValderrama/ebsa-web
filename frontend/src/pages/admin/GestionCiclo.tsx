@@ -298,7 +298,7 @@ export function GestionCiclo({ token }: { token?: string | null }) {
           <label className="campo">
             <span>
               Zona regional
-              <span className="ayuda-info" title={AYUDA_ZONA_REGIONAL} aria-label={AYUDA_ZONA_REGIONAL}>
+              <span className="ayuda-info" data-t={AYUDA_ZONA_REGIONAL} aria-label={AYUDA_ZONA_REGIONAL}>
                 i
               </span>
             </span>
@@ -334,7 +334,7 @@ export function GestionCiclo({ token }: { token?: string | null }) {
         porFila={3}
       />
 
-      {items === null && !error ? <div className="empty-state cargando">Consultando el ciclo…</div> : null}
+      {items === null && !error ? <div className="empty-state cargando" role="status">Consultando el ciclo…</div> : null}
 
       {items !== null && (
         <>

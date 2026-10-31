@@ -333,7 +333,7 @@ export function Proyeccion({ token }: { token?: string | null }) {
 
   const recorte = useMemo(() => recortarProyeccion(filtrada.mensual, filtrada.anual, horizonte), [filtrada, horizonte]);
 
-  if (error) return <div className="empty-state">{error}</div>;
+  if (error) return <div className="empty-state error" role="alert">{error}</div>;
 
   const sinProyeccion = !cargando && (mensual.length === 0 || anual.length === 0 || backtest.length === 0);
   if (sinProyeccion) {
@@ -349,7 +349,7 @@ export function Proyeccion({ token }: { token?: string | null }) {
     return (
       <div className="stack">
         <TituloPagina titulo="Proyección de consumo por zona para la compra de energía" />
-        <div className="empty-state cargando">Cargando la proyección…</div>
+        <div className="empty-state cargando" role="status">Cargando la proyección…</div>
       </div>
     );
   }

@@ -133,7 +133,7 @@ export function SinConsumo({ token }: { token?: string | null }) {
     </p>
   );
 
-  if (error) return <div className="empty-state">{error}</div>;
+  if (error) return <div className="empty-state error" role="alert">{error}</div>;
   if (!datos) {
     return (
       <div className="stack">
@@ -141,7 +141,7 @@ export function SinConsumo({ token }: { token?: string | null }) {
           {titulo}
           {caption}
         </div>
-        <div className="empty-state cargando">Cargando los clientes sin consumo…</div>
+        <div className="empty-state cargando" role="status">Cargando los clientes sin consumo…</div>
       </div>
     );
   }

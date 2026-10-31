@@ -139,7 +139,7 @@ export function Fuga({ token }: { token?: string | null }) {
     </p>
   );
 
-  if (error) return <div className="empty-state">{error}</div>;
+  if (error) return <div className="empty-state error" role="alert">{error}</div>;
   if (!datos) {
     return (
       <div className="stack">
@@ -147,7 +147,7 @@ export function Fuga({ token }: { token?: string | null }) {
           {titulo}
           {caption}
         </div>
-        <div className={cargando ? "empty-state cargando" : "empty-state"}>
+        <div className={cargando ? "empty-state cargando" : "empty-state"} role={cargando ? "status" : undefined}>
           {cargando ? "Consultando el riesgo de fuga del corte vigente…" : "Todavía no hay riesgo de fuga calculado (paso 14 del pipeline)."}
         </div>
       </div>

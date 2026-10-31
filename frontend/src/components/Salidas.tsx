@@ -94,12 +94,12 @@ export function Salidas({ token }: { token?: string | null }) {
     />
   );
 
-  if (error) return <div className="empty-state">{error}</div>;
+  if (error) return <div className="empty-state error" role="alert">{error}</div>;
   if (!datos) {
     return (
       <div className="stack">
         {titulo}
-        <div className={cargando ? "empty-state cargando" : "empty-state"}>{cargando ? "Consultando el archivo de otros comercializadores…" : "No hay archivo de otros comercializadores en 00_otros_comercializadores."}</div>
+        <div className={cargando ? "empty-state cargando" : "empty-state"} role={cargando ? "status" : undefined}>{cargando ? "Consultando el archivo de otros comercializadores…" : "No hay archivo de otros comercializadores en 00_otros_comercializadores."}</div>
       </div>
     );
   }

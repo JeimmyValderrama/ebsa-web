@@ -79,7 +79,7 @@ export function VegaLite({ spec, className, ariaLabel }: { spec: Spec | null; cl
   if (error) {
     return (
       <div className={className} style={{ minHeight: 280 }} role="img" aria-label={ariaLabel ?? "Gráfico"}>
-        <div className="empty-state">{error}</div>
+        <div className="empty-state error" role="alert">{error}</div>
       </div>
     );
   }

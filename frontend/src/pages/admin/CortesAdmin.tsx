@@ -44,7 +44,7 @@ export function CortesAdmin({ token }: { token?: string | null }) {
   }, [token]);
 
   if (error) return <Aviso texto={error} tipo="alerta" />;
-  if (!filas) return <div className="empty-state cargando">Consultando el valor en riesgo por cortes…</div>;
+  if (!filas) return <div className="empty-state cargando" role="status">Consultando el valor en riesgo por cortes…</div>;
   if (!filas.length) return <Aviso texto="No existe resumen_gestion_por_corte.csv" tipo="alerta" />;
 
   // groupby del Streamlit: los grupos salen ordenados por nombre y cada uno va de mayor a menor valor.

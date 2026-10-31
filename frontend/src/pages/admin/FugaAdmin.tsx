@@ -436,7 +436,7 @@ export function FugaAdmin({ token }: { token?: string | null }) {
       <TituloPagina titulo="Riesgo de fuga a otro comercializador" />
 
       {error && <Aviso texto={error} tipo="alerta" />}
-      {!datos && !error && <div className="empty-state cargando">Consultando el riesgo de fuga del corte vigente…</div>}
+      {!datos && !error && <div className="empty-state cargando" role="status">Consultando el riesgo de fuga del corte vigente…</div>}
 
       {datos && datos.total_lista === 0 && (
         <Aviso texto="No existe riesgo_fuga_clientes.csv. Corre el pipeline (paso 14) y vuelve a abrir la página." tipo="alerta" />
@@ -594,7 +594,7 @@ function PestanaZona({ token }: { token?: string | null }) {
       <Tarjeta>
         <Encabezado titulo="Por zona" />
         {zonas === null ? (
-          <div className="empty-state cargando">Consultando el resumen por zona…</div>
+          <div className="empty-state cargando" role="status">Consultando el resumen por zona…</div>
         ) : filasZona.length ? (
           <>
             <BarrasApiladas
@@ -614,7 +614,7 @@ function PestanaZona({ token }: { token?: string | null }) {
       <Tarjeta>
         <Encabezado titulo="Por grupo de consumo" />
         {grupos === null ? (
-          <div className="empty-state cargando">Consultando el resumen por grupo…</div>
+          <div className="empty-state cargando" role="status">Consultando el resumen por grupo…</div>
         ) : filasGrupo.length ? (
           <>
             <TablaSimple columnas={COLUMNAS_GRUPO} filas={filasGrupo} formato={formatoTabla(filasGrupo, COLUMNAS_GRUPO)} />
@@ -693,7 +693,7 @@ function PestanaOtro({ token, corte }: { token?: string | null; corte: string })
   );
   const dimensiones = [...new Set(filasPerfil.map((fila) => String(fila.dimension ?? "")))];
 
-  if (!otros) return <div className="empty-state cargando">Consultando los clientes con otro comercializador…</div>;
+  if (!otros) return <div className="empty-state cargando" role="status">Consultando los clientes con otro comercializador…</div>;
   if (!filas.length) return <Aviso texto="No hay archivo de otros comercializadores en 00_otros_comercializadores." tipo="calidad" />;
 
   return (
@@ -819,7 +819,7 @@ function PestanaVigilancia({
       ]
     : [];
 
-  if (!filas) return <div className="empty-state cargando">Consultando la vigilancia del mercado no regulado…</div>;
+  if (!filas) return <div className="empty-state cargando" role="status">Consultando la vigilancia del mercado no regulado…</div>;
   if (!filasTabla.length) return <Aviso texto="Ningún cliente cumple hoy los criterios de vigilancia." />;
 
   return (
@@ -866,7 +866,7 @@ function PestanaCalidad({ token, metodo, corteModelo }: { token?: string | null;
       <Aviso texto={AVISO_CALIDAD} tipo="limite" />
 
       {metricas === null ? (
-        <div className="empty-state cargando">Consultando las métricas del modelo…</div>
+        <div className="empty-state cargando" role="status">Consultando las métricas del modelo…</div>
       ) : filasMetricas.length ? (
         <>
           <p className="v2-caption">
@@ -912,7 +912,7 @@ function PestanaSeguimiento({ token }: { token?: string | null }) {
     ventana_completa: String(fila.ventana_completa ?? "").toLowerCase() === "true" ? "Sí (6 meses cumplidos)" : "No (en curso)",
   }));
 
-  if (!filas) return <div className="empty-state cargando">Consultando el seguimiento de los señalados…</div>;
+  if (!filas) return <div className="empty-state cargando" role="status">Consultando el seguimiento de los señalados…</div>;
   if (!filasTabla.length) return <Aviso texto="Todavía no hay cortes anteriores con lista de riesgo de fuga. Se llena mes a mes." />;
 
   return (

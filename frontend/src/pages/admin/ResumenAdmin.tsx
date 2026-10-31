@@ -167,7 +167,7 @@ export function ResumenAdmin({ token }: { token?: string | null }) {
       <TituloPagina titulo="Resumen del periodo facturado" bajada={panorama ? periodoTexto(panorama.cortes_zona) : undefined} />
 
       {error && <Aviso texto={error} tipo="alerta" />}
-      {!panorama && !error && <div className="empty-state cargando">Consultando el resumen del corte…</div>}
+      {!panorama && !error && <div className="empty-state cargando" role="status">Consultando el resumen del corte…</div>}
 
       {panorama && (
         <>
@@ -182,7 +182,7 @@ export function ResumenAdmin({ token }: { token?: string | null }) {
                   formato={formatoTabla(filasTrayectoria, ["trayectoria", "clientes", "valor_mes"])}
                 />
               ) : (
-                <div className="empty-state cargando">Consultando el pronóstico por trayectoria…</div>
+                <div className="empty-state cargando" role="status">Consultando el pronóstico por trayectoria…</div>
               )}
               <details className="v2-exp">
                 <summary>Qué significa cada trayectoria</summary>

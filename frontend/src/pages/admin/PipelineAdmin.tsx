@@ -53,7 +53,7 @@ export function PipelineAdmin({ token }: { token?: string | null }) {
   }, [token]);
 
   if (error) return <Aviso texto={error} tipo="alerta" />;
-  if (!datos) return <div className="empty-state cargando">Consultando el estado del pipeline…</div>;
+  if (!datos) return <div className="empty-state cargando" role="status">Consultando el estado del pipeline…</div>;
 
   const calidad: FilaDataset[] = datos.quality_control ?? [];
   const sesgo: FilaDataset[] = datos.forecast_bias ?? [];

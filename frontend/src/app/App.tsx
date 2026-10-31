@@ -56,6 +56,7 @@ function SectionMenu({ alElegir }: { alElegir?: () => void }) {
               key={item.clave}
               type="button"
               className={`side-item${registro.actual === item.clave ? " activo" : ""}`}
+              aria-current={registro.actual === item.clave ? "true" : undefined}
               onClick={() => {
                 registro.elegir(item.clave);
                 alElegir?.();
@@ -165,13 +166,12 @@ function ProtectedLayout() {
                 className="user-pill"
                 onClick={() => setMenuAbierto((abierto) => !abierto)}
                 aria-expanded={menuAbierto}
-                aria-haspopup="menu"
               >
                 <span className="usuario-nombre">{nombre}</span>
                 <span aria-hidden="true">▾</span>
               </button>
               {menuAbierto && (
-                <div className="user-menu" role="menu">
+                <div className="user-menu">
                   <b>{nombre}</b>
                   <span className="correo">{currentUser?.email}</span>
                   <span className="rol">{roleLabel(role)}</span>
@@ -181,7 +181,6 @@ function ProtectedLayout() {
                   <button
                     type="button"
                     className="enlace"
-                    role="menuitem"
                     onClick={() => {
                       setMenuAbierto(false);
                       void logout();
