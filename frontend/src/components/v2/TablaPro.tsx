@@ -53,6 +53,9 @@ export function TablaPro({
   const [pp, setPp] = useState(esMovil ? 5 : porPagina);
   const [pag, setPag] = useState(1);
   const [todas, setTodas] = useState(false);
+  // Columnas que la persona usuaria ocultó a mano (ninguna se oculta sola); al volver a
+  // mostrarlas recuperan su posición original porque se filtra la lista base sin reordenarla.
+  const [ocultas, setOcultas] = useState<string[]>([]);
   const [elegido, setElegido] = useState<string | null>(null);
   // El menú "Ordenar y columnas" flota sobre la tabla (no empuja el contenido) y se
   // cierra al pulsar fuera o con Esc, como cualquier desplegable.
@@ -122,7 +125,8 @@ export function TablaPro({
   const paginaActual = Math.min(Math.max(1, pag), paginas);
   const inicio = (paginaActual - 1) * pp;
   const pagina = ordenadas.slice(inicio, inicio + pp);
-  const campos = (esMovil ? (movil ?? (prioritarias ?? columnas).slice(0, 6)) : colsVer).filter((columna) => columnas.includes(columna));
+  const baseCampos = (esMovil ? (movil ?? (prioritarias ?? columnas).slice(0, 6)) : colsVer).filter((columna) => columnas.includes(columna));
+  const campos = baseCampos.filter((columna) => !ocultas.includes(columna));
   // Solo presentación: las columnas de solo cifras se alinean a la derecha (se decide con la página visible).
   const columnasCifra = new Set(campos.filter((columna) => columnaCifra(pagina, columna, formato)));
   const claseDe = (columna: string): string =>
@@ -133,6 +137,12 @@ export function TablaPro({
   const ordenarPor = (columna: string): void => {
     if (orden === columna) setSentido(sentido === "asc" ? "desc" : "asc");
     else setOrden(columna);
+  };
+
+  // Ocultar/mostrar una columna desde el menú: se filtra la lista base, así que una columna
+  // restaurada vuelve exactamente a su posición original.
+  const alternarColumna = (columna: string): void => {
+    setOcultas((previo) => (previo.includes(columna) ? previo.filter((oculta) => oculta !== columna) : [...previo, columna]));
   };
 
   const celda = (fila: Fila, columna: string): ReactNode => {
@@ -215,6 +225,33 @@ export function TablaPro({
                 <input type="checkbox" checked={todas} onChange={(evento) => setTodas(evento.target.checked)} />
                 Todas las columnas
               </label>
+            ) : null}
+            {baseCampos.length > 1 ? (
+              <div className="campo">
+                <span>Mostrar columnas</span>
+                <div className="v2-check-lista">
+                  {baseCampos.map((columna) => {
+                    const visible = !ocultas.includes(columna);
+                    // Siempre debe quedar al menos una columna visible.
+                    return (
+                      <label key={columna} className="v2-check">
+                        <input
+                          type="checkbox"
+                          checked={visible}
+                          disabled={visible && campos.length === 1}
+                          onChange={() => alternarColumna(columna)}
+                        />
+                        {columna}
+                      </label>
+                    );
+                  })}
+                </div>
+                {ocultas.length > 0 ? (
+                  <button type="button" className="ghost-button" onClick={() => setOcultas([])}>
+                    Mostrar todas
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </details>
