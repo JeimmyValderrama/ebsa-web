@@ -125,7 +125,7 @@ export function SeguimientoAdmin({ token }: { token?: string | null }) {
       <TituloPagina titulo="Seguimiento: lo pronosticado contra lo que pasó" />
 
       {global === null ? (
-        <div className="empty-state">Consultando el seguimiento del pronóstico…</div>
+        <div className="empty-state cargando">Consultando el seguimiento del pronóstico…</div>
       ) : !global.length ? (
         <Aviso
           texto={
@@ -187,7 +187,7 @@ export function SeguimientoAdmin({ token }: { token?: string | null }) {
 
       <Tarjeta titulo="Qué pasó con los clientes de las listas anteriores">
         {listas === null ? (
-          <div className="empty-state">Consultando los clientes de las listas anteriores…</div>
+          <div className="empty-state cargando">Consultando los clientes de las listas anteriores…</div>
         ) : !listas.length ? (
           <Aviso texto="Todavía no hay meses posteriores consolidados para ninguna lista." />
         ) : (

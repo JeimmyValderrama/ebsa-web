@@ -141,7 +141,7 @@ export function SinConsumo({ token }: { token?: string | null }) {
           {titulo}
           {caption}
         </div>
-        <div className="empty-state">Cargando los clientes sin consumo…</div>
+        <div className="empty-state cargando">Cargando los clientes sin consumo…</div>
       </div>
     );
   }

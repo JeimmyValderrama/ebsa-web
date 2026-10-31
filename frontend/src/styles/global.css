@@ -561,6 +561,29 @@ textarea.search-input {
   /* un mensaje de error con URL larga no debe salirse de su caja */
   overflow-wrap: anywhere;
 }
+/* Espera de carga: barra con una luz dorada que la recorre (la misma animación que
+   la pantalla de espera de autenticación). Solo los mensajes "Cargando…/Consultando…". */
+.cargando::before {
+  content: "";
+  display: block;
+  height: 4px;
+  border-radius: 4px;
+  background-color: var(--neutro-f);
+  background-image: linear-gradient(90deg, transparent, var(--marca), transparent);
+  background-repeat: no-repeat;
+  background-size: 50% 100%;
+  background-position: -50% 0;
+  animation: barra-luz 1.15s ease-in-out infinite;
+}
+.empty-state.cargando::before { width: min(168px, 60%); margin: 0 auto 14px; }
+.v2-pie.cargando::before { width: 140px; margin: 0 0 8px; }
+@keyframes barra-luz {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cargando::before { animation: none; background-position: 50% 0; }
+}
 .notice {
   display: flex;
   gap: 10px;

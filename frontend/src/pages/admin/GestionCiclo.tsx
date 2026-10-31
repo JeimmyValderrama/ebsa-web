@@ -334,7 +334,7 @@ export function GestionCiclo({ token }: { token?: string | null }) {
         porFila={3}
       />
 
-      {items === null && !error ? <div className="empty-state">Consultando el ciclo…</div> : null}
+      {items === null && !error ? <div className="empty-state cargando">Consultando el ciclo…</div> : null}
 
       {items !== null && (
         <>

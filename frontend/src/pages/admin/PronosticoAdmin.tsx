@@ -319,7 +319,7 @@ export function PronosticoAdmin({ token }: { token?: string | null }) {
         </Tarjeta>
       ) : null}
 
-      {!exportes && !error ? <div className="empty-state">Consultando los archivos del pronóstico…</div> : null}
+      {!exportes && !error ? <div className="empty-state cargando">Consultando los archivos del pronóstico…</div> : null}
     </div>
   );
 }

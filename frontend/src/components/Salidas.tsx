@@ -99,7 +99,7 @@ export function Salidas({ token }: { token?: string | null }) {
     return (
       <div className="stack">
         {titulo}
-        <div className="empty-state">{cargando ? "Consultando el archivo de otros comercializadores…" : "No hay archivo de otros comercializadores en 00_otros_comercializadores."}</div>
+        <div className={cargando ? "empty-state cargando" : "empty-state"}>{cargando ? "Consultando el archivo de otros comercializadores…" : "No hay archivo de otros comercializadores en 00_otros_comercializadores."}</div>
       </div>
     );
   }

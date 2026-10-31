@@ -115,7 +115,7 @@ export function Descargas({ token, esAdmin = false }: { token?: string | null; e
     return (
       <div className="stack">
         {cabecera}
-        <div className="empty-state">Consultando 11_exportes_negocio/indice_exportes.csv…</div>
+        <div className="empty-state cargando">Consultando 11_exportes_negocio/indice_exportes.csv…</div>
       </div>
     );
   }

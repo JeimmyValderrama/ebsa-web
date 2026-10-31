@@ -349,7 +349,7 @@ export function Proyeccion({ token }: { token?: string | null }) {
     return (
       <div className="stack">
         <TituloPagina titulo="Proyección de consumo por zona para la compra de energía" />
-        <div className="empty-state">Cargando la proyección…</div>
+        <div className="empty-state cargando">Cargando la proyección…</div>
       </div>
     );
   }

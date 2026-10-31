@@ -258,7 +258,7 @@ export function DatasetView({ token, datasetKey, title, description, filters = [
         onDownload={download}
         downloading={downloading}
       />
-      {loading && <div className="empty-state">Cargando registros…</div>}
+      {loading && <div className="empty-state cargando">Cargando registros…</div>}
       {error && <div className="empty-state">{error}</div>}
       {!loading && !error && items.length === 0 && <div className="empty-state">{emptyText ?? "No hay registros para este corte o filtro."}</div>}
       {items.length > 0 && (

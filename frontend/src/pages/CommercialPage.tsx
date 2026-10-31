@@ -161,7 +161,7 @@ function Panorama({ token }: { token?: string | null }) {
   const vig = useMemo(() => (data ? porPrefijo(data.por_prioridad, "VIGILAR", esConsumo) : { clientes: 0, medida: 0 }), [data, esConsumo]);
 
   if (error) return <div className="empty-state">{error}</div>;
-  if (!data) return <div className="empty-state">Cargando panorama…</div>;
+  if (!data) return <div className="empty-state cargando">Cargando panorama…</div>;
 
   if (data.lista.clientes === 0) {
     return (
@@ -337,7 +337,7 @@ function Panorama({ token }: { token?: string | null }) {
             <TopDiez info={infoMapa} />
           ) : (
             <Tarjeta titulo="Los diez municipios con más">
-              <div className="empty-state">Cargando mapa…</div>
+              <div className="empty-state cargando">Cargando mapa…</div>
             </Tarjeta>
           )}
           {infoMapa && (

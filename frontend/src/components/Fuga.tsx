@@ -147,7 +147,7 @@ export function Fuga({ token }: { token?: string | null }) {
           {titulo}
           {caption}
         </div>
-        <div className="empty-state">
+        <div className={cargando ? "empty-state cargando" : "empty-state"}>
           {cargando ? "Consultando el riesgo de fuga del corte vigente…" : "Todavía no hay riesgo de fuga calculado (paso 14 del pipeline)."}
         </div>
       </div>

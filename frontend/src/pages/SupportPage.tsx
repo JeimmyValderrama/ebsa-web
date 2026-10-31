@@ -638,7 +638,7 @@ function VisitasPorCiclo({ token }: { token?: string | null }) {
             </div>
           </Tarjeta>
 
-          {!datos && <div className="empty-state">Consultando la lista de caída…</div>}
+          {!datos && <div className="empty-state cargando">Consultando la lista de caída…</div>}
         </>
       )}
 
@@ -837,7 +837,7 @@ export function Retroalimentacion({ token }: { token?: string | null }) {
     return (
       <>
         <TituloPagina titulo="Resultados de las visitas contra la lista" />
-        <div className="empty-state">Consultando los resultados de campo…</div>
+        <div className="empty-state cargando">Consultando los resultados de campo…</div>
       </>
     );
   }
