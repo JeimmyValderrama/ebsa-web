@@ -120,13 +120,16 @@ export function TablaSimple({
   tituloAcciones?: string;
 }) {
   if (!filas.length) return null;
+  const fmt = formato ?? ((valor: unknown) => (valor === null || valor === undefined ? "" : String(valor)));
+  const columnasCifra = new Set(columnas.filter((columna) => columnaCifra(filas, columna, fmt)));
+  const claseDe = (columna: string): string => (columnasCifra.has(columna) ? "num" : "");
   return (
     <div className="table-card" style={alto ? { maxHeight: `${alto}px`, overflow: "auto" } : undefined}>
       <table>
         <thead>
           <tr>
             {columnas.map((columna) => (
-              <th key={columna}>{columna}</th>
+              <th key={columna} className={claseDe(columna)}>{columna}</th>
             ))}
             {acciones ? <th className="col-accion">{tituloAcciones ?? ""}</th> : null}
           </tr>
@@ -137,7 +140,7 @@ export function TablaSimple({
               {columnas.map((columna) => {
                 const celda = fila[columna];
                 const texto = formato ? formato(celda, columna) : celda === null || celda === undefined ? "" : String(celda);
-                return <td key={columna}>{texto}</td>;
+                return <td key={columna} className={claseDe(columna)}>{texto}</td>;
               })}
               {acciones ? <td className="col-accion">{acciones(fila, index)}</td> : null}
             </tr>
@@ -218,4 +221,26 @@ export function ComoLeer({ texto, titulo = "Cómo leer esta página", abierto = 
 /** ui.etiqueta(): etiqueta de estado (forma y texto, no solo color). */
 export function Etiqueta({ texto, tono = "neutro" }: { texto: string; tono?: "alerta" | "aviso" | "bien" | "neutro" }) {
   return <span className={`v2-tag t-${tono}`}>{texto}</span>;
+}
+
+/* ---------- solo presentación: detectar cifras para alinearlas a la derecha ---------- */
+
+/** ¿Esta celda ya formateada se ve como una cifra? Acepta signo, separadores de miles y
+ *  decimales, % y una unidad al final; rechaza NIU sin separadores, fechas y texto. */
+const CIFRA = /^[-−+$]?\s?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?(?:\s?%|\s?[A-Za-zµ]+)?$/;
+export function esCifra(texto: string): boolean {
+  return CIFRA.test(texto.trim());
+}
+
+/** ¿La columna está formada solo por cifras (ignorando vacíos y "—")? Si es así, se alinea
+ *  a la derecha. No toca valores, columnas ni formato: es una decisión de presentación. */
+export function columnaCifra(
+  filas: Array<Record<string, unknown>>,
+  columna: string,
+  formato: (valor: unknown, columna: string) => string,
+): boolean {
+  const celdas = filas
+    .map((fila) => formato(fila[columna], columna).trim())
+    .filter((texto) => texto !== "" && texto !== "—");
+  return celdas.length > 0 && celdas.every(esCifra);
 }

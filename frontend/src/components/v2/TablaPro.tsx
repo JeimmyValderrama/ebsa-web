@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fmtN } from "../../lib/format";
 import { Sensitive } from "../../app/Presentation";
 import { useEsMovil } from "../../charts/textos";
-import { Encabezado } from "./ui";
+import { columnaCifra, Encabezado } from "./ui";
 
 /**
  * Tabla de trabajo del Streamlit (ui.tabla_pro): buscar, ordenar, elegir cuántas columnas y filas ver,
@@ -123,6 +123,10 @@ export function TablaPro({
   const inicio = (paginaActual - 1) * pp;
   const pagina = ordenadas.slice(inicio, inicio + pp);
   const campos = (esMovil ? (movil ?? (prioritarias ?? columnas).slice(0, 6)) : colsVer).filter((columna) => columnas.includes(columna));
+  // Solo presentación: las columnas de solo cifras se alinean a la derecha (se decide con la página visible).
+  const columnasCifra = new Set(campos.filter((columna) => columnaCifra(pagina, columna, formato)));
+  const claseDe = (columna: string): string =>
+    [columna === destacada ? "destacada" : "", columnasCifra.has(columna) ? "num" : ""].filter(Boolean).join(" ");
 
   const celda = (fila: Fila, columna: string): ReactNode => {
     const texto = formato(fila[columna], columna);
@@ -236,7 +240,7 @@ export function TablaPro({
             <thead>
               <tr>
                 {campos.map((columna) => (
-                  <th key={columna} className={columna === destacada ? "destacada" : ""}>
+                  <th key={columna} className={claseDe(columna)}>
                     {columna}
                   </th>
                 ))}
@@ -250,7 +254,7 @@ export function TablaPro({
                   onClick={ficha ? () => setElegido(idDe(fila)) : undefined}
                 >
                   {campos.map((columna) => (
-                    <td key={columna} className={columna === destacada ? "destacada" : ""}>
+                    <td key={columna} className={claseDe(columna)}>
                       {celda(fila, columna)}
                     </td>
                   ))}

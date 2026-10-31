@@ -34,7 +34,7 @@
   --carbon2: #2b2b2b;
   --ink: #1d1d1b;
   --ink2: #55584f;
-  --ink3: #7b7e75;
+  --ink3: #6e7167;
   --plano: #f9f9f9;
   --sup: #ffffff;
   --linea: #e5e1e6;
@@ -219,7 +219,7 @@ p { margin: 0; }
   overflow-y: auto;
 }
 .side-scroll { display: flex; flex-direction: column; gap: 2px; padding: 18px 12px 22px; flex: 1; }
-.side-group { display: block; padding: 14px 10px 5px; font-size: 13px; color: var(--ink3); }
+.side-group { display: block; padding: 14px 10px 5px; font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--ink3); }
 .side-group.primero { padding-top: 2px; }
 .side-item {
   display: flex;
@@ -234,9 +234,12 @@ p { margin: 0; }
   color: var(--ink2);
   font-weight: 600;
   font-size: 15px;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
-.side-item:hover { background: var(--sup); color: var(--ink); }
+.side-item:hover { background: var(--sup); color: var(--ink); border-left-color: var(--linea); }
+.side-item:focus-visible { outline: 2px solid var(--marca); outline-offset: -2px; }
 .side-item.activo { background: var(--marca); color: #000; border-left-color: #000; font-weight: 700; }
+.side-item.activo:hover { background: var(--marca); color: #000; border-left-color: #000; }
 .side-bottom {
   margin-top: auto;
   padding-top: 14px;
@@ -298,6 +301,8 @@ h3 { font-size: 20px; }
   border: 1px solid var(--linea);
   border-radius: 8px;
   padding: 16px 18px 14px;
+  /* profundidad mínima: las tarjetas se separan del fondo gris sin levantar la vista */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
 }
 .data-module { margin-top: 22px; }
 .module-heading { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 16px; }
@@ -306,7 +311,7 @@ h3 { font-size: 20px; }
 .filter-card h3 { font-size: 17px; }
 .filter-card p { color: var(--ink2); font-size: 13.5px; line-height: 1.6; margin-top: 12px; }
 
-.chart-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 16px 18px 14px; margin-top: 14px; }
+.chart-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 16px 18px 14px; margin-top: 14px; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 
 /* indicadores (tarjetas KPI del Streamlit) */
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
@@ -411,8 +416,16 @@ h3 { font-size: 20px; }
 .quiet-note { color: var(--ink3); font-size: 12.5px; line-height: 1.5; }
 
 /* ---------- tablas ---------- */
-.table-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; }
+/* Contenedor con scroll propio: las tablas se adaptan al ancho disponible (sin scroll
+   forzado); el desplazamiento horizontal solo aparece si algo llega a desbordar. */
+.table-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; overflow-x: auto; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 .data-module .table-card { max-height: 620px; overflow: auto; }
+/* Scrollbars finas de marca (solo se ven cuando hay desbordamiento). */
+.table-card { scrollbar-width: thin; scrollbar-color: var(--ink3) transparent; }
+.table-card::-webkit-scrollbar { height: 8px; width: 8px; }
+.table-card::-webkit-scrollbar-thumb { background: #c9ccc2; border-radius: 8px; }
+.table-card::-webkit-scrollbar-thumb:hover { background: var(--ink3); }
+.table-card::-webkit-scrollbar-track { background: transparent; }
 .table-card table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 /* Encabezado negro con línea dorada (cabeceras de tabla del sitio corporativo). */
 .table-card th {
@@ -424,17 +437,24 @@ h3 { font-size: 20px; }
   padding: 10px 12px;
   border-bottom: 2px solid var(--marca);
   white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
+  /* Parte palabras largas, nunca letras sueltas: el contenedor ya hace scroll si no cabe. */
+  overflow-wrap: break-word;
   hyphens: auto;
   position: sticky;
   top: 0;
   z-index: 1;
 }
 .table-card td { padding: 9px 12px; border-bottom: 1px solid var(--linea2); color: var(--ink); vertical-align: top; }
+/* Cifras: las columnas formadas solo por números se alinean a la derecha y usan cifras
+   tabulares (misma posición vertical para comparar de un vistazo). Solo presentación. */
+.table-card th.num, .table-card td.num { text-align: right; }
+.table-card td.num { font-variant-numeric: tabular-nums; }
 /* Filas alternas en gris claro (tabla rayada del sitio): va antes de los realces para que
    hover/selection puedan ganarle por especificidad. */
 .table-card tbody tr:nth-child(even) td { background: #f9f9f9; }
+/* Cualquier fila realza suavemente al pasar el cursor. Va con :not para no pisar los
+   realces fuertes (columna destacada y fila seleccionada, que siguen ganando). */
+.table-card tbody tr:not(.fila-sel):hover td:not(.destacada) { background: #fef9ea; }
 .table-card tr:last-child td { border-bottom: 0; }
 .table-card td strong { color: var(--ink); }
 .table-card select { border: 1px solid var(--linea); border-radius: 6px; background: var(--sup); padding: 7px 10px; font-size: 13.5px; }
@@ -542,8 +562,10 @@ textarea.search-input {
 
 /* pestañas (uso residual) */
 .admin-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 18px; border-bottom: 1px solid var(--linea); }
-.admin-tab { background: transparent; border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; font-weight: 600; font-size: 15px; color: var(--ink2); }
+.admin-tab { background: transparent; border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; font-weight: 600; font-size: 15px; color: var(--ink2); transition: color .12s ease, border-color .12s ease; }
+.admin-tab:hover { color: var(--ink); border-bottom-color: var(--linea); }
 .admin-tab.active { color: var(--ink); border-bottom-color: var(--marca); }
+.admin-tab.active:hover { border-bottom-color: var(--marca); }
 
 /* ---------- barra de datos: búsqueda, filtros, paginación ---------- */
 .data-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 14px; color: var(--ink2); font-size: 13.5px; }
@@ -619,33 +641,34 @@ textarea.search-input {
 .v2-ph { margin: 0 0 6px; }
 .v2-ph h1 { font-family: var(--disp); font-weight: 600; font-size: 34px; line-height: 1.05; margin: 0 0 4px; padding: 0; color: var(--ink); letter-spacing: .1px; }
 .v2-ph p { margin: 0; color: var(--ink2); font-size: 15.5px; line-height: 1.6; max-width: 96ch; }
-.v2-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 16px 18px 14px; min-width: 0; }
-.v2-hero { background: var(--sup); border: 1px solid var(--linea); border-top: 4px solid var(--marca); border-radius: 8px; padding: 18px 22px 14px; min-width: 0; }
+.v2-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 16px 18px 14px; min-width: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
+.v2-hero { background: var(--sup); border: 1px solid var(--linea); border-top: 4px solid var(--marca); border-radius: 8px; padding: 18px 22px 14px; min-width: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
+/* Cabecera de tarjeta: un poco de aire debajo del título para que el cuerpo no le quede pegado. */
+.v2-ch { margin: 0 0 10px; }
 .v2-ch h3 { font-family: var(--disp); font-weight: 600; font-size: 20px; line-height: 1.2; margin: 0; padding: 0; color: var(--ink); }
 .v2-ch p { margin: 3px 0 0; color: var(--ink2); font-size: 14px; line-height: 1.6; max-width: 86ch; }
 .v2-hero-h h3 { font-size: 26px; }
 .v2-hero-h p { font-size: 15.5px; }
-.fila-3-2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; align-items: start; margin-top: 16px; }
+.fila-3-2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 16px; }
 /* Panorama: la columna lateral (top 10 + resumen por zona) estira para emparejar la altura
    de la tarjeta del mapa y no deja hueco de fondo; el resumen por zona crece hasta el borde. */
 .fila-mapa > * { align-self: stretch; }
-.fila-mapa .mapa-lateral { display: grid; grid-template-rows: auto 1fr; gap: 14px; }
-.fila-2-3 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 14px; align-items: start; }
-.fila-1-1 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; margin-top: 16px; }
+.fila-mapa .mapa-lateral { display: grid; grid-template-rows: auto 1fr; gap: 16px; }
+.fila-2-3 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
+.fila-1-1 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 16px; }
 /* st.columns([1, 2]) del Streamlit: la zona regional ocupa un tercio y el ciclo los dos restantes. */
-.fila-1-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; align-items: start; }
+.fila-1-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 /* st.columns([2, 1]) del Streamlit: el gráfico a dos tercios y la tabla al tercio restante. */
-.fila-2-1 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-/* La tabla solo recibe un tercio del ancho: sin el mínimo global de 650 px de .table-card se
-   sale de la vista por el scroll horizontal y la columna kWh (la segunda) queda invisible. */
-.fila-2-1 .table-card table { min-width: 0; }
+.fila-2-1 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+/* La tabla del tercio restante se adapta al ancho de su columna (parte palabras, no letras);
+   el contenedor solo haría scroll si algo se desbordara. */
 /* st.columns(3) del Streamlit: tres columnas iguales (la fila de Municipio / Gravedad / Tendencia). */
-.fila-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
-.v2-fila-medida { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: start; margin-bottom: 14px; }
+.fila-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.v2-fila-medida { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; align-items: start; margin-bottom: 14px; }
 .v2-fila-medida p { margin: 6px 0 0; font-size: 13.5px; color: var(--ink2); line-height: 1.6; max-width: 96ch; }
 
 /* ---------- indicadores (v2-kpis del Streamlit) ---------- */
-.v2-kpis { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 14px; }
+.v2-kpis { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 16px; }
 .v2-kpi { position: relative; background: var(--sup); border: 1px solid var(--linea); border-left: 4px solid var(--linea); border-radius: 8px; padding: 12px 15px 11px; min-width: 0; }
 .v2-kpi-t { font-size: 14px; color: var(--ink2); font-weight: 600; line-height: 1.25; padding-right: 18px; }
 .v2-kpi-v { font-family: var(--disp); font-weight: 600; font-size: 34px; line-height: 1.1; margin: 2px 0; color: var(--ink); overflow-wrap: anywhere; }
@@ -859,7 +882,9 @@ textarea.search-input {
 .v2-radio button {
   border: 1px solid transparent; background: transparent; border-radius: 4px;
   padding: 5px 14px; font-size: 13.5px; color: var(--ink2);
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
 }
+.v2-radio button:hover { color: var(--ink); border-color: var(--linea); }
 .v2-radio button.activo { background: var(--sup); border-color: var(--linea); color: var(--ink); font-weight: 700; }
 /* Radio con etiquetas largas (escenarios de la proyección): una opción debajo de otra. */
 .v2-radio.etiquetas { display: grid; gap: 6px; padding: 0; background: transparent; }
@@ -879,7 +904,8 @@ textarea.search-input {
 .col-accion { text-align: right; white-space: nowrap; }
 .col-accion .ghost-button { padding: 5px 11px; font-size: 13px; }
 .v2-exp { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 0; min-width: 0; }
-.v2-exp summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 15px; padding: 11px 15px; list-style-position: inside; }
+.v2-exp summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 15px; padding: 11px 15px; list-style-position: inside; border-radius: 8px 8px 0 0; transition: background .12s ease; }
+.v2-exp summary:hover { background: var(--plano); }
 .v2-exp[open] summary { border-bottom: 1px solid var(--linea2); }
 .v2-exp-cuerpo { padding: 10px 15px 13px; font-size: 14px; color: var(--ink2); line-height: 1.6; }
 /* Mapa de st.map (Visitas por ciclo): azulejos de Carto Positron con los puntos encima. */
@@ -918,7 +944,8 @@ textarea.search-input {
 .ctl-fila .search-input { width: 100%; }
 /* "Ordenar y columnas": el menú flota sobre la tabla (menú emergente) en vez de empujarla. */
 .v2-pop { position: relative; justify-self: end; }
-.v2-pop summary { list-style: none; margin: 0; cursor: pointer; }
+.v2-pop summary { list-style: none; margin: 0; cursor: pointer; border-radius: 6px; transition: color .12s ease; }
+.v2-pop summary:hover { color: var(--carbon); }
 .v2-pop summary::-webkit-details-marker { display: none; }
 .v2-pop summary::after { content: " ▾"; color: var(--ink3); }
 .v2-pop[open] summary { color: var(--carbon); }
@@ -1188,4 +1215,9 @@ textarea.search-input {
   .v2-kpis { grid-template-columns: minmax(0, 1fr); }
   .v2-kpis.compacto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .year-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---------- movimiento reducido (va al final: debe ganarle a las transiciones de las media queries) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar, .side-item, .admin-tab, .v2-radio button, .v2-exp summary, .v2-pop summary { transition: none; }
 }
