@@ -468,6 +468,20 @@ h3 { font-size: 20px; }
   z-index: 1;
 }
 .table-card td { padding: 9px 12px; border-bottom: 1px solid var(--linea2); color: var(--ink); vertical-align: top; }
+/* Encabezado ordenable: el nombre de la columna es un botón (clic ordena, clic de nuevo invierte). */
+.table-card th .th-sort {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  background: none; border: 0; padding: 0; margin: 0;
+  font: inherit; font-weight: 600; color: inherit; text-align: left; cursor: pointer;
+}
+.table-card th.num .th-sort { justify-content: flex-end; text-align: right; }
+.table-card th .th-sort-flecha { font-size: 10px; opacity: .55; }
+.table-card th[aria-sort="ascending"] .th-sort-flecha,
+.table-card th[aria-sort="descending"] .th-sort-flecha { opacity: 1; color: var(--marca); }
+/* En la columna destacada el fondo ya es dorado: la flecha ordenada va en negro. */
+.table-card th.destacada[aria-sort="ascending"] .th-sort-flecha,
+.table-card th.destacada[aria-sort="descending"] .th-sort-flecha { color: #000; }
+.table-card th .th-sort:hover .th-sort-flecha { opacity: 1; }
 /* Cifras: las columnas formadas solo por números se alinean a la derecha y usan cifras
    tabulares (misma posición vertical para comparar de un vistazo). Solo presentación. */
 .table-card th.num, .table-card td.num { text-align: right; }

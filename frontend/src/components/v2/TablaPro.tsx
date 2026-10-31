@@ -128,6 +128,13 @@ export function TablaPro({
   const claseDe = (columna: string): string =>
     [columna === destacada ? "destacada" : "", columnasCifra.has(columna) ? "num" : ""].filter(Boolean).join(" ");
 
+  // Ordenar haciendo clic en el encabezado: el primer clic ordena por esa columna con el
+  // sentido vigente y el siguiente clic lo invierte (mismo estado que el menú "Ordenar y columnas").
+  const ordenarPor = (columna: string): void => {
+    if (orden === columna) setSentido(sentido === "asc" ? "desc" : "asc");
+    else setOrden(columna);
+  };
+
   const celda = (fila: Fila, columna: string): ReactNode => {
     const texto = formato(fila[columna], columna);
     return sensibles.includes(columna) ? <Sensitive value={texto} /> : texto;
@@ -240,8 +247,18 @@ export function TablaPro({
             <thead>
               <tr>
                 {campos.map((columna) => (
-                  <th key={columna} className={claseDe(columna)}>
-                    {columna}
+                  <th
+                    key={columna}
+                    className={claseDe(columna)}
+                    aria-sort={orden === columna ? (sentido === "asc" ? "ascending" : "descending") : "none"}
+                  >
+                    <button type="button" className="th-sort" onClick={() => ordenarPor(columna)}>
+                      <span>{columna}</span>
+                      {/* Indicador de la columna ordenada: triángulo según el sentido. */}
+                      <span className="th-sort-flecha" aria-hidden="true">
+                        {orden === columna ? (sentido === "asc" ? "▲" : "▼") : "↕"}
+                      </span>
+                    </button>
                   </th>
                 ))}
               </tr>
