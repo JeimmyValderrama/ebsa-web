@@ -9,7 +9,7 @@ import { FichaCliente } from "./v2/FichaCliente";
 import { Conteo, Leyenda, md, useEsMovil } from "../charts/textos";
 import { BarrasApiladas } from "../charts/Graficas";
 import { C, COLOR_GRAVEDAD, SEVERIDAD_SIMPLE } from "../charts/paleta";
-import { csvCelda, energia, fmtMedida, fmtN, formatoTabla, mesLargo, pesos, tituloPropio } from "../lib/format";
+import { energia, fmtMedida, fmtN, formatoTabla, mesLargo, pesos, tituloPropio } from "../lib/format";
 import {
   AYUDA_MUNICIPIO,
   AYUDA_ZONA_REGIONAL,
@@ -239,7 +239,6 @@ export function ListaCaida({ token }: { token?: string | null }) {
     ? {
         nombre: "Descargar esta lista (CSV)",
         archivo: `caidas_consumo_${corte || ""}.csv`,
-        csv: [COLUMNAS.join(";"), ...filas.map((fila) => COLUMNAS.map((columna) => csvCelda(fila[columna])).join(";"))].join("\r\n"),
       }
     : null;
 

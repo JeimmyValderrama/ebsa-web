@@ -7,7 +7,7 @@ import { TablaPro, type Fila } from "../../components/v2/TablaPro";
 import { Conteo, md, useEsMovil } from "../../charts/textos";
 import { AYUDA_MUNICIPIO, AYUDA_ZONA_REGIONAL, GRUPOS_CONSUMO_ORDEN } from "../../lib/negocio";
 import { FichaCliente } from "../../components/v2/FichaCliente";
-import { csvCelda, fmtMedida, fmtN, formatoTabla } from "../../lib/format";
+import { fmtMedida, fmtN, formatoTabla } from "../../lib/format";
 import { useCorte } from "../../lib/useCorte";
 
 /**
@@ -167,7 +167,6 @@ export function RankingGerencial({ token }: { token?: string | null }) {
     ? {
         nombre: "Descargar (CSV)",
         archivo: `ranking_gerencial_${corte || ""}.csv`,
-        csv: [COLUMNAS.join(";"), ...filas.map((fila) => COLUMNAS.map((columna) => csvCelda(fila[columna])).join(";"))].join("\r\n"),
       }
     : null;
 

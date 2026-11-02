@@ -6,7 +6,7 @@ import { PanelFiltros, type CampoFiltro } from "./v2/filtros";
 import { TablaPro, type Fila } from "./v2/TablaPro";
 import { FichaCliente } from "./v2/FichaCliente";
 import { md, useEsMovil } from "../charts/textos";
-import { csvCelda, energia, fmtN, formatoTabla, pesos } from "../lib/format";
+import { energia, fmtN, formatoTabla, pesos } from "../lib/format";
 import { ESTADO_OTRO_TEXTO } from "../lib/negocio";
 
 /**
@@ -152,7 +152,6 @@ export function Salidas({ token }: { token?: string | null }) {
     ? {
         nombre: "Descargar (CSV)",
         archivo: "clientes_con_otro_comercializador.csv",
-        csv: [columnas.join(";"), ...filasTabla.map((fila) => columnas.map((columna) => csvCelda(fila[columna])).join(";"))].join("\r\n"),
       }
     : null;
 

@@ -9,7 +9,7 @@ import { FichaCliente } from "./v2/FichaCliente";
 import { Conteo, Pie, md, useEsMovil } from "../charts/textos";
 import { Barras } from "../charts/Graficas";
 import { AZUL } from "../charts/paleta";
-import { csvCelda, energia, fmtMedida, fmtN, formatoTabla, mesLargo, pesos } from "../lib/format";
+import { energia, fmtMedida, fmtN, formatoTabla, mesLargo, pesos } from "../lib/format";
 import {
   AYUDA_MUNICIPIO,
   AYUDA_ZONA_REGIONAL,
@@ -239,7 +239,6 @@ export function SinConsumo({ token }: { token?: string | null }) {
     ? {
         nombre: "Descargar clientes sin consumo (CSV)",
         archivo: `clientes_sin_consumo_${corte || ""}.csv`,
-        csv: [COLUMNAS.join(";"), ...filasTabla.map((fila) => COLUMNAS.map((columna) => csvCelda(fila[columna])).join(";"))].join("\r\n"),
       }
     : null;
 

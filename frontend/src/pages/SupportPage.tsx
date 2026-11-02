@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { api, type BusquedaData, type CicloRuta, type EjemplosData, type RetroData, type RutaData } from "../lib/api";
 import { useSectionNav } from "../app/SectionNav";
 import { useCorte } from "../lib/useCorte";
-import { csvCelda, fmtN, formatoTabla, limpiarNiu, pesos, queRevisar } from "../lib/format";
+import { fmtN, formatoTabla, limpiarNiu, pesos, queRevisar } from "../lib/format";
 import { FichaCliente } from "../components/v2/FichaCliente";
 import { ListaCaida } from "../components/ListaCaida";
 import { Aviso, ComoLeer, Kpis, TablaSimple, Tarjeta, TituloPagina, type ItemKpi } from "../components/v2/ui";
@@ -697,7 +697,6 @@ function VisitasPorCiclo({ token }: { token?: string | null }) {
                 descargar={{
                   nombre: `Descargar la ruta del ciclo ${codigoCiclo} (CSV)`,
                   archivo: `visitas_ciclo_${codigoCiclo}_${corte || ""}.csv`,
-                  csv: [columnas.join(";"), ...filas.map((fila) => columnas.map((columna) => csvCelda(fila[columna])).join(";"))].join("\r\n"),
                 }}
                 ficha={(niu) => <FichaCliente token={token} niu={niu} />}
               />

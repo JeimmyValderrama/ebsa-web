@@ -9,7 +9,7 @@ import { AZUL, COLOR_GRAVEDAD, GRIS_ANTIGUA } from "../../charts/paleta";
 import { AYUDA_ZONA_REGIONAL, GRUPOS_CONSUMO_ORDEN, ZONAS_REGIONALES, etiquetaCiclo } from "../../lib/negocio";
 import { BAJADA_SEVERIDAD, ORDEN_SEVERIDAD } from "../../components/v2/textos";
 import { FichaCliente } from "../../components/v2/FichaCliente";
-import { csvCelda, fmtN, formatoTabla, pesos } from "../../lib/format";
+import { fmtN, formatoTabla, pesos } from "../../lib/format";
 import { useCorte } from "../../lib/useCorte";
 
 /**
@@ -280,7 +280,6 @@ export function GestionCiclo({ token }: { token?: string | null }) {
     ? {
         nombre: `Descargar ciclo ${cicloTexto} (CSV)`,
         archivo: `gestion_ciclo_${cicloTexto}_${corte || ""}.csv`,
-        csv: [COLUMNAS.join(";"), ...filas.map((fila) => COLUMNAS.map((columna) => csvCelda(fila[columna])).join(";"))].join("\r\n"),
       }
     : null;
 

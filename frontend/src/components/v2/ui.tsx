@@ -244,3 +244,77 @@ export function columnaCifra(
     .filter((texto) => texto !== "" && texto !== "—");
   return celdas.length > 0 && celdas.every(esCifra);
 }
+
+/* ---------- solo presentación: ordenar y filtrar sin tocar los datos ---------- */
+
+/** ¿La celda está vacía para ordenar o filtrar? (nulo, blanco o el "—" de la app). */
+export function esVaciaCelda(valor: unknown): boolean {
+  if (valor === null || valor === undefined) return true;
+  const texto = String(valor).trim();
+  return texto === "" || texto === "—";
+}
+
+/** Número detrás de una celda: valor crudo si es número, o texto en formato colombiano
+ *  (puntos de miles, coma decimal y "%" opcional). Devuelve null si no es un número. */
+export function aNumero(valor: unknown): number | null {
+  if (typeof valor === "number") return Number.isFinite(valor) ? valor : null;
+  if (typeof valor !== "string") return null;
+  const texto = valor.trim().replace(/%$/, "").trim();
+  if (!texto) return null;
+  // Texto plano: "25", "-4.5".
+  if (/^[+-]?\d+(\.\d+)?$/.test(texto)) return Number(texto);
+  // Formato colombiano: "1.234.567,5" (puntos de miles y coma decimal).
+  if (/^[+-]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(texto)) return Number(texto.replace(/\./g, "").replace(",", "."));
+  // Solo coma decimal: "1234,5".
+  if (/^[+-]?\d+,\d+$/.test(texto)) return Number(texto.replace(",", "."));
+  return null;
+}
+
+/** Marca de tiempo detrás de una celda de fecha: ISO ("2024-01-15", "2024-01" o con hora)
+ *  y "15/01/2024". Devuelve null si no es una fecha. */
+export function aFecha(valor: unknown): number | null {
+  if (typeof valor !== "string") return null;
+  const texto = valor.trim();
+  if (/^\d{4}-\d{2}(-\d{2})?/.test(texto)) {
+    const marca = Date.parse(/^\d{4}-\d{2}$/.test(texto) ? `${texto}-01` : texto);
+    return Number.isNaN(marca) ? null : marca;
+  }
+  const partes = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(texto);
+  if (partes) {
+    const marca = Date.parse(`${partes[3]}-${partes[2].padStart(2, "0")}-${partes[1].padStart(2, "0")}`);
+    return Number.isNaN(marca) ? null : marca;
+  }
+  return null;
+}
+
+export type TipoColumna = "num" | "fecha" | "texto";
+
+/** Tipo de orden de una columna según sus valores: numérico, cronológico o alfabético. */
+export function tipoColumna(valores: unknown[]): TipoColumna {
+  const llenos = valores.filter((valor) => !esVaciaCelda(valor));
+  if (!llenos.length) return "texto";
+  if (llenos.every((valor) => aNumero(valor) !== null)) return "num";
+  if (llenos.every((valor) => aFecha(valor) !== null)) return "fecha";
+  return "texto";
+}
+
+/** Comparador de celdas: números numéricamente, fechas cronológicamente y texto
+ *  alfabéticamente; los vacíos quedan al final en ambos sentidos. Solo se aplica cuando la
+ *  persona elige ordenar: el orden inicial de la tabla no se toca. */
+export function compararCeldas(a: unknown, b: unknown, tipo: TipoColumna, sentido: "asc" | "desc"): number {
+  if (tipo !== "texto") {
+    const va = tipo === "num" ? aNumero(a) : aFecha(a);
+    const vb = tipo === "num" ? aNumero(b) : aFecha(b);
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    return sentido === "asc" ? va - vb : vb - va;
+  }
+  const ta = esVaciaCelda(a) ? "" : String(a).trim();
+  const tb = esVaciaCelda(b) ? "" : String(b).trim();
+  if (!ta && !tb) return 0;
+  if (!ta) return 1;
+  if (!tb) return -1;
+  const cmp = ta.localeCompare(tb, "es", { numeric: true, sensitivity: "base" });
+  return sentido === "asc" ? cmp : -cmp;
+}

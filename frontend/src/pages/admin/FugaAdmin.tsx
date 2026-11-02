@@ -7,7 +7,7 @@ import { FichaCliente } from "../../components/v2/FichaCliente";
 import { Barras, BarrasApiladas } from "../../charts/Graficas";
 import { Conteo, md, useEsMovil } from "../../charts/textos";
 import { AZUL, NARANJA } from "../../charts/paleta";
-import { csvCelda, fmtN, formatoTabla, pesos } from "../../lib/format";
+import { fmtN, formatoTabla, pesos } from "../../lib/format";
 import {
   AYUDA_MUNICIPIO,
   AYUDA_ZONA_REGIONAL,
@@ -236,11 +236,6 @@ function useDataset(token: string | null | undefined, key: string): FilaDataset[
 function fechaCorta(valor: unknown): string {
   const texto = String(valor ?? "");
   return texto ? texto.slice(0, 7) : "—";
-}
-
-/** CSV en español de las columnas que se ven en pantalla (csv_es). */
-function csvDe(columnas: string[], filas: Fila[]): string {
-  return [columnas.join(";"), ...filas.map((fila) => columnas.map((columna) => csvCelda(fila[columna])).join(";"))].join("\r\n");
 }
 
 export function FugaAdmin({ token }: { token?: string | null }) {
@@ -727,7 +722,7 @@ function PestanaOtro({ token, corte }: { token?: string | null; corte: string })
         columnaId="NIU"
         descargar={
           filasTabla.length
-            ? { nombre: "Descargar (CSV)", archivo: `clientes_con_otro_comercializador_${corte}.csv`, csv: csvDe(COLUMNAS_OTRO, filasTabla) }
+            ? { nombre: "Descargar (CSV)", archivo: `clientes_con_otro_comercializador_${corte}.csv` }
             : null
         }
       />
@@ -844,7 +839,7 @@ function PestanaVigilancia({
         ordenNumerico={{ prob_fuga_6m: filasTabla.map((fila) => Number(fila.prob_fuga_6m ?? 0)) }}
         descargar={
           filasTabla.length
-            ? { nombre: "Descargar (CSV)", archivo: `vigilancia_no_regulados_${corte}.csv`, csv: csvDe(COLUMNAS_VIGILANCIA, filasTabla) }
+            ? { nombre: "Descargar (CSV)", archivo: `vigilancia_no_regulados_${corte}.csv` }
             : null
         }
       />

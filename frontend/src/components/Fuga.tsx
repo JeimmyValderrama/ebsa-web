@@ -6,7 +6,7 @@ import { PanelFiltros, type CampoFiltro } from "./v2/filtros";
 import { TablaPro, type Fila } from "./v2/TablaPro";
 import { FichaCliente } from "./v2/FichaCliente";
 import { Conteo, md, useEsMovil } from "../charts/textos";
-import { csvCelda, energia, fmtN, formatoTabla, mesLargo, pesos, probPct } from "../lib/format";
+import { energia, fmtN, formatoTabla, mesLargo, pesos, probPct } from "../lib/format";
 import { AYUDA_MUNICIPIO, AYUDA_ZONA_REGIONAL, ESTADO_LISTA_SIMPLE, etiqueta } from "../lib/negocio";
 
 /**
@@ -278,10 +278,6 @@ export function Fuga({ token }: { token?: string | null }) {
     ? {
         nombre: "Descargar grandes clientes (CSV)",
         archivo: `grandes_clientes_no_regulados_${corte}.csv`,
-        csv: [
-          COLUMNAS_VIGILANCIA.join(";"),
-          ...filasVigilancia.map((fila) => COLUMNAS_VIGILANCIA.map((columna) => csvCelda(fila[columna])).join(";")),
-        ].join("\r\n"),
       }
     : null;
 
