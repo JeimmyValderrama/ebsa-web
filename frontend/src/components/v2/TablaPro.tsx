@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { fmtN } from "../../lib/format";
 import { Sensitive } from "../../app/Presentation";
 import { useEsMovil } from "../../charts/textos";
@@ -57,6 +57,16 @@ export function TablaPro({
   // mostrarlas recuperan su posición original porque se filtra la lista base sin reordenarla.
   const [ocultas, setOcultas] = useState<string[]>([]);
   const [elegido, setElegido] = useState<string | null>(null);
+  // Columnas fijadas (chincheta del encabezado), en el orden en que se fijaron.
+  const [fijadas, setFijadas] = useState<string[]>([]);
+  // Ancho acumulado de cada columna fijada: offset "left" para que no se pisen al apilarse.
+  const [anchosFijadas, setAnchosFijadas] = useState<Record<string, number>>({});
+  const tablaRef = useRef<HTMLTableElement | null>(null);
+  const contenedorRef = useRef<HTMLDivElement | null>(null);
+  // Scroll horizontal real: el contenedor siempre tiene overflow-x: auto, pero solo se
+  // desplaza si el contenido lo desborda. Se mide en tiempo real (nunca por el tamaño de la
+  // pantalla) y solo entonces se ofrece la chincheta de fijar columna.
+  const [hayScrollX, setHayScrollX] = useState(false);
   // El menú "Ordenar y columnas" flota sobre la tabla (no empuja el contenido) y se
   // cierra al pulsar fuera o con Esc, como cualquier desplegable.
   const [popAbierto, setPopAbierto] = useState(false);
@@ -127,10 +137,68 @@ export function TablaPro({
   const pagina = ordenadas.slice(inicio, inicio + pp);
   const baseCampos = (esMovil ? (movil ?? (prioritarias ?? columnas).slice(0, 6)) : colsVer).filter((columna) => columnas.includes(columna));
   const campos = baseCampos.filter((columna) => !ocultas.includes(columna));
+
+  // Fijar columnas: se miden sus anchos reales para encadenar los offsets "left" (la fijada
+  // más a la izquierda va en 0 y las siguientes se apoyan en el ancho de las anteriores).
+  // La clave se serializa porque "campos" es un arreglo nuevo en cada render.
+  const claveCampos = campos.join("\u0000");
+  useLayoutEffect(() => {
+    if (fijadas.length === 0) {
+      setAnchosFijadas((previo) => (Object.keys(previo).length === 0 ? previo : {}));
+      return;
+    }
+    const medir = (): void => {
+      const ths = tablaRef.current?.querySelectorAll<HTMLTableCellElement>("thead th[data-col]");
+      if (!ths || ths.length === 0) return;
+      const anchos: Record<string, number> = {};
+      let acumulado = 0;
+      ths.forEach((th) => {
+        const columna = th.dataset.col;
+        if (columna && fijadas.includes(columna)) {
+          anchos[columna] = acumulado;
+          acumulado += th.offsetWidth;
+        }
+      });
+      setAnchosFijadas(anchos);
+    };
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, [claveCampos, fijadas, paginaActual, todas]);
+
+  // Detección del desplazamiento horizontal: se vuelve a medir cuando cambian las columnas,
+  // la página, las filas o el tamaño de la ventana, y con un ResizeObserver por si cambia el
+  // contenedor (p. ej. al reflujo del diseño). El umbral de 1px evita falsos positivos por
+  // redondeo subpíxel.
+  const claveDeteccion = `${claveCampos}|${paginaActual}|${todas}|${filas.length}`;
+  useLayoutEffect(() => {
+    const nodo = contenedorRef.current;
+    if (!nodo) return;
+    const medir = (): void => setHayScrollX(nodo.scrollWidth > nodo.clientWidth + 1);
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(nodo);
+    window.addEventListener("resize", medir);
+    return () => {
+      observador.disconnect();
+      window.removeEventListener("resize", medir);
+    };
+  }, [claveDeteccion]);
   // Solo presentación: las columnas de solo cifras se alinean a la derecha (se decide con la página visible).
   const columnasCifra = new Set(campos.filter((columna) => columnaCifra(pagina, columna, formato)));
   const claseDe = (columna: string): string =>
-    [columna === destacada ? "destacada" : "", columnasCifra.has(columna) ? "num" : ""].filter(Boolean).join(" ");
+    [
+      columna === destacada ? "destacada" : "",
+      columnasCifra.has(columna) ? "num" : "",
+      fijadas.includes(columna) ? "fijada" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+  // Fijar/soltar una columna: queda pegada al borde izquierdo al desplazar en horizontal.
+  const alternarFijada = (columna: string): void => {
+    setFijadas((previo) => (previo.includes(columna) ? previo.filter((fijada) => fijada !== columna) : [...previo, columna]));
+  };
 
   // Ordenar haciendo clic en el encabezado: el primer clic ordena por esa columna con el
   // sentido vigente y el siguiente clic lo invierte (mismo estado que el menú "Ordenar y columnas").
@@ -279,23 +347,45 @@ export function TablaPro({
           ))}
         </div>
       ) : (
-        <div className="table-card tabla-alta">
-          <table>
+        <div ref={contenedorRef} className="table-card tabla-alta">
+          <table ref={tablaRef}>
             <thead>
               <tr>
                 {campos.map((columna) => (
                   <th
                     key={columna}
+                    data-col={columna}
                     className={claseDe(columna)}
+                    style={fijadas.includes(columna) ? { left: anchosFijadas[columna] ?? 0 } : undefined}
                     aria-sort={orden === columna ? (sentido === "asc" ? "ascending" : "descending") : "none"}
                   >
-                    <button type="button" className="th-sort" onClick={() => ordenarPor(columna)}>
-                      <span>{columna}</span>
-                      {/* Indicador de la columna ordenada: triángulo según el sentido. */}
-                      <span className="th-sort-flecha" aria-hidden="true">
-                        {orden === columna ? (sentido === "asc" ? "▲" : "▼") : "↕"}
-                      </span>
-                    </button>
+                    <div className="th-cuerpo">
+                      <button type="button" className="th-sort" onClick={() => ordenarPor(columna)}>
+                        <span>{columna}</span>
+                        {/* Indicador de la columna ordenada: triángulo según el sentido. */}
+                        <span className="th-sort-flecha" aria-hidden="true">
+                          {orden === columna ? (sentido === "asc" ? "▲" : "▼") : "↕"}
+                        </span>
+                      </button>
+                      {/* Chincheta de fijar columna: solo existe si la tabla se desplaza en
+                          horizontal de verdad (detectado en runtime, no por pantalla pequeña). */}
+                      {hayScrollX ? (
+                        <button
+                          type="button"
+                          className={`th-fijar${fijadas.includes(columna) ? " activo" : ""}`}
+                          aria-pressed={fijadas.includes(columna)}
+                          aria-label={`Fijar la columna ${columna} a la izquierda`}
+                          onClick={() => alternarFijada(columna)}
+                        >
+                          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false">
+                            <path
+                              fill="currentColor"
+                              d="M9.7.3l6 6-1.5.4-1.2-.3-2.7 2.7.4 2.9-1.4 1.4-3.1-3.1-4.3 4.3-.6-.64.3-1.4L5.37 8 2.3 6.6l1.4-1.4 2.9.4L9.3 2.9 9 .1z"
+                            />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -320,7 +410,11 @@ export function TablaPro({
                   }
                 >
                   {campos.map((columna) => (
-                    <td key={columna} className={claseDe(columna)}>
+                    <td
+                      key={columna}
+                      className={claseDe(columna)}
+                      style={fijadas.includes(columna) ? { left: anchosFijadas[columna] ?? 0 } : undefined}
+                    >
                       {celda(fila, columna)}
                     </td>
                   ))}

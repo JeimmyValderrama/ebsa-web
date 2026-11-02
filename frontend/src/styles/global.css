@@ -468,13 +468,34 @@ h3 { font-size: 20px; }
   z-index: 1;
 }
 .table-card td { padding: 9px 12px; border-bottom: 1px solid var(--linea2); color: var(--ink); vertical-align: top; }
+/* Columna fijada (chincheta): queda pegada al borde izquierdo al desplazar en horizontal.
+   El offset "left" va en línea (lo calcula la tabla midiendo el ancho de cada fijada).
+   Va antes de los realces (destacada, hover, fila seleccionada) para que estos sigan ganando. */
+.table-card th.fijada, .table-card td.fijada { position: sticky; }
+/* Borde de separación de la columna fijada sobre lo que se desplaza por debajo. */
+.table-card th.fijada, .table-card td.fijada { box-shadow: inset -1px 0 0 var(--linea2); }
+/* Fondo opaco: sin él, las celdas fijadas dejan ver el contenido que pasa por detrás. */
+.table-card td.fijada { background: var(--sup); }
+.table-card th.fijada { z-index: 3; }
+.table-card td.fijada { z-index: 1; }
 /* Encabezado ordenable: el nombre de la columna es un botón (clic ordena, clic de nuevo invierte). */
+.table-card th .th-cuerpo { display: flex; align-items: center; gap: 6px; }
 .table-card th .th-sort {
-  display: flex; align-items: center; gap: 6px; width: 100%;
+  display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
   background: none; border: 0; padding: 0; margin: 0;
   font: inherit; font-weight: 600; color: inherit; text-align: left; cursor: pointer;
 }
+.table-card th.num .th-cuerpo { flex-direction: row-reverse; }
 .table-card th.num .th-sort { justify-content: flex-end; text-align: right; }
+/* Chincheta de fijar columna: discreta hasta que se pasa el cursor o se activa. */
+.table-card th .th-fijar {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 2px; border: 0; border-radius: 4px; background: none;
+  color: inherit; opacity: .4; cursor: pointer; flex: none;
+}
+.table-card th .th-fijar:hover { opacity: 1; background: rgba(255, 255, 255, .14); }
+.table-card th.destacada .th-fijar:hover { background: rgba(0, 0, 0, .12); }
+.table-card th .th-fijar.activo { opacity: 1; color: var(--marca); }
 .table-card th .th-sort-flecha { font-size: 10px; opacity: .55; }
 .table-card th[aria-sort="ascending"] .th-sort-flecha,
 .table-card th[aria-sort="descending"] .th-sort-flecha { opacity: 1; color: var(--marca); }
