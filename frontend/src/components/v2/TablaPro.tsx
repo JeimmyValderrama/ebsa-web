@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { csvCelda, esColumnaSensible, fmtN } from "../../lib/format";
+import { csvCelda, fmtN } from "../../lib/format";
 import { Sensitive } from "../../app/Presentation";
 import { useEsMovil } from "../../charts/textos";
-import { aNumero, columnaCifra, Encabezado, esVaciaCelda } from "./ui";
+import { columnaCifra, Encabezado } from "./ui";
 
 /**
  * Tabla de trabajo del Streamlit (ui.tabla_pro): buscar, ordenar, elegir cuántas columnas y filas ver,
@@ -10,10 +10,6 @@ import { aNumero, columnaCifra, Encabezado, esVaciaCelda } from "./ui";
  */
 
 export type Fila = Record<string, unknown>;
-
-/** Filtro de una columna del menú: lista de valores elegidos o rango numérico. Se combinan
- *  entre sí y con los filtros generales de la página en "y". */
-type FiltroColumna = { valores: string[] } | { min: string; max: string };
 
 export function TablaPro({
   filas,
@@ -72,40 +68,17 @@ export function TablaPro({
   // desplaza si el contenido lo desborda. Se mide en tiempo real (nunca por el tamaño de la
   // pantalla) y solo entonces se ofrece la chincheta de fijar columna.
   const [hayScrollX, setHayScrollX] = useState(false);
-  // Filtros por columna del menú "Filtros de columna": se derivan de los datos que llegan
-  // (sin inventar categorías) y se combinan en "y" con los filtros generales de la página.
-  const [filtros, setFiltros] = useState<Record<string, FiltroColumna>>({});
 
   const total = filas.length;
   const hayMasColumnas = (prioritarias ?? columnas).length < columnas.length;
   const colsVer = todas || hayMasColumnas === false ? columnas : (prioritarias ?? columnas);
 
   const conIndice = useMemo(() => filas.map((fila, indice) => ({ fila, indice })), [filas]);
-  // Filtros por columna (en "y" entre sí): una lista conserva solo los valores elegidos y un
-  // rango solo las filas caen dentro de los límites; las filas sin valor comparable no pasan.
-  const filtradas = useMemo(() => {
-    const entradas = Object.entries(filtros);
-    if (!entradas.length) return conIndice;
-    return conIndice.filter(({ fila, indice }) =>
-      entradas.every(([columna, filtro]) => {
-        if ("valores" in filtro) return filtro.valores.includes(formato(fila[columna], columna).trim());
-        const llave = ordenNumerico?.[columna];
-        const numero = llave ? llave[indice] : aNumero(fila[columna]);
-        // Sin número comparable (celda vacía o -Infinity de ordenNumerico) no pasa el rango.
-        if (numero === null || numero === undefined || !Number.isFinite(numero)) return false;
-        const limInf = filtro.min === "" ? null : aNumero(filtro.min);
-        const limSup = filtro.max === "" ? null : aNumero(filtro.max);
-        if (limInf !== null && numero < limInf) return false;
-        if (limSup !== null && numero > limSup) return false;
-        return true;
-      }),
-    );
-  }, [conIndice, filtros, formato, ordenNumerico]);
   const buscadas = useMemo(() => {
     const texto = q.trim().toLowerCase();
-    if (!texto) return filtradas;
-    return filtradas.filter(({ fila }) => columnas.some((columna) => formato(fila[columna], columna).toLowerCase().includes(texto)));
-  }, [columnas, filtradas, formato, q]);
+    if (!texto) return conIndice;
+    return conIndice.filter(({ fila }) => columnas.some((columna) => formato(fila[columna], columna).toLowerCase().includes(texto)));
+  }, [columnas, conIndice, formato, q]);
   const ordenadas = useMemo(() => {
     if (orden === "(orden recomendado)") return buscadas.map(({ fila }) => fila);
     const llave = ordenNumerico?.[orden];
@@ -133,7 +106,7 @@ export function TablaPro({
   // Cambió la lista: se vuelve a la primera página y se suelta la fila elegida.
   useEffect(() => {
     setPag(1);
-  }, [q, orden, sentido, pp, total, filtros]);
+  }, [q, orden, sentido, pp, total]);
   useEffect(() => {
     if (elegido && !filas.some((fila) => String(fila[columnaId ?? ""] ?? "").trim() === elegido)) setElegido(null);
   }, [columnaId, elegido, filas]);
@@ -219,69 +192,6 @@ export function TablaPro({
   // restaurada vuelve exactamente a su posición original.
   const alternarColumna = (columna: string): void => {
     setOcultas((previo) => (previo.includes(columna) ? previo.filter((oculta) => oculta !== columna) : [...previo, columna]));
-  };
-
-  // Columnas con filtro posible, derivadas solo de los datos que llegan: rango para las
-  // numéricas y lista para las que tienen entre 2 y 25 valores distintos. NIU, dirección y
-  // usuario (columnas sensibles) y la alta cardinalidad no ofrecen filtro: no se inventa nada.
-  const columnasFiltrables = useMemo(() => {
-    const lista: Array<{ columna: string; tipo: "lista" | "rango"; valores?: string[]; min?: number; max?: number }> = [];
-    // Un número no finito (-Infinity de ordenNumerico para las celdas vacías) cuenta como faltante.
-    const falta = (valor: unknown): boolean => esVaciaCelda(valor) || (typeof valor === "number" && !Number.isFinite(valor));
-    for (const columna of columnas) {
-      if (esColumnaSensible(columna)) continue;
-      const llave = ordenNumerico?.[columna];
-      const candidatos = llave ? filas.map((_, indice) => llave[indice]) : filas.map((fila) => fila[columna]);
-      const sinFaltantes = candidatos.filter((valor) => !falta(valor));
-      if (sinFaltantes.length > 0 && sinFaltantes.every((valor) => aNumero(valor) !== null)) {
-        let min = Number.POSITIVE_INFINITY;
-        let max = Number.NEGATIVE_INFINITY;
-        for (const valor of sinFaltantes) {
-          const numero = aNumero(valor) as number;
-          if (numero < min) min = numero;
-          if (numero > max) max = numero;
-        }
-        lista.push({ columna, tipo: "rango", min, max });
-        continue;
-      }
-      // Lista: los valores tal como se ven en la celda (con su formato), sin inventar categorías.
-      const vistos = new Set<string>();
-      for (const fila of filas) {
-        const texto = formato(fila[columna], columna).trim();
-        if (texto && texto !== "—") vistos.add(texto);
-      }
-      if (vistos.size >= 2 && vistos.size <= 25) lista.push({ columna, tipo: "lista", valores: [...vistos] });
-    }
-    return lista;
-  }, [columnas, filas, formato, ordenNumerico]);
-
-  const hayFiltros = Object.keys(filtros).length > 0;
-
-  // Quitar o poner un valor en la lista de una columna; al quedar sin valores el filtro se
-  // retira por completo (lista vacía = sin filtro, como en el multiselect del Streamlit).
-  const alternarValorFiltro = (columna: string, valor: string): void => {
-    setFiltros((previo) => {
-      const actual = previo[columna];
-      const actuales = actual && "valores" in actual ? actual.valores : [];
-      const siguientes = actuales.includes(valor) ? actuales.filter((v) => v !== valor) : [...actuales, valor];
-      const copia = { ...previo };
-      if (siguientes.length) copia[columna] = { valores: siguientes };
-      else delete copia[columna];
-      return copia;
-    });
-  };
-
-  // Cambiar un límite del rango numérico; con los dos vacíos el filtro se retira.
-  const cambiarRango = (columna: string, campo: "min" | "max", valor: string): void => {
-    setFiltros((previo) => {
-      const actual = previo[columna];
-      const base = actual && !("valores" in actual) ? actual : { min: "", max: "" };
-      const siguiente = { ...base, [campo]: valor };
-      const copia = { ...previo };
-      if (siguiente.min !== "" || siguiente.max !== "") copia[columna] = siguiente;
-      else delete copia[columna];
-      return copia;
-    });
   };
 
   const celda = (fila: Fila, columna: string): ReactNode => {
@@ -391,64 +301,6 @@ export function TablaPro({
               </div>
             ) : null}
           </Pop>
-          {columnasFiltrables.length > 0 ? (
-            <Pop etiqueta={hayFiltros ? `Filtros de columna (${Object.keys(filtros).length})` : "Filtros de columna"}>
-              {columnasFiltrables.map(({ columna, tipo, valores, min, max }) => {
-                const filtro = filtros[columna];
-                if (tipo === "lista") {
-                  const elegidos = filtro && "valores" in filtro ? filtro.valores : [];
-                  return (
-                    <div key={columna} className="campo">
-                      <span>{columna}</span>
-                      <div className="v2-check-lista">
-                        {(valores ?? []).map((valor) => (
-                          <label key={valor} className="v2-check">
-                            <input
-                              type="checkbox"
-                              checked={elegidos.includes(valor)}
-                              onChange={() => alternarValorFiltro(columna, valor)}
-                            />
-                            {valor}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-                const rango = filtro && !("valores" in filtro) ? filtro : { min: "", max: "" };
-                return (
-                  <div key={columna} className="campo">
-                    <span>{columna}</span>
-                    <div className="v2-rango">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="search-input"
-                        value={rango.min}
-                        placeholder={min !== undefined ? formato(min, columna) : "mín"}
-                        aria-label={`Valor mínimo de ${columna}`}
-                        onChange={(evento) => cambiarRango(columna, "min", evento.target.value)}
-                      />
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="search-input"
-                        value={rango.max}
-                        placeholder={max !== undefined ? formato(max, columna) : "máx"}
-                        aria-label={`Valor máximo de ${columna}`}
-                        onChange={(evento) => cambiarRango(columna, "max", evento.target.value)}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-              {hayFiltros ? (
-                <button type="button" className="ghost-button" onClick={() => setFiltros({})}>
-                  Limpiar filtros
-                </button>
-              ) : null}
-            </Pop>
-          ) : null}
         </div>
       </div>
 
