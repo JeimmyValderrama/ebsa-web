@@ -577,9 +577,10 @@ export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: st
         type="button"
         className="table-action"
         onClick={() => {
+          // Mismas filas que se muestran, en el orden que se estén viendo.
           const contenido = csvEs(
             [...tabla.columnas, info.metNombre],
-            tabla.filas.map((fila) => ({ ...fila, [info.metNombre]: fila._valor })),
+            visibles.map((fila) => ({ ...fila, [info.metNombre]: fila._valor })),
           );
           const enlace = document.createElement("a");
           enlace.href = URL.createObjectURL(new Blob([contenido], { type: "text/csv;charset=utf-8" }));

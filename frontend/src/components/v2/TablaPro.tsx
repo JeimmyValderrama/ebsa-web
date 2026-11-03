@@ -205,13 +205,14 @@ export function TablaPro({
     + (paginas > 1 ? ` · página ${fmtN(paginaActual)} de ${fmtN(paginas)}` : "")
     + (ficha && !esMovil ? ". Elige una fila para ver la ficha." : "");
 
-  // CSV generado aquí mismo con las filas filtradas y ordenadas (todas las páginas) y todas
-  // las columnas, aunque estén ocultas. Mismo formato de siempre: csvCelda, separador ";" y
-  // salto de línea "\r\n" (el BOM se agrega al descargar). Se arma al pulsar el botón.
+  // CSV generado aquí mismo con las filas que se ven (búsqueda y orden aplicados, todas las
+  // páginas) y las columnas que se ven en pantalla (las de "Mostrar columnas", respetando
+  // "Todas las columnas"). Mismo formato de siempre: csvCelda, separador ";" y salto de
+  // línea "\r\n" (el BOM se agrega al descargar). Se arma al pulsar el botón.
   const descargarCsv = (): void => {
     if (!descargar) return;
-    const lineas = [columnas.join(";")];
-    for (const fila of ordenadas) lineas.push(columnas.map((columna) => csvCelda(fila[columna])).join(";"));
+    const lineas = [campos.join(";")];
+    for (const fila of ordenadas) lineas.push(campos.map((columna) => csvCelda(fila[columna])).join(";"));
     const csv = lineas.join("\r\n");
     const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
     const enlace = document.createElement("a");
