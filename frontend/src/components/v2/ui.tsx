@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { md, useEsMovil } from "../../charts/textos";
 
 /**
@@ -119,30 +119,49 @@ export function TablaSimple({
   acciones?: (fila: Record<string, unknown>, indice: number) => ReactNode;
   tituloAcciones?: string;
 }) {
+  // Orden y columnas fijadas (siempre disponibles: no cambian el orden inicial hasta que la
+  // persona elige uno, y la chincheta solo aparece si hay scroll horizontal real).
+  const orden = useOrdenTabla();
+  const fijadas = useFijadas(`${columnas.join("|")}|${filas.length}`);
   if (!filas.length) return null;
   const fmt = formato ?? ((valor: unknown) => (valor === null || valor === undefined ? "" : String(valor)));
   const columnasCifra = new Set(columnas.filter((columna) => columnaCifra(filas, columna, fmt)));
   const claseDe = (columna: string): string => (columnasCifra.has(columna) ? "num" : "");
+  // El índice que recibe `acciones` siempre es el de la lista que llegó: aunque se ordene,
+  // el botón sigue apuntando a la misma fila original (p. ej. la descarga correcta).
+  const conIndice = filas.map((fila, indice) => ({ fila, indice }));
+  const visibles = ordenarFilas(conIndice, orden.orden, orden.sentido, (item, columna) => item.fila[columna]);
   return (
-    <div className="table-card" style={alto ? { maxHeight: `${alto}px`, overflow: "auto" } : undefined}>
-      <table>
+    <div ref={fijadas.contenedorRef} className="table-card" style={alto ? { maxHeight: `${alto}px`, overflow: "auto" } : undefined}>
+      <table ref={fijadas.tablaRef}>
         <thead>
           <tr>
             {columnas.map((columna) => (
-              <th key={columna} className={claseDe(columna)}>{columna}</th>
+              <ThTabla
+                key={columna}
+                columna={columna}
+                orden={orden.orden}
+                sentido={orden.sentido}
+                onOrdenar={orden.ordenarPor}
+                onFijar={fijadas.alternarFijada}
+                hayScrollX={fijadas.hayScrollX}
+                fijada={fijadas.esFijada(columna)}
+                left={fijadas.izquierda(columna)}
+                className={claseDe(columna)}
+              />
             ))}
             {acciones ? <th className="col-accion">{tituloAcciones ?? ""}</th> : null}
           </tr>
         </thead>
         <tbody>
-          {filas.map((fila, index) => (
-            <tr key={index}>
+          {visibles.map(({ fila, indice }) => (
+            <tr key={indice}>
               {columnas.map((columna) => {
                 const celda = fila[columna];
                 const texto = formato ? formato(celda, columna) : celda === null || celda === undefined ? "" : String(celda);
-                return <td key={columna} className={claseDe(columna)}>{texto}</td>;
+                return <td key={columna} {...fijadas.celdaFijada(columna, claseDe(columna))}>{texto}</td>;
               })}
-              {acciones ? <td className="col-accion">{acciones(fila, index)}</td> : null}
+              {acciones ? <td className="col-accion">{acciones(fila, indice)}</td> : null}
             </tr>
           ))}
         </tbody>
@@ -317,4 +336,188 @@ export function compararCeldas(a: unknown, b: unknown, tipo: TipoColumna, sentid
   if (!tb) return -1;
   const cmp = ta.localeCompare(tb, "es", { numeric: true, sensitivity: "base" });
   return sentido === "asc" ? cmp : -cmp;
+}
+
+/** Estado de orden de una tabla: sin orden hasta que la persona elige uno (el orden inicial
+ *  no se toca). El primer clic ordena de menor a mayor y el siguiente lo invierte. */
+export function useOrdenTabla(): {
+  orden: string | null;
+  sentido: "asc" | "desc";
+  ordenarPor: (columna: string) => void;
+} {
+  const [orden, setOrden] = useState<string | null>(null);
+  const [sentido, setSentido] = useState<"asc" | "desc">("asc");
+  const ordenarPor = (columna: string): void => {
+    if (orden === columna) setSentido((previo) => (previo === "asc" ? "desc" : "asc"));
+    else {
+      setOrden(columna);
+      setSentido("asc");
+    }
+  };
+  return { orden, sentido, ordenarPor };
+}
+
+/** Filas ordenadas por la columna elegida: si aún no se pide orden devuelve la misma lista
+ *  (nunca reordena sola) y nunca toca la lista original. `valorDe` da el valor de la celda
+ *  en las tablas que lo calculan distinto de `fila[columna]`. */
+export function ordenarFilas<T extends object>(
+  filas: T[],
+  orden: string | null,
+  sentido: "asc" | "desc",
+  valorDe?: (fila: T, columna: string) => unknown,
+): T[] {
+  if (!orden) return filas;
+  const col = orden;
+  const ver = (fila: T): unknown => (valorDe ? valorDe(fila, col) : (fila as Record<string, unknown>)[col]);
+  const tipo = tipoColumna(filas.map(ver));
+  return [...filas].sort((a, b) => compararCeldas(ver(a), ver(b), tipo, sentido));
+}
+
+/** ¿Dos mediciones de anchos dicen lo mismo? (para no marcar cambios sin cambio). */
+function mismosAnchos(a: Record<string, number>, b: Record<string, number>): boolean {
+  const clavesA = Object.keys(a);
+  return clavesA.length === Object.keys(b).length && clavesA.every((clave) => a[clave] === b[clave]);
+}
+
+/** Columnas fijadas con chincheta: miden el ancho real de sus th para encadenar los
+ *  offsets "left" y detectan si la tabla tiene scroll horizontal de verdad (medido en
+ *  runtime sobre el contenedor, nunca por el tamaño de la pantalla) para mostrar la
+ *  chincheta. `clave` cambia cuando cambian las columnas o el número de filas. */
+export function useFijadas(clave: string): {
+  hayScrollX: boolean;
+  esFijada: (columna: string) => boolean;
+  izquierda: (columna: string) => number | undefined;
+  alternarFijada: (columna: string) => void;
+  celdaFijada: (columna: string, clase?: string) => { className: string; style?: CSSProperties };
+  contenedorRef: RefObject<HTMLDivElement | null>;
+  tablaRef: RefObject<HTMLTableElement | null>;
+} {
+  const [fijadas, setFijadas] = useState<string[]>([]);
+  const [anchos, setAnchos] = useState<Record<string, number>>({});
+  const [hayScrollX, setHayScrollX] = useState(false);
+  const tablaRef = useRef<HTMLTableElement | null>(null);
+  const contenedorRef = useRef<HTMLDivElement | null>(null);
+
+  // Offset "left" de cada fijada: la primera va en 0 y las siguientes se apoyan en el ancho
+  // real de las anteriores (medido en sus th, con la tabla ya pintada).
+  useLayoutEffect(() => {
+    if (fijadas.length === 0) {
+      setAnchos((previo) => (Object.keys(previo).length === 0 ? previo : {}));
+      return;
+    }
+    const medir = (): void => {
+      const ths = tablaRef.current?.querySelectorAll<HTMLTableCellElement>("thead th[data-col]");
+      if (!ths || ths.length === 0) return;
+      const nuevos: Record<string, number> = {};
+      let acumulado = 0;
+      ths.forEach((th) => {
+        const columna = th.dataset.col;
+        if (columna && fijadas.includes(columna)) {
+          nuevos[columna] = acumulado;
+          acumulado += th.offsetWidth;
+        }
+      });
+      setAnchos((previo) => (mismosAnchos(previo, nuevos) ? previo : nuevos));
+    };
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, [clave, fijadas]);
+
+  // Scroll horizontal real: el contenedor casi siempre tiene overflow-x: auto, pero solo se
+  // desplaza si el contenido lo desborda. Se vuelve a medir al cambiar las columnas, las
+  // filas o el tamaño de la ventana, y con un ResizeObserver por si cambia el contenedor.
+  useLayoutEffect(() => {
+    const nodo = contenedorRef.current;
+    if (!nodo) return;
+    const medir = (): void => setHayScrollX(nodo.scrollWidth > nodo.clientWidth + 1);
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(nodo);
+    window.addEventListener("resize", medir);
+    return () => {
+      observador.disconnect();
+      window.removeEventListener("resize", medir);
+    };
+  }, [clave]);
+
+  const alternarFijada = (columna: string): void => {
+    setFijadas((previo) => (previo.includes(columna) ? previo.filter((fijada) => fijada !== columna) : [...previo, columna]));
+  };
+
+  return {
+    hayScrollX,
+    esFijada: (columna: string): boolean => fijadas.includes(columna),
+    izquierda: (columna: string): number | undefined => (fijadas.includes(columna) ? anchos[columna] ?? 0 : undefined),
+    alternarFijada,
+    celdaFijada: (columna: string, clase?: string): { className: string; style?: CSSProperties } => ({
+      className: [clase ?? "", fijadas.includes(columna) ? "fijada" : ""].filter(Boolean).join(" "),
+      style: fijadas.includes(columna) ? { left: anchos[columna] ?? 0 } : undefined,
+    }),
+    contenedorRef,
+    tablaRef,
+  };
+}
+
+/** Encabezado de las tablas con orden por columna y chincheta de fijar (mismo patrón que
+ *  TablaPro): clic en el nombre ordena, el siguiente clic invierte, con indicador ▲/▼ y
+ *  aria-sort. La chincheta solo se pinta si se pasa `onFijar` y hay scroll horizontal real. */
+export function ThTabla({
+  columna,
+  orden,
+  sentido,
+  onOrdenar,
+  onFijar,
+  hayScrollX,
+  fijada,
+  left,
+  className,
+  children,
+}: {
+  columna: string;
+  orden: string | null;
+  sentido: "asc" | "desc";
+  onOrdenar: (columna: string) => void;
+  onFijar?: (columna: string) => void;
+  hayScrollX?: boolean;
+  fijada?: boolean;
+  left?: number;
+  className?: string;
+  children?: ReactNode;
+}) {
+  const activo = orden === columna;
+  return (
+    <th
+      data-col={columna}
+      className={[className ?? "", fijada ? "fijada" : ""].filter(Boolean).join(" ")}
+      style={fijada ? { left: left ?? 0 } : undefined}
+      aria-sort={activo ? (sentido === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <div className="th-cuerpo">
+        <button type="button" className="th-sort" onClick={() => onOrdenar(columna)}>
+          <span>{children ?? columna}</span>
+          {/* Indicador de la columna ordenada: triángulo según el sentido. */}
+          <span className="th-sort-flecha" aria-hidden="true">
+            {activo ? (sentido === "asc" ? "▲" : "▼") : "↕"}
+          </span>
+        </button>
+        {onFijar && hayScrollX ? (
+          <button
+            type="button"
+            className={`th-fijar${fijada ? " activo" : ""}`}
+            aria-pressed={Boolean(fijada)}
+            aria-label={`Fijar la columna ${columna} a la izquierda`}
+            onClick={() => onFijar(columna)}
+          >
+            <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false">
+              <path
+                fill="currentColor"
+                d="M9.7.3l6 6-1.5.4-1.2-.3-2.7 2.7.4 2.9-1.4 1.4-3.1-3.1-4.3 4.3-.6-.64.3-1.4L5.37 8 2.3 6.6l1.4-1.4 2.9.4L9.3 2.9 9 .1z"
+              />
+            </svg>
+          </button>
+        ) : null}
+      </div>
+    </th>
+  );
 }

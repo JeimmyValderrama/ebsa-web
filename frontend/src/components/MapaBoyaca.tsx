@@ -7,6 +7,7 @@ import { COLOR_ZONA_SIN_ZONA, GRIS_FUERA, RAMPA_MAPA, ZONA_MAPA_COLOR } from "..
 import { colorRampa, mapaLimitesSpec, type Feature, type FilaMapa } from "../charts/vegaSpec";
 import { Leyenda, Pie, md, useEsMovil } from "../charts/textos";
 import { Multiselect } from "./v2/filtros";
+import { ordenarFilas, ThTabla, useFijadas, useOrdenTabla } from "./v2/ui";
 
 /**
  * Mapa de Boyacá por municipio: réplica exacta de dibujar_mapa() + _mapa_limites() del Streamlit.
@@ -523,26 +524,50 @@ export function TablaZonaMapa({ info }: { info: InfoMapa }) {
 /** Tabla "Por municipio" del mapa con su botón de CSV (en Panorama va a ancho completo bajo la fila del mapa). */
 export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: string | null }) {
   const tabla = info.tablaMunicipio;
+  // Orden por columna y columnas fijadas: hooks antes del return temprano. El orden inicial
+  // no cambia hasta que se elige uno y la chincheta solo aparece si hay scroll horizontal real.
+  const orden = useOrdenTabla();
+  const fijadas = useFijadas(
+    tabla ? `${tabla.columnas.join("|")}|${info.metNombre}|${tabla.filas.length}` : "sin-tabla",
+  );
   if (!tabla) return null;
+  // Valor de la celda para ordenar: la columna de la métrica usa el valor crudo (_valor).
+  const columnas = [...tabla.columnas, info.metNombre];
+  const valorDe = (fila: Record<string, unknown>, columna: string): unknown =>
+    columna === info.metNombre ? fila._valor : fila[columna];
+  const visibles = ordenarFilas(tabla.filas, orden.orden, orden.sentido, valorDe);
   return (
     <>
-      <div className="table-card tabla-alta">
-        <table>
+      <div ref={fijadas.contenedorRef} className="table-card tabla-alta">
+        <table ref={fijadas.tablaRef}>
           <thead>
             <tr>
-              {tabla.columnas.map((columna) => (
-                <th key={columna}>{columna}</th>
+              {columnas.map((columna) => (
+                <ThTabla
+                  key={columna}
+                  columna={columna}
+                  orden={orden.orden}
+                  sentido={orden.sentido}
+                  onOrdenar={orden.ordenarPor}
+                  onFijar={fijadas.alternarFijada}
+                  hayScrollX={fijadas.hayScrollX}
+                  fijada={fijadas.esFijada(columna)}
+                  left={fijadas.izquierda(columna)}
+                />
               ))}
-              <th>{info.metNombre}</th>
             </tr>
           </thead>
           <tbody>
-            {tabla.filas.map((fila, index) => (
+            {visibles.map((fila, index) => (
               <tr key={index}>
                 {tabla.columnas.map((columna) => (
-                  <td key={columna}>{typeof fila[columna] === "string" ? String(fila[columna]) : fmtCelda(fila[columna], columna)}</td>
+                  <td key={columna} {...fijadas.celdaFijada(columna)}>
+                    {typeof fila[columna] === "string" ? String(fila[columna]) : fmtCelda(fila[columna], columna)}
+                  </td>
                 ))}
-                <td>{info.enProporcion ? fmtN(Number(fila._valor), 1) : fmtMetrica(Number(fila._valor), info.unidad)}</td>
+                <td {...fijadas.celdaFijada(info.metNombre)}>
+                  {info.enProporcion ? fmtN(Number(fila._valor), 1) : fmtMetrica(Number(fila._valor), info.unidad)}
+                </td>
               </tr>
             ))}
           </tbody>

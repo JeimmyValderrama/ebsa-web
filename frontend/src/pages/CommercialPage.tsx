@@ -10,7 +10,7 @@ import { SinConsumo } from "../components/SinConsumo";
 import { Fuga } from "../components/Fuga";
 import { Salidas } from "../components/Salidas";
 import { Proyeccion, recortarProyeccion, type Anual, type Mensual } from "../components/Projection";
-import { Aviso, Banda, ComoLeer, Kpis, Tarjeta, TituloPagina, type ItemKpi } from "../components/v2/ui";
+import { Aviso, Banda, ComoLeer, Kpis, Tarjeta, TituloPagina, ordenarFilas, ThTabla, useFijadas, useOrdenTabla, type ItemKpi } from "../components/v2/ui";
 import { NOTA_CERO_SOSTENIDO, NOTA_REGLAS_LISTA, QUE_ES_ESTO, periodoTexto } from "../components/v2/textos";
 import { useCorte } from "../lib/useCorte";
 import { MeasureSelector, usePresentation } from "../app/Presentation";
@@ -374,27 +374,7 @@ function Panorama({ token }: { token?: string | null }) {
               opciones={{ nombreCategoria: "Zona regional", nombreSerie: "Gravedad", movil }}
             />
           </div>
-          <div className="table-card tabla-alta">
-            <table>
-              <thead>
-                <tr>
-                  {columnasZona.map((columna) => (
-                    <th key={columna}>{columna}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filasZona.map((zona) => (
-                  <tr key={zona.zona}>
-                    <td>{tituloPropio(zona.zona.replace("USUARIOS NO REGULADOS", "NO REGULADOS"))}</td>
-                    <td>{fmtN(zona.clientes)}</td>
-                    <td>{esConsumo ? fmtN(Math.round(zona.perdida)) : pesos(Math.round(zona.valorRiesgo))}</td>
-                    <td>{esConsumo ? pesos(Math.round(zona.valorRiesgo)) : fmtN(Math.round(zona.perdida))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TablaCaidasZona columnas={columnasZona} filas={filasZona} esConsumo={esConsumo} />
         </div>
         <Pie
           texto={md(
@@ -463,6 +443,71 @@ function Panorama({ token }: { token?: string | null }) {
       )}
 
       <ComoLeer texto={`${QUE_ES_ESTO}\n\n${NOTA_REGLAS_LISTA}\n\n${NOTA_CERO_SOSTENIDO}`} titulo="Qué es esto y cómo leer las cifras" />
+    </div>
+  );
+}
+
+/** Fila de la tabla "Caídas de consumo por zona regional" (por_zona del panorama). */
+type FilaZonaCaida = {
+  zona: string;
+  clientes: number;
+  perdida: number;
+  valorRiesgo: number;
+};
+
+/** Tabla por zona regional del panorama: orden por columna desde el encabezado (con indicador
+ *  ▲/▼) y chincheta de fijar que solo aparece si la tabla tiene scroll horizontal real. Los
+ *  hooks van en este componente porque Panorama tiene retornos tempranos antes de la tabla. */
+function TablaCaidasZona({ columnas, filas, esConsumo }: { columnas: string[]; filas: FilaZonaCaida[]; esConsumo: boolean }) {
+  const orden = useOrdenTabla();
+  const fijadas = useFijadas(`${columnas.join("|")}|${filas.length}`);
+  // Valor crudo de la celda para ordenar: las columnas de medida se leen por su posición
+  // (2 y 3) en el orden en que se muestran, nunca por el texto ya formateado.
+  const valorDe = (fila: FilaZonaCaida, columna: string): unknown => {
+    const posicion = columnas.indexOf(columna);
+    if (posicion === 1) return fila.clientes;
+    if (posicion === 2) return esConsumo ? fila.perdida : fila.valorRiesgo;
+    if (posicion === 3) return esConsumo ? fila.valorRiesgo : fila.perdida;
+    return fila.zona;
+  };
+  const visibles = ordenarFilas(filas, orden.orden, orden.sentido, valorDe);
+  return (
+    <div ref={fijadas.contenedorRef} className="table-card tabla-alta">
+      <table ref={fijadas.tablaRef}>
+        <thead>
+          <tr>
+            {columnas.map((columna) => (
+              <ThTabla
+                key={columna}
+                columna={columna}
+                orden={orden.orden}
+                sentido={orden.sentido}
+                onOrdenar={orden.ordenarPor}
+                onFijar={fijadas.alternarFijada}
+                hayScrollX={fijadas.hayScrollX}
+                fijada={fijadas.esFijada(columna)}
+                left={fijadas.izquierda(columna)}
+              />
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {visibles.map((zona) => (
+            <tr key={zona.zona}>
+              <td {...fijadas.celdaFijada(columnas[0])}>
+                {tituloPropio(zona.zona.replace("USUARIOS NO REGULADOS", "NO REGULADOS"))}
+              </td>
+              <td {...fijadas.celdaFijada(columnas[1])}>{fmtN(zona.clientes)}</td>
+              <td {...fijadas.celdaFijada(columnas[2])}>
+                {esConsumo ? fmtN(Math.round(zona.perdida)) : pesos(Math.round(zona.valorRiesgo))}
+              </td>
+              <td {...fijadas.celdaFijada(columnas[3])}>
+                {esConsumo ? pesos(Math.round(zona.valorRiesgo)) : fmtN(Math.round(zona.perdida))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

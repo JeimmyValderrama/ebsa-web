@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { api, type DatasetPage } from "../lib/api";
 import { enmascarar, formatCelda, fmtN, esColumnaSensible } from "../lib/format";
 import { usePresentation } from "../app/Presentation";
+import { ordenarFilas, ThTabla, useFijadas, useOrdenTabla } from "./v2/ui";
 
 export type Row = { id: number | string; niu?: string | null; payload: Record<string, unknown> };
 
@@ -102,24 +103,48 @@ export function DatasetTable({
     return [...head, ...all.filter((column) => !head.includes(column))].slice(0, 24);
   }, [flat, prioritarias]);
 
+  // Orden por columna y columnas fijadas: el orden inicial no cambia hasta que se elige uno
+  // y la chincheta solo aparece si la tabla tiene scroll horizontal real.
+  const orden = useOrdenTabla();
+  const fijadas = useFijadas(`${columns.join("|")}|${flat.length}`);
+
   if (!flat.length) return <div className="empty-state">No hay registros para este corte o filtro.</div>;
 
+  // El índice que recibe el botón de acción siempre es el de la lista original: aunque se
+  // ordene, el botón sigue apuntando a la misma fila (rows[indice]).
+  const conIndice = flat.map((row, index) => ({ row, index }));
+  const visibles = ordenarFilas(conIndice, orden.orden, orden.sentido, (item, columna) => item.row[columna]);
+
   return (
-    <div className="table-card">
-      <table>
+    <div ref={fijadas.contenedorRef} className="table-card">
+      <table ref={fijadas.tablaRef}>
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column}>{human(column)}</th>
+              <ThTabla
+                key={column}
+                columna={column}
+                orden={orden.orden}
+                sentido={orden.sentido}
+                onOrdenar={orden.ordenarPor}
+                onFijar={fijadas.alternarFijada}
+                hayScrollX={fijadas.hayScrollX}
+                fijada={fijadas.esFijada(column)}
+                left={fijadas.izquierda(column)}
+              >
+                {human(column)}
+              </ThTabla>
             ))}
             {action && <th>{actionLabel ?? "Acción"}</th>}
           </tr>
         </thead>
         <tbody>
-          {flat.map((row, index) => (
+          {visibles.map(({ row, index }) => (
             <tr key={`${String(row.NIU)}-${index}`}>
               {columns.map((column) => (
-                <td key={column}>{hideIds && esColumnaSensible(column) ? enmascarar(row[column]) : formatCelda(row[column], column)}</td>
+                <td key={column} {...fijadas.celdaFijada(column)}>
+                  {hideIds && esColumnaSensible(column) ? enmascarar(row[column]) : formatCelda(row[column], column)}
+                </td>
               ))}
               {action && (
                 <td>
