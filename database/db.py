@@ -5,7 +5,7 @@ from collections.abc import Generator
 from pathlib import Path
 
 from dotenv import load_dotenv
-from sqlalchemy import URL, create_engine
+from sqlalchemy import URL, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 # El .env solo se usa en local; en Vercel las variables vienen de la plataforma.
@@ -54,12 +54,32 @@ def database_url() -> str:
 def _engine_kwargs(url: str) -> dict[str, object]:
     if url.startswith("sqlite"):
         return {"connect_args": {"check_same_thread": False}}
-    return {"pool_pre_ping": True, "pool_recycle": 1800, "pool_timeout": 30}
+    # timeout=30 es el intento de conexión (login); sin él, una ruta caída a
+    # Azure deja el proceso esperando indefinidamente.
+    return {
+        "pool_pre_ping": True,
+        "pool_recycle": 1800,
+        "pool_timeout": 30,
+        "connect_args": {"timeout": 30},
+    }
 
+
+# Timeout por sentencia en segundos: si la red se corta a mitad de un INSERT,
+# la consulta falla en vez de quedar colgada (0 la desactiva).
+QUERY_TIMEOUT_SEGUNDOS = int(os.getenv("EBSA_QUERY_TIMEOUT", "300"))
 
 _URL = database_url()
 engine = create_engine(_URL, future=True, **_engine_kwargs(_URL))
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+
+
+@event.listens_for(engine, "connect")
+def _aplicar_timeout_de_consulta(dbapi_connection: object, _record: object) -> None:
+    try:
+        dbapi_connection.timeout = QUERY_TIMEOUT_SEGUNDOS
+    except (AttributeError, TypeError, ValueError):
+        # SQLite (pruebas locales) no expone timeout por sentencia.
+        pass
 
 
 def get_db() -> Generator[Session, None, None]:
