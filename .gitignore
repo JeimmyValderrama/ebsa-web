@@ -28,6 +28,11 @@ streamlit_origen/
 *.db-journal
 *.sqlite*
 
+# Estado de la importacion escalonada (se regenera en cada corrida)
+carga_checkpoint.json
+carga_checkpoint.json.tmp
+carga_checkpoint.json.temp
+
 # IDE/OS
 .vscode/
 .idea/
