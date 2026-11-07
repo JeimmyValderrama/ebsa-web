@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.orm import Session
 
 from database.models import (
@@ -161,6 +161,28 @@ _CATALOGO_CACHE: tuple[float, list[dict[str, Any]]] | None = None
 _CATALOGO_TTL_SEGUNDOS = 600.0
 
 
+def conteo_tabla(db: Session, model: Any) -> int:
+    """Filas exactas de una tabla completa (mismo número que COUNT(*)).
+
+    En SQL Server el COUNT(*) de las 28,5 millones de consumption escanea
+    cientos de MB a 10 DTU y no cabe en el timeout de 300 s (rompía el
+    catálogo con un 503); los metadatos de particiones dan el mismo valor en
+    décimas. SQLite conserva el COUNT(*) normal.
+    """
+    if db.get_bind().dialect.name == "mssql":
+        return int(
+            db.scalar(
+                text(
+                    "SELECT SUM(p.rows) FROM sys.partitions p "
+                    "WHERE p.object_id = OBJECT_ID(:tabla) AND p.index_id IN (0, 1)"
+                ),
+                {"tabla": model.__table__.name},
+            )
+            or 0
+        )
+    return int(db.scalar(select(func.count()).select_from(model)) or 0)
+
+
 def catalog(db: Session, forzar: bool = False) -> list[dict[str, Any]]:
     """Catálogo de datasets con su número de filas (genéricos + normalizados)."""
     global _CATALOGO_CACHE
@@ -174,7 +196,7 @@ def catalog(db: Session, forzar: bool = False) -> list[dict[str, Any]]:
     ]
     index = {item["dataset_key"]: item for item in items}
     for key, model in NORMALIZED.items():
-        count = int(db.scalar(select(func.count()).select_from(model)) or 0)
+        count = conteo_tabla(db, model)
         if not count:
             continue
         if key in index:
