@@ -12,7 +12,7 @@ from api.app.security import current_user
 app.dependency_overrides[current_user] = lambda: {"uid": "t", "role": "ADMIN_MODELO", "email": "t@e.com"}
 client = TestClient(app)
 
-for path in ["/api/data/route", "/api/data/route?cycle=45", "/api/data/municipalities/metrics", "/api/data/pipeline"]:
+for path in ["/api/data/route", "/api/data/route?cycle=7", "/api/data/municipalities/metrics", "/api/data/pipeline"]:
     start = time.time()
     response = client.get(path)
     body = response.json()
@@ -25,9 +25,12 @@ for path in ["/api/data/route", "/api/data/route?cycle=45", "/api/data/municipal
         extra = str({key: (len(value) if isinstance(value, list) else value) for key, value in list(body.items())[:3]})
     print(f"{time.time() - start:6.1f}s  {response.status_code}  {path}  {extra}")
 
-niu = client.get("/api/data/route").json()["items"][0]["niu"]
 ciclos = client.get("/api/data/route").json()["cycles"]
 print("ciclos:", [(item["ciclo"], item["ciclo_etiqueta"], item["clientes"]) for item in ciclos])
+# Sin ciclo no se devuelven items (solo las opciones): se pide un ciclo existente.
+ciclo_prueba = ciclos[0]["ciclo"] if ciclos else None
+items_prueba = client.get(f"/api/data/route?cycle={ciclo_prueba}&limit=1").json()["items"] if ciclo_prueba is not None else []
+niu = items_prueba[0]["niu"]
 if ciclos:
     filtro = client.get(f"/api/data/route?cycle={ciclos[0]['ciclo']}").json()
     primer_item = filtro["items"][0] if filtro["items"] else {}
@@ -64,7 +67,7 @@ for path in [
     print(f"{time.time() - start:6.1f}s  {response.status_code}  {path.split('/api/data/')[1][:72]}  total={extra}")
 
 print("\n-- Visitas (agenda y resultado) --")
-ruta = client.get("/api/data/route?limit=1").json()["items"][0]
+ruta = client.get(f"/api/data/route?cycle={ciclo_prueba}&limit=1").json()["items"][0]
 creada = client.post("/api/visits", json={"niu": ruta["niu"], "cycle": ruta["ciclo"]})
 print("crear visita:", creada.status_code, creada.text[:120])
 visitas = client.get("/api/visits")
