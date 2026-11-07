@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import FileResponse
-from sqlalchemy import String, case, cast, func, nulls_last, select
+from sqlalchemy import String, case, cast, func, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -31,6 +31,18 @@ from .security import current_user, require_roles
 router = APIRouter(prefix="/api/data", tags=["data"])
 ALL_ROLES = ("COMERCIAL", "SOPORTE", "ADMIN_MODELO")
 TECHNICAL_ROLES = ("ADMIN_MODELO",)
+
+
+def orden_nulls_last(columna: Any, descendente: bool = False) -> tuple[Any, Any]:
+    """Orden con las filas NULL al final, compatible con SQLite y SQL Server.
+
+    SQL Server no entiende la clausula `NULLS LAST` (SQLite si) y rechaza la
+    sentencia. El CASE marca las filas NULL con 1 para que caigan al final y
+    la columna conserva su direccion: el resultado es identico al de
+    `nulls_last()` en ambos motores.
+    """
+    expresion = columna.desc() if descendente else columna.asc()
+    return (case((columna.is_(None), 1), else_=0), expresion)
 
 # Cachés por corte (data_run_id): al importar un corte nuevo la clave cambia y se invalidan
 # solas, igual que _FUGA_CACHE y _MUNICIPIOS_LISTA. Guardan la lista COMPLETA sin filtros;
@@ -169,7 +181,7 @@ def pipeline_status(db: Session = Depends(get_db), _: dict[str, Any] = Depends(r
     try:
         quality, _ = dataset_service.query_dataset(db, "quality_control", 200, 0)
         bias, _ = dataset_service.query_dataset(db, "forecast_bias", 50, 0)
-        runs = db.scalars(select(PipelineRun).order_by(nulls_last(PipelineRun.started_at.desc()), PipelineRun.id.desc()).limit(20)).all()
+        runs = db.scalars(select(PipelineRun).order_by(*orden_nulls_last(PipelineRun.started_at, descendente=True), PipelineRun.id.desc()).limit(20)).all()
         return {
             "quality_control": [row["payload"] for row in quality],
             "forecast_bias": [row["payload"] for row in bias],
@@ -1147,7 +1159,7 @@ def visit_route(
         if cycle is not None:
             consulta_items = consulta_items.where(OperationalManagement.ciclo == cycle)
             rows = db.scalars(
-                consulta_items.order_by(nulls_last(OperationalManagement.orden_en_ciclo.asc()), OperationalManagement.valor_riesgo_mes.desc()).limit(limit)
+                consulta_items.order_by(*orden_nulls_last(OperationalManagement.orden_en_ciclo), OperationalManagement.valor_riesgo_mes.desc()).limit(limit)
             ).all()
         locations = locations_by_niu(db, [row.niu for row in rows])
         clients = clients_by_niu(db, [row.niu for row in rows])
