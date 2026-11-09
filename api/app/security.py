@@ -31,6 +31,14 @@ def current_user(
 
     try:
         decoded = verify_id_token(credentials.credentials)
+    except auth.UserDisabledError as exc:
+        # verify_id_token usa check_revoked=True, que también lanza este error si la
+        # cuenta fue deshabilitada con una sesión abierta. Sin este catch era un 500.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La cuenta está deshabilitada.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
     except (ValueError, auth.InvalidIdTokenError, auth.ExpiredIdTokenError, auth.RevokedIdTokenError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

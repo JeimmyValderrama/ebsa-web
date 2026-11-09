@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
 import { MapaBoyaca } from "../components/MapaBoyaca";
@@ -72,13 +72,31 @@ const GRUPOS: Array<{ nombre: string; items: Array<{ clave: Tab; etiqueta: strin
 ];
 
 export default function AdminPage() {
-  const { idToken } = useAuth();
+  const { idToken, currentUser } = useAuth();
   const [tab, setTab] = useState<Tab>("resumen");
-  const elegirTab = useCallback((clave: Tab) => setTab(clave), []);
-  useSectionNav(GRUPOS, tab, elegirTab);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
+  // Aviso de estado: se limpia solo a los 5 s y también al cambiar de subpestaña.
+  const [aviso, setAviso] = useState<{ texto: string; n: number } | null>(null);
+  const avisoId = useRef(0);
+  const avisar = useCallback((texto: string) => {
+    avisoId.current += 1;
+    setAviso({ texto, n: avisoId.current });
+  }, []);
+  const elegirTab = useCallback(
+    (clave: Tab) => {
+      setAviso(null);
+      setTab(clave);
+    },
+    [],
+  );
+  useSectionNav(GRUPOS, tab, elegirTab);
   const corte = useCorte(idToken);
+
+  useEffect(() => {
+    if (!aviso) return;
+    const reloj = window.setTimeout(() => setAviso(null), 5000);
+    return () => window.clearTimeout(reloj);
+  }, [aviso]);
 
   useEffect(() => {
     if (!idToken) return;
@@ -90,30 +108,34 @@ export default function AdminPage() {
         setUsers(administrados as AdminUser[]);
       })
       .catch((cause: unknown) => {
-        if (!cancelled) setMessage(cause instanceof Error ? cause.message : "No fue posible cargar la administración.");
+        if (!cancelled) avisar(cause instanceof Error ? cause.message : "No fue posible cargar la administración.");
       });
     return () => {
       cancelled = true;
     };
-  }, [idToken]);
+  }, [idToken, avisar]);
 
   const updateUser = useCallback(
     async (uid: string, change: { role?: string; disabled?: boolean }) => {
       if (!idToken) return;
+      if (change.disabled === true && currentUser?.uid === uid) {
+        avisar("No puedes deshabilitar tu propia cuenta.");
+        return;
+      }
       try {
         await api.updateAdminUser(idToken, uid, change);
         setUsers((await api.adminUsers(idToken)) as AdminUser[]);
-        setMessage("Usuario actualizado.");
+        avisar("Usuario actualizado.");
       } catch (cause: unknown) {
-        setMessage(cause instanceof Error ? cause.message : "No se pudo actualizar el usuario.");
+        avisar(cause instanceof Error ? cause.message : "No se pudo actualizar el usuario.");
       }
     },
-    [idToken],
+    [idToken, currentUser, avisar],
   );
 
   return (
     <div className="page-content">
-      {message && <div className="notice notice-warning" role="status">{message}</div>}
+      {aviso && <div className="notice notice-warning" role="status">{aviso.texto}</div>}
 
       {tab === "resumen" && <ResumenAdmin token={idToken} />}
       {tab === "gestion" && <GestionCiclo token={idToken} />}
@@ -164,8 +186,9 @@ function Users({ rows, onUpdate }: { rows: AdminUser[]; onUpdate: (uid: string, 
               <tr key={row.uid}>
                 <td>{row.email ?? row.uid}</td>
                 <td>
+                  {/* "Sin rol" queda solo como etiqueta (disabled): nunca se envía "" al backend. */}
                   <select value={row.role ?? ""} onChange={(event) => onUpdate(row.uid, { role: event.target.value })}>
-                    <option value="">Sin rol</option>
+                    <option value="" disabled>Sin rol</option>
                     <option value="COMERCIAL">Comercial</option>
                     <option value="SOPORTE">Soporte</option>
                     <option value="ADMIN_MODELO">Administrador</option>
