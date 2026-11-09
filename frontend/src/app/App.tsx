@@ -25,13 +25,8 @@ const navItems: Array<{ to: string; label: string; roles: UserRole[] }> = [
   { to: "/administrador", label: "Administrador", roles: ["ADMIN_MODELO"] },
 ];
 
-const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-
-function mesLargo(periodo: string): string {
-  const [anio, mes] = periodo.split("-");
-  const indice = Number(mes) - 1;
-  return indice >= 0 && indice < MESES.length ? `${MESES[indice]} de ${anio}` : periodo;
-}
+// Mensaje fijo del corte en la barra superior: pedido directo, sin depender del summary.
+const CORTE_BARRA = "Corte Abril de 2026";
 
 function roleLabel(role: UserRole): string {
   return { COMERCIAL: "Comercial", SOPORTE: "Soporte", ADMIN_MODELO: "Administrador del modelo" }[role];
@@ -72,9 +67,9 @@ function SectionMenu({ alElegir }: { alElegir?: () => void }) {
 }
 
 function ProtectedLayout() {
-  const { currentUser, idToken, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [apiState, setApiState] = useState<ApiState>("loading");
-  const [corte, setCorte] = useState("");
+  const corte = CORTE_BARRA;
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [lateralAbierto, setLateralAbierto] = useState(false);
   const usuarioRef = useRef<HTMLDivElement | null>(null);
@@ -89,16 +84,6 @@ function ProtectedLayout() {
   useEffect(() => {
     api.health().then(() => setApiState("ready")).catch(() => setApiState("error"));
   }, []);
-
-  useEffect(() => {
-    if (!idToken) return;
-    api
-      .summary(idToken)
-      .then((resumen) => {
-        if (resumen.latest_run?.period) setCorte(`Corte ${mesLargo(resumen.latest_run.period)}`);
-      })
-      .catch(() => undefined);
-  }, [idToken]);
 
   useEffect(() => {
     if (!menuAbierto) return;
