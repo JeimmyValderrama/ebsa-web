@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import os
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import FileResponse
-from sqlalchemy import String, case, cast, func, select
+from sqlalchemy import String, case, cast, func, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -209,6 +210,21 @@ def _gravedad(severidad: Any, veredicto: Any) -> str:
     return "ANTIGUA" if str(veredicto or "") == "CAIDA_SOSTENIDA" else str(severidad or "—")
 
 
+def _numero_json(valor: Any) -> Any:
+    """Valor numérico de un campo extraído con _json_campo, listo para el `or` del código original.
+
+    JSON_VALUE de Azure devuelve texto, así que el 0 numérico llegaría como "0" (truthy) y
+    cambiaría la prioridad de los `or`; pasarlo a número conserva el comportamiento de Python
+    con los floats del JSON (campo ausente o no numérico -> None, como el diccionario).
+    """
+    if valor is None or isinstance(valor, (int, float)):
+        return valor
+    try:
+        return float(valor)
+    except (TypeError, ValueError):
+        return None
+
+
 def _resumen_cero_sostenido(db: Session) -> dict[str, Any]:
     """Clientes sin consumo: cuántos son y cuánto consumían/facturaban antes de quedarse en cero.
 
@@ -224,16 +240,21 @@ def _resumen_cero_sostenido(db: Session) -> dict[str, Any]:
     cache = _CERO_RESUMEN_CACHE.get(corte)
     if cache is not None:
         return cache
-    filas = db.scalars(select(DatasetRecord).where(DatasetRecord.dataset_key == "zero_sustained")).all()
+    filas = db.execute(
+        select(
+            _json_campo(db, DatasetRecord.payload, "consumo_referencia_kwh"),
+            _json_campo(db, DatasetRecord.payload, "consumo_anterior_kwh"),
+            _json_campo(db, DatasetRecord.payload, "valor_facturaba_antes_mes"),
+        ).where(DatasetRecord.dataset_key == "zero_sustained")
+    ).all()
     consumo, valor = 0.0, 0.0
-    for fila in filas:
-        p = fila.payload or {}
+    for referencia, anterior, facturaba in filas:
         try:
-            consumo += float(p.get("consumo_referencia_kwh") or p.get("consumo_anterior_kwh") or 0)
+            consumo += float(_numero_json(referencia) or _numero_json(anterior) or 0)
         except (TypeError, ValueError):
             pass
         try:
-            valor += float(p.get("valor_facturaba_antes_mes") or 0)
+            valor += float(_numero_json(facturaba) or 0)
         except (TypeError, ValueError):
             pass
     resumen = {"clientes": len(filas), "consumo_referencia_kwh": consumo, "valor_facturaba_antes_mes": valor}
@@ -271,25 +292,37 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
         por_zona: dict[str, Any] = {}
         por_clase: dict[str, Any] = {}
         por_grupo: dict[str, Any] = {}
-        for severidad, estado_en_lista, perdida, valor, payload in db.execute(
-            select(operational.severidad, operational.estado_en_lista, operational.perdida_kwh_mes, operational.valor_riesgo_mes, operational.payload)
+        for severidad, estado_en_lista, perdida, valor, veredicto, zona_regional, clase_nombre, clase, grupo, tramo in db.execute(
+            select(
+                operational.severidad,
+                operational.estado_en_lista,
+                operational.perdida_kwh_mes,
+                operational.valor_riesgo_mes,
+                _json_campo(db, operational.payload, "veredicto"),
+                _json_campo(db, operational.payload, "zona_regional"),
+                _json_campo(db, operational.payload, "clase_servicio_nombre"),
+                _json_campo(db, operational.payload, "clase_servicio"),
+                _json_campo(db, operational.payload, "grupo_consumo"),
+                _json_campo(db, operational.payload, "tramo_consumo"),
+            )
         ).all():
-            p = payload or {}
-            g = _gravedad(severidad, p.get("veredicto"))
+            g = _gravedad(severidad, veredicto)
             gravedad[g] = gravedad.get(g, 0) + 1
             clave_estado = str(estado_en_lista or "—")
             estado[clave_estado] = estado.get(clave_estado, 0) + 1
-            _acumular(por_zona, str(p.get("zona_regional") or "SIN ZONA"), perdida, valor, g)
-            _acumular(por_clase, str(p.get("clase_servicio_nombre") or p.get("clase_servicio") or "SIN CLASE"), perdida, valor, g)
-            _acumular(por_grupo, str(p.get("grupo_consumo") or p.get("tramo_consumo") or "SIN GRUPO"), perdida, valor, g)
+            _acumular(por_zona, str(zona_regional or "SIN ZONA"), perdida, valor, g)
+            _acumular(por_clase, str(clase_nombre or clase or "SIN CLASE"), perdida, valor, g)
+            _acumular(por_grupo, str(grupo or tramo or "SIN GRUPO"), perdida, valor, g)
 
         fuga = db.execute(select(func.count(), func.sum(churn.valor_esperado_perdida_mes), func.sum(churn.valor_en_riesgo_mes)).where(churn.nivel_riesgo.in_(("ALTO", "MEDIO")))).one()
         fuga_niveles = {str(nivel): int(clientes) for nivel, clientes in db.execute(select(churn.nivel_riesgo, func.count()).group_by(churn.nivel_riesgo)).all()}
         # Energía que consumen hoy los clientes con probabilidad de fuga alta o media (promedio de 6 meses).
         fuga_consumo_kwh = 0.0
-        for payload in db.execute(select(churn.payload).where(churn.nivel_riesgo.in_(("ALTO", "MEDIO")))).all():
+        for consumo_promedio, in db.execute(
+            select(_json_campo(db, churn.payload, "consumo_prom_6m_kwh")).where(churn.nivel_riesgo.in_(("ALTO", "MEDIO")))
+        ).all():
             try:
-                fuga_consumo_kwh += float((payload[0] or {}).get("consumo_prom_6m_kwh") or 0)
+                fuga_consumo_kwh += float(_numero_json(consumo_promedio) or 0)
             except (TypeError, ValueError):
                 continue
 
@@ -298,14 +331,21 @@ def panorama(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_
 
         # Ya atendidos por otro comercializador: los que el archivo de la empresa marca como "CON OTRO...".
         con_otro = 0
-        for payload in db.execute(select(DatasetRecord.payload).where(DatasetRecord.dataset_key == "churn_other_supplier")).all():
-            if str((payload[0] or {}).get("estado") or "").startswith("CON OTRO"):
+        for estado_otro, in db.execute(
+            select(_json_campo(db, DatasetRecord.payload, "estado")).where(DatasetRecord.dataset_key == "churn_other_supplier")
+        ).all():
+            if str(estado_otro or "").startswith("CON OTRO"):
                 con_otro += 1
 
         # Corte facturado de cada zona (el rural va un trimestre atrás).
         cortes_zona = {
-            str((payload[0] or {}).get("zona") or "").upper(): str((payload[0] or {}).get("fecha_corte") or "")[:7]
-            for payload in db.execute(select(DatasetRecord.payload).where(DatasetRecord.dataset_key == "zone_cuts")).all()
+            str(zona or "").upper(): str(fecha_corte or "")[:7]
+            for zona, fecha_corte in db.execute(
+                select(
+                    _json_campo(db, DatasetRecord.payload, "zona"),
+                    _json_campo(db, DatasetRecord.payload, "fecha_corte"),
+                ).where(DatasetRecord.dataset_key == "zone_cuts")
+            ).all()
         }
 
         valor = {
@@ -430,7 +470,7 @@ def _municipios_de_la_lista(db: Session, clave: str, nius: list[str]) -> dict[st
     """Municipio de cada NIU de la lista de caída (agregar_municipio), memorizado por corte."""
     mapa = _MUNICIPIOS_LISTA.get(clave)
     if mapa is None:
-        mapa = {niu: str(valor.get("municipio") or "") for niu, valor in locations_by_niu(db, nius).items()}
+        mapa = {niu: str(valor.get("municipio") or "") for niu, valor in locations_by_niu(db, nius, solo_municipio=True).items()}
         # solo los dos cortes más recientes, para que la memoria no crezca sin límite
         while len(_MUNICIPIOS_LISTA) >= 2:
             _MUNICIPIOS_LISTA.pop(next(iter(_MUNICIPIOS_LISTA)))
@@ -443,7 +483,7 @@ def _drops_lista(db: Session, corte_id: int) -> dict[str, Any]:
     gravedad por zona y las opciones de cada filtro. La consulta filtra por petición."""
     registros: list[dict[str, Any]] = []
     gravedad_zona: dict[str, dict[str, int]] = {}
-    for niu, severidad, trayectoria, estado, prioridad, perdida, valor, payload in db.execute(
+    for niu, severidad, trayectoria, estado, prioridad, perdida, valor, veredicto, zona_regional, zona_nombre, clase_nombre, clase, grupo, tramo, reciente, anterior, tarifa in db.execute(
         select(
             OperationalManagement.niu,
             OperationalManagement.severidad,
@@ -452,31 +492,39 @@ def _drops_lista(db: Session, corte_id: int) -> dict[str, Any]:
             OperationalManagement.prioridad_gestion,
             OperationalManagement.perdida_kwh_mes,
             OperationalManagement.valor_riesgo_mes,
-            OperationalManagement.payload,
+            _json_campo(db, OperationalManagement.payload, "veredicto"),
+            _json_campo(db, OperationalManagement.payload, "zona_regional"),
+            _json_campo(db, OperationalManagement.payload, "zona_nombre"),
+            _json_campo(db, OperationalManagement.payload, "clase_servicio_nombre"),
+            _json_campo(db, OperationalManagement.payload, "clase_servicio"),
+            _json_campo(db, OperationalManagement.payload, "grupo_consumo"),
+            _json_campo(db, OperationalManagement.payload, "tramo_consumo"),
+            _json_campo(db, OperationalManagement.payload, "consumo_reciente_kwh"),
+            _json_campo(db, OperationalManagement.payload, "consumo_anterior_kwh"),
+            _json_campo(db, OperationalManagement.payload, "tarifa_kwh"),
         )
     ).all():
-        p = payload or {}
-        gravedad = _gravedad(severidad, p.get("veredicto"))
-        zona = str(p.get("zona_regional") or "SIN ZONA")
+        gravedad = _gravedad(severidad, veredicto)
+        zona = str(zona_regional or "SIN ZONA")
         gravedad_zona.setdefault(zona, {})
         gravedad_zona[zona][gravedad] = gravedad_zona[zona].get(gravedad, 0) + 1
         registros.append(
             {
                 "niu": str(niu).strip(),
-                "veredicto": str(p.get("veredicto") or ""),
+                "veredicto": str(veredicto or ""),
                 "gravedad": gravedad,
                 "zona_regional": zona,
-                "ciclo": str(p.get("zona_nombre") or ""),
-                "clase": str(p.get("clase_servicio_nombre") or p.get("clase_servicio") or "SIN CLASIFICAR"),
-                "tamano": str(p.get("grupo_consumo") or p.get("tramo_consumo") or "—"),
+                "ciclo": str(zona_nombre or ""),
+                "clase": str(clase_nombre or clase or "SIN CLASIFICAR"),
+                "tamano": str(grupo or tramo or "—"),
                 "trayectoria": str(trayectoria or ""),
                 "prioridad": str(prioridad or ""),
                 "situacion": str(estado or ""),
-                "consumo_reciente_kwh": float(p.get("consumo_reciente_kwh") or 0),
-                "consumo_anterior_kwh": float(p.get("consumo_anterior_kwh") or 0),
+                "consumo_reciente_kwh": float(_numero_json(reciente) or 0),
+                "consumo_anterior_kwh": float(_numero_json(anterior) or 0),
                 "perdida_kwh_mes": float(perdida or 0),
                 "valor_riesgo_mes": float(valor or 0),
-                "tarifa_kwh": float(p.get("tarifa_kwh") or 0),
+                "tarifa_kwh": float(_numero_json(tarifa) or 0),
             }
         )
     # Cruce con el TC1 para el municipio; el mapa queda memorizado por corte (se repite en cada consulta).
@@ -1012,14 +1060,49 @@ def salidas(
         raise schema_error(exc) from exc
 
 
-def locations_by_niu(db: Session, nius: list[str]) -> dict[str, dict[str, Any]]:
-    """Última ubicación conocida por NIU, consultada por lotes sobre el índice de niu."""
+def locations_by_niu(db: Session, nius: list[str], solo_municipio: bool = False) -> dict[str, dict[str, Any]]:
+    """Última ubicación conocida por NIU, consultada sobre el índice de niu.
+
+    `solo_municipio` baja solo esa columna: la lista de caída y el mapa son los únicos
+    que la usan, y `direccion` es lo que multiplica los bytes traídos desde Azure.
+    En Azure cada ida y vuelta cuesta ~200 ms, así que ahí la lista viaja como JSON y se
+    lee en pocas consultas (OPENJSON con CAST para no perder el índice de niu); en SQLite,
+    sin esa latencia, se sigue consultando por lotes de 1.000.
+    """
     result: dict[str, dict[str, Any]] = {}
     unique = list(dict.fromkeys(niu for niu in nius if niu))
-    for start in range(0, len(unique), 1000):
-        chunk = unique[start : start + 1000]
-        for row in db.scalars(select(ClientLocation).where(ClientLocation.niu.in_(chunk)).order_by(ClientLocation.id)).all():
-            result[row.niu] = {"municipio": row.municipio, "direccion": row.direccion, "latitud": row.latitud, "longitud": row.longitud, "coordenadas_validas": row.coordenadas_validas}
+    if not unique:
+        return result
+    seleccion = select(ClientLocation.niu, ClientLocation.municipio)
+    campos = ("municipio",)
+    if not solo_municipio:
+        seleccion = select(
+            ClientLocation.niu,
+            ClientLocation.municipio,
+            ClientLocation.direccion,
+            ClientLocation.latitud,
+            ClientLocation.longitud,
+            ClientLocation.coordenadas_validas,
+        )
+        campos = ("municipio", "direccion", "latitud", "longitud", "coordenadas_validas")
+
+    def guardar(fila: Any) -> None:
+        # La última fila (mayor id) gana, igual que el bucle anterior ordenado por id.
+        result[fila[0]] = {campo: valor for campo, valor in zip(campos, fila[1:])}
+
+    if db.get_bind().dialect.name == "mssql":
+        ancho = ClientLocation.niu.type.length or 80
+        condicion = text(f"niu IN (SELECT CAST(value AS varchar({ancho})) FROM OPENJSON(:lista))")
+        for start in range(0, len(unique), 20000):
+            lote = unique[start : start + 20000]
+            consulta = seleccion.where(condicion).order_by(ClientLocation.id).params(lista=json.dumps(lote))
+            for fila in db.execute(consulta).all():
+                guardar(fila)
+    else:
+        for start in range(0, len(unique), 1000):
+            lote = unique[start : start + 1000]
+            for fila in db.execute(seleccion.where(ClientLocation.niu.in_(lote)).order_by(ClientLocation.id)).all():
+                guardar(fila)
     return result
 
 
@@ -1254,7 +1337,10 @@ def _ejemplos_opciones(db: Session) -> dict[str, Any]:
 def _json_campo(db: Session, columna: Any, ruta: str) -> Any:
     """Un campo del JSON del payload con la función que entiende cada motor: JSON_EXTRACT en
     SQLite (local) y JSON_VALUE en Azure SQL. La extracción por índice de SQLAlchemy
-    (columna["$.campo"]) no se compila a ninguna de las dos y devuelve NULL."""
+    (columna["$.campo"]) no se compila a ninguna de las dos y devuelve NULL.
+    Acepta el nombre del campo ("veredicto") o la ruta completa ("$.veredicto")."""
+    if not ruta.startswith("$"):
+        ruta = f"$.{ruta}"
     if db.get_bind().dialect.name == "mssql":
         return func.json_value(columna, ruta)
     return func.json_extract(columna, ruta)
@@ -1505,7 +1591,7 @@ def _metricas_municipio(db: Session) -> dict[str, Any]:
         }
 
     nius = list(db.scalars(select(OperationalManagement.niu).distinct())) + list(db.scalars(select(ClientChurnRisk.niu).distinct()))
-    municipio_por_niu = {niu: ubicacion.get("municipio") for niu, ubicacion in locations_by_niu(db, nius).items()}
+    municipio_por_niu = {niu: ubicacion.get("municipio") for niu, ubicacion in locations_by_niu(db, nius, solo_municipio=True).items()}
 
     acumulados: dict[str, dict[str, Any]] = {}
 
@@ -1534,8 +1620,9 @@ def _metricas_municipio(db: Session) -> dict[str, Any]:
         item["caida_kwh_mes"] += float(perdida or 0)
         item["caida_valor_mes"] += float(valor or 0)
 
-    for niu, nivel, perdida, payload in db.execute(
-        select(ClientChurnRisk.niu, ClientChurnRisk.nivel_riesgo, ClientChurnRisk.valor_esperado_perdida_mes, ClientChurnRisk.payload).where(
+    for niu, nivel, perdida, consumo_promedio in db.execute(
+        select(ClientChurnRisk.niu, ClientChurnRisk.nivel_riesgo, ClientChurnRisk.valor_esperado_perdida_mes,
+               _json_campo(db, ClientChurnRisk.payload, "consumo_prom_6m_kwh")).where(
             ClientChurnRisk.nivel_riesgo.in_(("ALTO", "MEDIO"))
         )
     ).all():
@@ -1547,7 +1634,7 @@ def _metricas_municipio(db: Session) -> dict[str, Any]:
             item["fuga_medio"] += 1
         item["fuga_perdida_esperada_mes"] += float(perdida or 0)
         try:
-            item["fuga_consumo_alto_medio_kwh_mes"] += float((payload or {}).get("consumo_prom_6m_kwh") or 0)
+            item["fuga_consumo_alto_medio_kwh_mes"] += float(_numero_json(consumo_promedio) or 0)
         except (TypeError, ValueError):
             pass
 
