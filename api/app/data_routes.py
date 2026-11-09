@@ -1184,6 +1184,30 @@ def descargar_exporte(
     return FileResponse(ruta, media_type="text/csv; charset=utf-8", filename=ruta.name)
 
 
+# Claves del payload que lee el frontend de la ruta de visitas (GestionCiclo.aFila, sus filtros y
+# queRevisar de Soporte). El payload completo pesa 8,4 MB con limit=5000; el resto de las claves ya
+# viajan como campos superiores de la fila o nadie las lee.
+_CLAVES_RUTA = {
+    # GestionCiclo.aFila + filtros client-side
+    "estrato",
+    "grupo_consumo",
+    "cluster_id",
+    "severidad",
+    "meses_consecutivos_en_lista",
+    "consumo_anterior_kwh",
+    "perdida_kwh_mes",
+    "tarifa_kwh",
+    "pred_1m_kwh",
+    "consumo_promedio_semestral_kwh",
+    "valor_facturado_mes",
+    "tipo_medidor_nombre",
+    # Soporte.queRevisar (no los pisa ninguna clave superior de item)
+    "clase_servicio_nombre",
+    "clase_servicio",
+    "prioridad_gestion",
+}
+
+
 @router.get("/route")
 def visit_route(
     cycle: int | None = None,
@@ -1278,7 +1302,15 @@ def visit_route(
                     "trayectoria": str(item.trayectoria or ""),
                     "prioridad": str(item.prioridad_gestion or ""),
                     "situacion": str(item.estado_en_lista or ""),
-                    "payload": {**payload, **{key: value for key, value in atributos.items() if value}, **{key: value for key, value in ubicacion.items() if value}},
+                    "payload": {
+                        key: valor
+                        for key, valor in {
+                            **payload,
+                            **{key: value for key, value in atributos.items() if value},
+                            **{key: value for key, value in ubicacion.items() if value},
+                        }.items()
+                        if key in _CLAVES_RUTA
+                    },
                 }
             )
         return {
