@@ -451,8 +451,8 @@ h3 { font-size: 20px; }
 .table-card::-webkit-scrollbar-track { background: transparent; }
 .table-card table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 /* Encabezado negro con línea dorada (cabeceras de tabla del sitio corporativo).
-   Padding vertical corto para que la fila no quede tan gruesa; el texto se parte en el
-   espacio disponible (dos líneas en títulos largos) en vez de ensanchar la columna. */
+   Padding vertical corto para que la fila no quede tan gruesa; el texto se parte en dos
+   renglones cuando es largo, sin cortar ninguna palabra. */
 .table-card th {
   text-align: left;
   font-weight: 600;
@@ -461,13 +461,10 @@ h3 { font-size: 20px; }
   background: #000000;
   padding: 6px 12px;
   border-bottom: 2px solid var(--marca);
+  /* Parte ENTRE palabras, nunca dentro de una: una palabra sola queda entera
+     (si no cabe, la columna se ensancha y el contenedor hace scroll horizontal). */
   white-space: normal;
-  /* Reparte las palabras entre las líneas para que ninguna quede corta (p. ej.
-     "Consumía antes (kWh/mes)" queda en dos renglones y no en uno solo muy largo). */
   text-wrap: balance;
-  /* Parte palabras largas, nunca letras sueltas: el contenedor ya hace scroll si no cabe. */
-  overflow-wrap: break-word;
-  hyphens: auto;
   position: sticky;
   top: 0;
   z-index: 1;
