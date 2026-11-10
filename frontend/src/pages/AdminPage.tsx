@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { api } from "../lib/api";
 import { MapaBoyaca } from "../components/MapaBoyaca";
@@ -77,6 +77,8 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   // Aviso de estado: se limpia solo a los 5 s y también al cambiar de subpestaña.
   const [aviso, setAviso] = useState<{ texto: string; n: number } | null>(null);
+  // Una sola operación en vuelo a la vez: evita dobles clics en crear, editar y eliminar.
+  const [ocupado, setOcupado] = useState(false);
   const avisoId = useRef(0);
   const avisar = useCallback((texto: string) => {
     avisoId.current += 1;
@@ -115,22 +117,74 @@ export default function AdminPage() {
     };
   }, [idToken, avisar]);
 
+  const recargarUsuarios = useCallback(async () => {
+    if (!idToken) return;
+    setUsers((await api.adminUsers(idToken)) as AdminUser[]);
+  }, [idToken]);
+
   const updateUser = useCallback(
     async (uid: string, change: { role?: string; disabled?: boolean }) => {
-      if (!idToken) return;
+      if (!idToken || ocupado) return;
       if (change.disabled === true && currentUser?.uid === uid) {
         avisar("No puedes deshabilitar tu propia cuenta.");
         return;
       }
+      setOcupado(true);
       try {
         await api.updateAdminUser(idToken, uid, change);
-        setUsers((await api.adminUsers(idToken)) as AdminUser[]);
+        await recargarUsuarios();
         avisar("Usuario actualizado.");
       } catch (cause: unknown) {
         avisar(cause instanceof Error ? cause.message : "No se pudo actualizar el usuario.");
+      } finally {
+        setOcupado(false);
       }
     },
-    [idToken, currentUser, avisar],
+    [idToken, currentUser, avisar, ocupado, recargarUsuarios],
+  );
+
+  /** Alta desde el formulario. Devuelve true si se creó, para limpiar los campos. */
+  const crearUsuario = useCallback(
+    async (datos: { email: string; password: string; role: string }) => {
+      if (!idToken || ocupado) return false;
+      setOcupado(true);
+      try {
+        await api.createAdminUser(idToken, datos);
+        await recargarUsuarios();
+        avisar(`Usuario ${datos.email} creado.`);
+        return true;
+      } catch (cause: unknown) {
+        avisar(cause instanceof Error ? cause.message : "No se pudo crear el usuario.");
+        return false;
+      } finally {
+        setOcupado(false);
+      }
+    },
+    [idToken, avisar, ocupado, recargarUsuarios],
+  );
+
+  const eliminarUsuario = useCallback(
+    async (row: AdminUser) => {
+      if (!idToken || ocupado) return;
+      if (row.uid === currentUser?.uid) {
+        avisar("No puedes eliminar tu propia cuenta.");
+        return;
+      }
+      const destino = row.email ?? row.uid;
+      const confirmado = window.confirm(`¿Eliminar a ${destino}? Esta acción borra la cuenta y no se puede deshacer.`);
+      if (!confirmado) return;
+      setOcupado(true);
+      try {
+        await api.deleteAdminUser(idToken, row.uid);
+        await recargarUsuarios();
+        avisar("Usuario eliminado.");
+      } catch (cause: unknown) {
+        avisar(cause instanceof Error ? cause.message : "No se pudo eliminar el usuario.");
+      } finally {
+        setOcupado(false);
+      }
+    },
+    [idToken, currentUser, avisar, ocupado, recargarUsuarios],
   );
 
   return (
@@ -155,12 +209,36 @@ export default function AdminPage() {
       {tab === "feedback" && <Retroalimentacion token={idToken} />}
       {tab === "pipeline" && <PipelineAdmin token={idToken} />}
       {tab === "descargas" && <Descargas token={idToken} esAdmin />}
-      {tab === "usuarios" && <Users rows={users} onUpdate={updateUser} />}
+      {tab === "usuarios" && (
+        <Users rows={users} ocupado={ocupado} onUpdate={updateUser} onCrear={crearUsuario} onEliminar={eliminarUsuario} />
+      )}
     </div>
   );
 }
 
-function Users({ rows, onUpdate }: { rows: AdminUser[]; onUpdate: (uid: string, change: { role?: string; disabled?: boolean }) => void }) {
+type UsersProps = {
+  rows: AdminUser[];
+  ocupado: boolean;
+  onUpdate: (uid: string, change: { role?: string; disabled?: boolean }) => void;
+  onCrear: (datos: { email: string; password: string; role: string }) => Promise<boolean>;
+  onEliminar: (row: AdminUser) => void;
+};
+
+function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rol, setRol] = useState<string>("COMERCIAL");
+
+  const enviar = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (ocupado) return;
+    const creado = await onCrear({ email: email.trim(), password, role: rol });
+    if (creado) {
+      setEmail("");
+      setPassword("");
+    }
+  };
+
   return (
     <section className="data-module">
       <header className="module-heading">
@@ -170,6 +248,53 @@ function Users({ rows, onUpdate }: { rows: AdminUser[]; onUpdate: (uid: string, 
           <p>El rol decide qué puede ver cada persona: COMERCIAL (listas y panorama), SOPORTE (fichas y visitas) y ADMIN_MODELO (todo, incluido el control técnico).</p>
         </div>
       </header>
+
+      <form className="stack" onSubmit={enviar}>
+        <div className="eyebrow">NUEVO USUARIO</div>
+        <div className="fila-3">
+          <label className="campo">
+            Correo electrónico
+            <input
+              className="search-input"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="nombre@ejemplo.com"
+              autoComplete="off"
+              disabled={ocupado}
+              required
+            />
+          </label>
+          <label className="campo">
+            Contraseña
+            <input
+              className="search-input"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              autoComplete="new-password"
+              disabled={ocupado}
+              required
+              minLength={6}
+            />
+          </label>
+          <label className="campo">
+            Rol inicial
+            <select className="filter-select" value={rol} onChange={(event) => setRol(event.target.value)} disabled={ocupado}>
+              <option value="COMERCIAL">Comercial</option>
+              <option value="SOPORTE">Soporte</option>
+              <option value="ADMIN_MODELO">Administrador</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <button className="primary-button" type="submit" disabled={ocupado}>
+            {ocupado ? "Procesando…" : "Crear usuario"}
+          </button>
+        </div>
+      </form>
+
       <div className="table-card">
         <table>
           <thead>
@@ -187,7 +312,7 @@ function Users({ rows, onUpdate }: { rows: AdminUser[]; onUpdate: (uid: string, 
                 <td>{row.email ?? row.uid}</td>
                 <td>
                   {/* "Sin rol" queda solo como etiqueta (disabled): nunca se envía "" al backend. */}
-                  <select value={row.role ?? ""} onChange={(event) => onUpdate(row.uid, { role: event.target.value })}>
+                  <select value={row.role ?? ""} onChange={(event) => onUpdate(row.uid, { role: event.target.value })} disabled={ocupado}>
                     <option value="" disabled>Sin rol</option>
                     <option value="COMERCIAL">Comercial</option>
                     <option value="SOPORTE">Soporte</option>
@@ -197,8 +322,12 @@ function Users({ rows, onUpdate }: { rows: AdminUser[]; onUpdate: (uid: string, 
                 <td>{row.email_verified ? "Sí" : "No"}</td>
                 <td>{row.disabled ? "Deshabilitado" : "Activo"}</td>
                 <td>
-                  <button type="button" className="table-action" onClick={() => onUpdate(row.uid, { disabled: !row.disabled })}>
+                  <button type="button" className="table-action" disabled={ocupado} onClick={() => onUpdate(row.uid, { disabled: !row.disabled })}>
                     {row.disabled ? "Habilitar" : "Deshabilitar"}
+                  </button>
+                  {" "}
+                  <button type="button" className="table-action" disabled={ocupado} onClick={() => onEliminar(row)}>
+                    Eliminar
                   </button>
                 </td>
               </tr>

@@ -445,4 +445,8 @@ export const api = {
   municipalityMetrics: (token: string | undefined) => request<{ metrics: Array<{ key: string; label: string; unidad: string }>; rows: Array<Record<string, unknown>> }>("/api/data/municipalities/metrics", { token }),
   adminUsers: (token: string | undefined) => request<unknown[]>("/api/admin/users", { token }),
   updateAdminUser: (token: string | undefined, uid: string, change: { role?: string; disabled?: boolean }) => request<unknown>(`/api/admin/users/${encodeURIComponent(uid)}`, { token, method: "PATCH", body: change }),
+  createAdminUser: (token: string | undefined, datos: { email: string; password: string; role: string }) =>
+    request<unknown>("/api/admin/users", { token, method: "POST", body: datos }),
+  deleteAdminUser: (token: string | undefined, uid: string) =>
+    request<unknown>(`/api/admin/users/${encodeURIComponent(uid)}`, { token, method: "DELETE" }),
 };

@@ -520,6 +520,7 @@ h3 { font-size: 20px; }
 .table-card tbody tr.clickable-row:hover td { background: #fef1cc; }
 .table-action { background: transparent; border: 0; color: var(--s); cursor: pointer; font-size: 13.5px; font-weight: 600; padding: 0; }
 .table-action:hover { text-decoration: underline; }
+.table-action:disabled { opacity: .5; cursor: not-allowed; text-decoration: none; }
 
 /* etiquetas de estado (como las v2-tag del Streamlit) */
 .badge {
