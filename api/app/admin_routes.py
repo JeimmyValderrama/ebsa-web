@@ -42,6 +42,20 @@ def _rol_de(user: Any) -> str:
     return str((user.custom_claims or {}).get("role") or "")
 
 
+def _protegido(user: Any) -> bool:
+    """True si quitarle el rol, deshabilitarlo o borrarlo dejaría la app sin un administrador usable.
+
+    Cuenta también a los administradores deshabilitados: solo si ya queda más de uno
+    (o el usuario ya está deshabilitado) se libera la acción. Es la misma regla que
+    calcula la interfaz para deshabilitar los controles.
+    """
+    if _rol_de(user) != "ADMIN_MODELO":
+        return False
+    administradores = [u for u in _usuarios_firebase() if _rol_de(u) == "ADMIN_MODELO"]
+    activos = [u for u in administradores if not u.disabled]
+    return len(administradores) == 1 or (not user.disabled and len(activos) == 1)
+
+
 @router.get("/users")
 def list_users(_: dict[str, Any] = Depends(require_roles("ADMIN_MODELO"))) -> list[dict[str, Any]]:
     if not firebase_is_configured():
@@ -56,19 +70,26 @@ def list_users(_: dict[str, Any] = Depends(require_roles("ADMIN_MODELO"))) -> li
 def update_user(uid: str, change: UserUpdate, admin: dict[str, Any] = Depends(require_roles("ADMIN_MODELO"))) -> dict[str, Any]:
     if not firebase_is_configured():
         raise HTTPException(status_code=503, detail="Firebase Admin SDK no está configurado.")
+    try:
+        objetivo = auth.get_user(uid)
+    except auth.UserNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario Firebase no encontrado.") from exc
     if change.disabled is True and uid == admin.get("uid"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No puedes deshabilitar tu propia cuenta.")
+    # Protección del último administrador: no se puede sacarle el rol ni deshabilitarlo.
+    saca_admin = change.role is not None and change.role != "ADMIN_MODELO"
+    if (change.disabled is True or saca_admin) and _protegido(objetivo):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Debe existir al menos un administrador.")
     try:
-        user = auth.get_user(uid)
         if change.role is not None:
-            claims = dict(user.custom_claims or {})
+            claims = dict(objetivo.custom_claims or {})
             if change.role == "":
                 claims.pop("role", None)
             else:
                 claims["role"] = change.role
             auth.set_custom_user_claims(uid, claims)
         if change.disabled is not None:
-            user = auth.update_user(uid, disabled=change.disabled)
+            auth.update_user(uid, disabled=change.disabled)
         user = auth.get_user(uid)
         return {"uid": user.uid, "email": user.email, "disabled": user.disabled, "role": (user.custom_claims or {}).get("role")}
     except auth.UserNotFoundError as exc:
@@ -117,11 +138,8 @@ def delete_user(uid: str, admin: dict[str, Any] = Depends(require_roles("ADMIN_M
         objetivo = auth.get_user(uid)
     except auth.UserNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario Firebase no encontrado.") from exc
-    if _rol_de(objetivo) == "ADMIN_MODELO":
-        administradores = [user for user in _usuarios_firebase() if _rol_de(user) == "ADMIN_MODELO"]
-        activos = [user for user in administradores if not user.disabled]
-        if len(administradores) == 1 or (not objetivo.disabled and len(activos) == 1):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se puede eliminar el último administrador del modelo.")
+    if _protegido(objetivo):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Debe existir al menos un administrador.")
     try:
         auth.delete_user(uid)
     except auth.UserNotFoundError as exc:
