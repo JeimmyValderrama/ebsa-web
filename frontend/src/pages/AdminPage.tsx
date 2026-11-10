@@ -19,6 +19,16 @@ import { TituloPagina } from "../components/v2/ui";
 
 type AdminUser = { uid: string; email?: string; disabled: boolean; email_verified: boolean; role?: string };
 
+/** Roles con su nombre visible: la misma lista para la descripción, el formulario y la tabla. */
+const ROLES: Array<{ valor: string; etiqueta: string }> = [
+  { valor: "COMERCIAL", etiqueta: "Comercial" },
+  { valor: "SOPORTE", etiqueta: "Soporte" },
+  { valor: "ADMIN_MODELO", etiqueta: "Administrador" },
+];
+
+const CORREO_RE = /^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/;
+const AYUDA_UNICO_ADMIN = "Debe existir al menos un administrador.";
+
 const tabs = [
   ["resumen", "Resumen"],
   ["gestion", "Gestión por ciclo"],
@@ -133,7 +143,7 @@ export default function AdminPage() {
       try {
         await api.updateAdminUser(idToken, uid, change);
         await recargarUsuarios();
-        avisar("Usuario actualizado.");
+        avisar(change.role !== undefined ? "Rol actualizado." : "Usuario actualizado.");
       } catch (cause: unknown) {
         avisar(cause instanceof Error ? cause.message : "No se pudo actualizar el usuario.");
       } finally {
@@ -228,14 +238,37 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rol, setRol] = useState<string>("COMERCIAL");
+  const [verPassword, setVerPassword] = useState(false);
+  const [filtroRol, setFiltroRol] = useState("");
+
+  // Validación en línea: el botón queda deshabilitado mientras haya errores.
+  const correoLimpio = email.trim();
+  const correoOk = CORREO_RE.test(correoLimpio);
+  const claveOk = password.length >= 6;
+  const valido = correoOk && claveOk;
+  const errorCorreo = email.length > 0 && !correoOk;
+  const errorClave = password.length > 0 && !claveOk;
+
+  // Último administrador: se recalcula con cada cambio de la lista de usuarios.
+  const administradores = rows.filter((row) => row.role === "ADMIN_MODELO");
+  const administradoresActivos = administradores.filter((row) => !row.disabled);
+  const protegido = (row: AdminUser) =>
+    row.role === "ADMIN_MODELO" && (administradores.length === 1 || (!row.disabled && administradoresActivos.length === 1));
+
+  const visibles = rows.filter((row) => {
+    if (filtroRol === "__sin_rol__") return !row.role;
+    if (filtroRol === "") return true;
+    return row.role === filtroRol;
+  });
 
   const enviar = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (ocupado) return;
-    const creado = await onCrear({ email: email.trim(), password, role: rol });
+    if (!valido || ocupado) return;
+    const creado = await onCrear({ email: correoLimpio, password, role: rol });
     if (creado) {
       setEmail("");
       setPassword("");
+      setVerPassword(false);
     }
   };
 
@@ -245,11 +278,24 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
         <div>
           <div className="eyebrow">ACCESOS</div>
           <h2>Usuarios y roles</h2>
-          <p>El rol decide qué puede ver cada persona: COMERCIAL (listas y panorama), SOPORTE (fichas y visitas) y ADMIN_MODELO (todo, incluido el control técnico).</p>
+          <p>El rol decide qué puede ver cada persona: Comercial (listas y panorama), Soporte (fichas y visitas) y Administrador (todo, incluido el control técnico).</p>
+          <p className="v2-caption">En el sistema el rol se guarda con el código COMERCIAL, SOPORTE o ADMIN_MODELO.</p>
         </div>
+        <label className="campo modulo-filtro">
+          Filtrar por rol
+          <select className="filter-select" value={filtroRol} onChange={(event) => setFiltroRol(event.target.value)} disabled={ocupado}>
+            <option value="">Todos los roles</option>
+            {ROLES.map((opcion) => (
+              <option key={opcion.valor} value={opcion.valor}>
+                {opcion.etiqueta}
+              </option>
+            ))}
+            <option value="__sin_rol__">Sin rol</option>
+          </select>
+        </label>
       </header>
 
-      <form className="stack" onSubmit={enviar}>
+      <form className="stack form-alta-usuario" onSubmit={enviar} noValidate>
         <div className="eyebrow">NUEVO USUARIO</div>
         <div className="fila-3">
           <label className="campo">
@@ -262,41 +308,63 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
               placeholder="nombre@ejemplo.com"
               autoComplete="off"
               disabled={ocupado}
-              required
             />
+            {errorCorreo && <span className="campo-error">Escribe un correo electrónico válido.</span>}
           </label>
           <label className="campo">
             Contraseña
-            <input
-              className="search-input"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mínimo 6 caracteres"
-              autoComplete="new-password"
-              disabled={ocupado}
-              required
-              minLength={6}
-            />
+            <span className="campo-pass">
+              <input
+                className="search-input"
+                type={verPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                autoComplete="new-password"
+                disabled={ocupado}
+              />
+              <button
+                type="button"
+                className="ojo-pass"
+                onClick={() => setVerPassword((visible) => !visible)}
+                aria-label={verPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                aria-pressed={verPassword}
+                disabled={ocupado}
+              >
+                <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+                  <path d="M12 5c5 0 9 4.5 10 7-1 2.5-5 7-10 7S3 14.5 2 12c1-2.5 5-7 10-7Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                  <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                  {verPassword && <path d="M4 20 20 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />}
+                </svg>
+              </button>
+            </span>
+            {errorClave && <span className="campo-error">La contraseña debe tener al menos 6 caracteres.</span>}
           </label>
           <label className="campo">
             Rol inicial
             <select className="filter-select" value={rol} onChange={(event) => setRol(event.target.value)} disabled={ocupado}>
-              <option value="COMERCIAL">Comercial</option>
-              <option value="SOPORTE">Soporte</option>
-              <option value="ADMIN_MODELO">Administrador</option>
+              {ROLES.map((opcion) => (
+                <option key={opcion.valor} value={opcion.valor}>
+                  {opcion.etiqueta}
+                </option>
+              ))}
             </select>
           </label>
         </div>
         <div>
-          <button className="primary-button" type="submit" disabled={ocupado}>
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={ocupado || !valido}
+            title={valido ? undefined : "Escribe un correo válido y una contraseña de al menos 6 caracteres."}
+          >
             {ocupado ? "Procesando…" : "Crear usuario"}
           </button>
         </div>
       </form>
 
       <div className="table-card">
-        <table>
+        <table className="tabla-usuarios">
           <thead>
             <tr>
               <th>Correo</th>
@@ -307,31 +375,67 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.uid}>
-                <td>{row.email ?? row.uid}</td>
-                <td>
-                  {/* "Sin rol" queda solo como etiqueta (disabled): nunca se envía "" al backend. */}
-                  <select value={row.role ?? ""} onChange={(event) => onUpdate(row.uid, { role: event.target.value })} disabled={ocupado}>
-                    <option value="" disabled>Sin rol</option>
-                    <option value="COMERCIAL">Comercial</option>
-                    <option value="SOPORTE">Soporte</option>
-                    <option value="ADMIN_MODELO">Administrador</option>
-                  </select>
-                </td>
-                <td>{row.email_verified ? "Sí" : "No"}</td>
-                <td>{row.disabled ? "Deshabilitado" : "Activo"}</td>
-                <td>
-                  <button type="button" className="table-action" disabled={ocupado} onClick={() => onUpdate(row.uid, { disabled: !row.disabled })}>
-                    {row.disabled ? "Habilitar" : "Deshabilitar"}
-                  </button>
-                  {" "}
-                  <button type="button" className="table-action" disabled={ocupado} onClick={() => onEliminar(row)}>
-                    Eliminar
-                  </button>
-                </td>
+            {visibles.length === 0 && (
+              <tr>
+                <td colSpan={5}>Ningún usuario coincide con el filtro de rol.</td>
               </tr>
-            ))}
+            )}
+            {visibles.map((row) => {
+              const unicoAdmin = protegido(row);
+              const bloqueaDeshabilitar = unicoAdmin && !row.disabled;
+              return (
+                <tr key={row.uid} className={row.disabled ? "fila-inactiva" : undefined}>
+                  <td>{row.email ?? row.uid}</td>
+                  <td>
+                    {/* "Sin rol" queda solo como etiqueta (disabled): nunca se envía "" al backend. */}
+                    <select
+                      value={row.role ?? ""}
+                      onChange={(event) => onUpdate(row.uid, { role: event.target.value })}
+                      disabled={ocupado || unicoAdmin}
+                      title={unicoAdmin ? AYUDA_UNICO_ADMIN : undefined}
+                      aria-label={`Rol de ${row.email ?? row.uid}`}
+                    >
+                      <option value="" disabled>Sin rol</option>
+                      {ROLES.map((opcion) => (
+                        <option key={opcion.valor} value={opcion.valor}>
+                          {opcion.etiqueta}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>{row.email_verified ? <span className="badge badge-baja">Verificado</span> : "—"}</td>
+                  <td>
+                    {row.disabled ? (
+                      <span className="badge">Deshabilitado</span>
+                    ) : (
+                      <span className="badge badge-baja">Activo</span>
+                    )}
+                  </td>
+                  <td className="col-acciones">
+                    <div className="acciones-fila">
+                      <button
+                        type="button"
+                        className="table-action outline"
+                        disabled={ocupado || bloqueaDeshabilitar}
+                        title={bloqueaDeshabilitar ? AYUDA_UNICO_ADMIN : undefined}
+                        onClick={() => onUpdate(row.uid, { disabled: !row.disabled })}
+                      >
+                        {row.disabled ? "Habilitar" : "Deshabilitar"}
+                      </button>
+                      <button
+                        type="button"
+                        className="table-action danger"
+                        disabled={ocupado || unicoAdmin}
+                        title={unicoAdmin ? AYUDA_UNICO_ADMIN : undefined}
+                        onClick={() => onEliminar(row)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
