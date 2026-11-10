@@ -450,16 +450,18 @@ h3 { font-size: 20px; }
 .table-card::-webkit-scrollbar-thumb:hover { background: var(--ink3); }
 .table-card::-webkit-scrollbar-track { background: transparent; }
 .table-card table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
-/* Encabezado negro con línea dorada (cabeceras de tabla del sitio corporativo). */
+/* Encabezado negro con línea dorada (cabeceras de tabla del sitio corporativo).
+   Padding vertical corto para que la fila no quede tan gruesa; si el texto no cabe,
+   la columna se ensancha (nowrap) y el contenedor hace scroll horizontal. */
 .table-card th {
   text-align: left;
   font-weight: 600;
   font-size: 13.5px;
   color: #fff;
   background: #000000;
-  padding: 10px 12px;
+  padding: 6px 12px;
   border-bottom: 2px solid var(--marca);
-  white-space: normal;
+  white-space: nowrap;
   /* Parte palabras largas, nunca letras sueltas: el contenedor ya hace scroll si no cabe. */
   overflow-wrap: break-word;
   hyphens: auto;

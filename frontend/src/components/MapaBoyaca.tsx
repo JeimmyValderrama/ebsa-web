@@ -575,7 +575,7 @@ export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: st
       </div>
       <button
         type="button"
-        className="table-action"
+        className="ghost-button"
         onClick={() => {
           // Mismas filas que se muestran, en el orden que se estén viendo.
           const contenido = csvEs(

@@ -253,10 +253,19 @@ export function SinConsumo({ token }: { token?: string | null }) {
 
       <Tarjeta titulo="Cuántos hay según el tiempo que llevan sin consumo" plegable>
         <div className="fila-2-3">
-          <Barras
-            serie={porTramo.map((fila) => [fila.tramo, fila.clientes])}
-            opciones={{ color: AZUL, nombreValor: "Clientes", nombreCategoria: "Tiempo sin consumo", altoFila: 34 }}
-          />
+          {/* La nota queda bajo la gráfica: aprovecha el espacio en blanco de esa columna. */}
+          <div>
+            <Barras
+              serie={porTramo.map((fila) => [fila.tramo, fila.clientes])}
+              opciones={{ color: AZUL, nombreValor: "Clientes", nombreCategoria: "Tiempo sin consumo", altoFila: 34 }}
+            />
+            <Pie
+              texto={md(
+                "**Meses sin consumo**: los transcurridos desde el último mes en que el cliente consumió por encima de su umbral de casi cero. "
+                + "**Qué hacer** es una sugerencia por ese tiempo; el proyecto es académico y no hay gestión real de clientes.",
+              )}
+            />
+          </div>
           <div className="table-card">
             <table>
               <thead>
@@ -289,12 +298,6 @@ export function SinConsumo({ token }: { token?: string | null }) {
             </table>
           </div>
         </div>
-        <Pie
-          texto={md(
-            "**Meses sin consumo**: los transcurridos desde el último mes en que el cliente consumió por encima de su umbral de casi cero. "
-            + "**Qué hacer** es una sugerencia por ese tiempo; el proyecto es académico y no hay gestión real de clientes.",
-          )}
-        />
       </Tarjeta>
 
       <PanelFiltros campos={campos} valores={valores} onChange={cambiarFiltro} movil={movil} porFila={5} />

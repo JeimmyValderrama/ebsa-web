@@ -161,16 +161,20 @@ function SerieChart({ mensual }: { mensual: Mensual[] }) {
       },
     ];
     const layout: Partial<Layout> = {
-      height: movil ? 340 : 420,
-      margin: { l: 10, r: 10, t: 10, b: 10 },
-      legend: { orientation: "h", yanchor: "bottom", y: 1.02, xanchor: "left", x: 0 },
+      height: movil ? 360 : 440,
+      // Márgenes con aire: el título del eje Y, las etiquetas del eje X y la leyenda van
+      // fuera del área de trazado; con 10 px se cortaban o se encimaban.
+      margin: { l: 62, r: 16, t: 54, b: movil ? 78 : 68 },
+      legend: { orientation: "h", yanchor: "bottom", y: 1.04, xanchor: "left", x: 0 },
       separators: ",.",
       font: { family: "Source Sans 3, Segoe UI, Arial", size: 13, color: C.tinta },
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: "rgba(0,0,0,0)",
       hovermode: "closest",
-      xaxis: { gridcolor: C.linea2, linecolor: "#c5c8c0" },
-      yaxis: { title: { text: "GWh / mes" }, gridcolor: C.linea2, zeroline: false },
+      // automargin ensancha el margen si una etiqueta no cabe; fecha corta y girada para que
+      // las etiquetas del eje X no se pisen. Solo presentación: los datos no cambian.
+      xaxis: { gridcolor: C.linea2, linecolor: "#c5c8c0", automargin: true, tickangle: movil ? -60 : -45, tickformat: "%b %Y" },
+      yaxis: { title: { text: "GWh / mes" }, gridcolor: C.linea2, zeroline: false, automargin: true },
     };
     return { data, layout, vacia: !real.length && !proy.length };
   }, [mensual, movil]);
