@@ -297,7 +297,7 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
 
       <form className="stack form-alta-usuario" onSubmit={enviar} noValidate>
         <div className="eyebrow">NUEVO USUARIO</div>
-        <div className="fila-alta">
+        <div className="fila-3">
           <label className="campo">
             Correo electrónico
             <input

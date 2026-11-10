@@ -530,8 +530,8 @@ h3 { font-size: 20px; }
 .tabla-usuarios td select { width: 170px; min-width: 170px; }
 /* Usuario deshabilitado: la fila entera queda atenuada. */
 .tabla-usuarios tbody tr.fila-inactiva td { opacity: .6; }
-/* Acciones: alineadas a la derecha y con espacio entre los botones. */
-.tabla-usuarios td.col-acciones { text-align: right; }
+/* Acciones: centradas en la celda para que la cabecera quede justo sobre los botones. */
+.tabla-usuarios td.col-acciones { text-align: center; }
 .acciones-fila { display: inline-flex; align-items: center; gap: 8px; }
 .table-action.outline {
   border: 1px solid var(--linea);
@@ -541,6 +541,11 @@ h3 { font-size: 20px; }
   padding: 5px 11px;
   font-size: 13px;
   text-decoration: none;
+  /* Mismo ancho para "Deshabilitar" y "Habilitar": todas las filas quedan alineadas. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 116px;
 }
 .table-action.outline:hover:not(:disabled) { border-color: var(--ink3); background: #fff; text-decoration: none; }
 .table-action.danger {
@@ -551,22 +556,17 @@ h3 { font-size: 20px; }
   padding: 5px 11px;
   font-size: 13px;
   text-decoration: none;
+  /* Mismo ancho que el de estado: el centro del par coincide con la cabecera. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 116px;
 }
 .table-action.danger:hover:not(:disabled) { background: var(--alerta); color: #fff; text-decoration: none; }
 .table-action.outline:disabled,
 .table-action.danger:disabled { opacity: .45; cursor: not-allowed; }
 /* Formulario de alta: 28 px entre "Crear usuario" y la tabla. */
 .form-alta-usuario { margin-bottom: 28px; }
-/* Fila del alta: la contraseña va un poco más larga y el rol queda justo al lado. */
-.fila-alta {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-@media (max-width: 1080px) {
-  .fila-alta { grid-template-columns: minmax(0, 1fr); }
-}
 /* El ojo queda dentro del campo de contraseña (el input llena la columna). */
 .form-alta-usuario .campo-pass input { width: 100%; }
 /* Cabecera de la columna Acciones centrada. */
