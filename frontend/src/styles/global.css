@@ -473,6 +473,18 @@ h3 { font-size: 20px; }
 .table-card th.th-largo {
   min-width: max(min-content, 30ch);
 }
+.table-card th.th-largo .th-sort span:first-child {
+  min-width: 22ch;
+  display: inline-block;
+}
+.grafico-sin-consumo {
+  padding-top: 40px;
+}
+
+.grafico-sin-consumo p {
+  margin-top: 40px;
+  line-height: 1.55;
+}
 .table-card td { padding: 9px 12px; border-bottom: 1px solid var(--linea2); color: var(--ink); vertical-align: top; }
 /* Columna fijada (chincheta): queda pegada al borde izquierdo al desplazar en horizontal.
    El offset "left" va en línea (lo calcula la tabla midiendo el ancho de cada fijada).

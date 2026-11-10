@@ -555,7 +555,7 @@ export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: st
                   hayScrollX={fijadas.hayScrollX}
                   fijada={fijadas.esFijada(columna)}
                   left={fijadas.izquierda(columna)}
-                  className={["Caída: valor en riesgo / mes", "Caída: kWh en riesgo / mes"].includes(columna) ? "th-largo" : ""}
+                  className={columna === info.metNombre ||["Consumo fuga ALTO+MEDIO kWh/mes", "Pérdida esperada fuga $/mes","“Consumo que se está perdiendo por caída de consumo (kWh/mes)"].includes(columna)? "th-largo": ""}
                 />
               ))}
             </tr>

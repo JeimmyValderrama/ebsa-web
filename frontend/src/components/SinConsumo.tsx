@@ -254,7 +254,7 @@ export function SinConsumo({ token }: { token?: string | null }) {
       <Tarjeta titulo="Cuántos hay según el tiempo que llevan sin consumo" plegable>
         <div className="fila-2-3">
           {/* La nota queda bajo la gráfica: aprovecha el espacio en blanco de esa columna. */}
-          <div>
+          <div className="grafico-sin-consumo">
             <Barras
               serie={porTramo.map((fila) => [fila.tramo, fila.clientes])}
               opciones={{ color: AZUL, nombreValor: "Clientes", nombreCategoria: "Tiempo sin consumo", altoFila: 34 }}
