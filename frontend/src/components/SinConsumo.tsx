@@ -271,7 +271,9 @@ export function SinConsumo({ token }: { token?: string | null }) {
               <thead>
                 <tr>
                   {COLUMNAS_RESUMEN(esConsumo).map((columna) => (
-                    <th key={columna}>{columna}</th>
+                    <th key={columna} className={["Consumían antes (kWh/mes)", "Facturaban antes ($/mes)"].includes(columna) ? "th-largo" : ""}>
+                      {columna}
+                    </th>
                   ))}
                 </tr>
               </thead>

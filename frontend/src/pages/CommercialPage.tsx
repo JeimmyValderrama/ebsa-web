@@ -487,6 +487,7 @@ function TablaCaidasZona({ columnas, filas, esConsumo }: { columnas: string[]; f
                 hayScrollX={fijadas.hayScrollX}
                 fijada={fijadas.esFijada(columna)}
                 left={fijadas.izquierda(columna)}
+                className={["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)"].includes(columna) ? "th-largo" : ""}
               />
             ))}
           </tr>

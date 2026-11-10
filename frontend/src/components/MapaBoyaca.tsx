@@ -503,7 +503,9 @@ export function TablaZonaMapa({ info }: { info: InfoMapa }) {
             <th>Zona</th>
             <th>municipios</th>
             <th>clientes</th>
-            <th>{tabla.nombreValorZona}</th>
+            <th className={["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)", "Caída: valor en riesgo / mes", "Caída: kWh en riesgo / mes"].includes(tabla.nombreValorZona) ? "th-largo" : ""}>
+              {tabla.nombreValorZona}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -553,6 +555,7 @@ export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: st
                   hayScrollX={fijadas.hayScrollX}
                   fijada={fijadas.esFijada(columna)}
                   left={fijadas.izquierda(columna)}
+                  className={["Caída: valor en riesgo / mes", "Caída: kWh en riesgo / mes"].includes(columna) ? "th-largo" : ""}
                 />
               ))}
             </tr>

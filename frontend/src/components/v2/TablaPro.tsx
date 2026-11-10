@@ -167,11 +167,23 @@ export function TablaPro({
   }, [claveDeteccion]);
   // Solo presentación: las columnas de solo cifras se alinean a la derecha (se decide con la página visible).
   const columnasCifra = new Set(campos.filter((columna) => columnaCifra(pagina, columna, formato)));
+  // Columnas con texto largo que necesitan más ancho para no partirse en >2 líneas.
+  const COLUMNAS_LARGAS = new Set([
+    "Facturación que se pierde ($/mes)",
+    "Consumo que se pierde (kWh/mes)",
+    "Consumía antes (kWh/mes)",
+    "Consumían antes (kWh/mes)",
+    "Facturaba antes ($/mes)",
+    "Facturaban antes ($/mes)",
+    "Caída: valor en riesgo / mes",
+    "Caída: kWh en riesgo / mes",
+  ]);
   const claseDe = (columna: string): string =>
     [
       columna === destacada ? "destacada" : "",
       columnasCifra.has(columna) ? "num" : "",
       fijadas.includes(columna) ? "fijada" : "",
+      COLUMNAS_LARGAS.has(columna) ? "th-largo" : "",
     ]
       .filter(Boolean)
       .join(" ");
