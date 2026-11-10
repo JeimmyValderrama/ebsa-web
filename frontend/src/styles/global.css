@@ -465,6 +465,11 @@ h3 { font-size: 20px; }
      (si no cabe, la columna se ensancha y el contenedor hace scroll horizontal). */
   white-space: normal;
   text-wrap: balance;
+  /* Suelo del ancho de la columna: sin él, la tabla comprime el encabezado y el texto
+     se va en 4 o 5 renglones. Con ~15 caracteres por línea, cualquier título del sitio
+     (p. ej. "Facturación que se pierde ($/mes)", 33) cabe en 3 renglones como máximo;
+     si hiciera falta más ancho, la columna crece (el contenedor ya hace scroll). */
+  min-width: 18ch;
   position: sticky;
   top: 0;
   z-index: 1;
