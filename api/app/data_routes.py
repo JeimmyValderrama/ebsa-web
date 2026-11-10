@@ -1492,14 +1492,21 @@ def buscar_en_lista(
      - `universo=ejemplos` (Administrador): TODOS los clientes segmentados, con los filtros de
        grupo, segmento, ciclo, municipio, situación en caída y riesgo de fuga.
      - por defecto (Soporte): la lista de caída completa por municipio, gravedad o tendencia,
-       sobre la caché de _drops_lista, que ya trae el municipio del TC1."""
+       sobre la caché por corte _DROPS_CACHE (la misma de /drops), que ya trae el municipio
+       del TC1: releer la lista completa en cada petición costaba decenas de segundos."""
     try:
         if universo == "ejemplos":
             return _ejemplos_buscar(db, {
                 "municipio": municipio or "", "trayectoria": trayectoria or "", "grupo": grupo or "",
                 "segmento": segmento or "", "ciclo": ciclo or "", "fuga": fuga or "",
             })
-        registros = _drops_lista(db, _corte_operativo(db))
+        # Misma caché por corte que usa /drops (y que llena precalentar): leer la lista
+        # completa cuesta decenas de segundos y cada cambio de filtro la volvería a leer.
+        corte_id = _corte_operativo(db)
+        cache = _DROPS_CACHE.get(corte_id)
+        if cache is None:
+            cache = _memoiza_corte(_DROPS_CACHE, corte_id, _drops_lista(db, corte_id))
+        registros = cache
         candidatos = registros["registros"]
         if municipio:
             candidatos = [registro for registro in candidatos if registro["municipio"] == municipio]
@@ -1693,15 +1700,24 @@ def _metricas_municipio(db: Session) -> dict[str, Any]:
     return {"metrics": list(MAP_METRICS), "rows": boyaca}
 
 def precalentar(db: Session) -> None:
-    """Rellena en segundo plano las cachés de las secciones más pesadas (panorama, caídas,
+    """Rellena en segundo plano las cachés de las secciones más pesadas (caídas, panorama,
     cero, métricas del mapa, fuga y consumo proyectado) para que la primera visita no espere
-    al primer cálculo. Se lanza en un hilo desde el arranque de uvicorn; cualquier fallo es inocuo."""
-    try:
-        panorama(db=db, _={})
-        drops(medida="Consumo", n=200, db=db, _={})
-        zero(db=db, _={})
-        municipality_metrics(db=db, _={})
-        _fuga_lista(db, _corte_operativo(db))
-        consumo_proyectado(db=db, _={})
-    except Exception:  # noqa: BLE001 - el precalentamiento nunca debe tumbar el arranque
-        pass
+    al primer cálculo. Se lanza en un hilo desde el arranque de uvicorn; cualquier fallo es inocuo.
+
+    `drops` va PRIMERO porque es quien llena _DROPS_CACHE, que además usa /search (la tabla
+    de "Consultar un cliente"): esa sección era la que más tardaba en abrirse. Cada tarea se
+    intenta por separado, para que un fallo no deje sin precargar el resto."""
+    tareas = (
+        lambda: drops(medida="Consumo", n=200, db=db, _={}),
+        lambda: buscar_en_lista(db=db, _={}),
+        lambda: panorama(db=db, _={}),
+        lambda: zero(db=db, _={}),
+        lambda: municipality_metrics(db=db, _={}),
+        lambda: _fuga_lista(db, _corte_operativo(db)),
+        lambda: consumo_proyectado(db=db, _={}),
+    )
+    for tarea in tareas:
+        try:
+            tarea()
+        except Exception:  # noqa: BLE001 - el precalentamiento nunca debe tumbar el arranque
+            pass

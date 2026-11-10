@@ -31,8 +31,9 @@ def _allowed_origins() -> list[str]:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Al arrancar, precarga en un hilo las cachés de las secciones pesadas (panorama,
-    caídas, cero, métricas del mapa y fuga) para que la primera visita sea ágil."""
+    """Al arrancar, precarga en un hilo las cachés de las secciones pesadas (caídas y la
+    búsqueda de "Consultar un cliente" primero, luego panorama, cero, métricas del mapa y
+    fuga) para que la primera visita sea ágil."""
 
     def _precalentar() -> None:
         db = next(get_db())
