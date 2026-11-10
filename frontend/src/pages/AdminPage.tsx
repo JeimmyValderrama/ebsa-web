@@ -297,7 +297,7 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
 
       <form className="stack form-alta-usuario" onSubmit={enviar} noValidate>
         <div className="eyebrow">NUEVO USUARIO</div>
-        <div className="fila-3">
+        <div className="fila-alta">
           <label className="campo">
             Correo electrónico
             <input
@@ -369,15 +369,14 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
             <tr>
               <th>Correo</th>
               <th>Rol</th>
-              <th>Verificado</th>
               <th>Estado</th>
-              <th>Acciones</th>
+              <th className="acciones">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {visibles.length === 0 && (
               <tr>
-                <td colSpan={5}>Ningún usuario coincide con el filtro de rol.</td>
+                <td colSpan={4}>Ningún usuario coincide con el filtro de rol.</td>
               </tr>
             )}
             {visibles.map((row) => {
@@ -403,7 +402,6 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
                       ))}
                     </select>
                   </td>
-                  <td>{row.email_verified ? <span className="badge badge-baja">Verificado</span> : "—"}</td>
                   <td>
                     {row.disabled ? (
                       <span className="badge">Deshabilitado</span>

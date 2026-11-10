@@ -557,6 +557,20 @@ h3 { font-size: 20px; }
 .table-action.danger:disabled { opacity: .45; cursor: not-allowed; }
 /* Formulario de alta: 28 px entre "Crear usuario" y la tabla. */
 .form-alta-usuario { margin-bottom: 28px; }
+/* Fila del alta: la contraseña va un poco más larga y el rol queda justo al lado. */
+.fila-alta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 1080px) {
+  .fila-alta { grid-template-columns: minmax(0, 1fr); }
+}
+/* El ojo queda dentro del campo de contraseña (el input llena la columna). */
+.form-alta-usuario .campo-pass input { width: 100%; }
+/* Cabecera de la columna Acciones centrada. */
+.tabla-usuarios th.acciones { text-align: center; }
 /* Error de validación bajo cada campo del formulario. */
 .campo-error { color: var(--alerta); font-size: 12.5px; font-weight: 500; }
 /* Filtro de rol del encabezado de la sección. */
