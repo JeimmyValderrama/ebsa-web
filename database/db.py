@@ -94,9 +94,14 @@ def _engine_kwargs(url: str) -> dict[str, object]:
         # que el cafile va por connect_args.
         connect_args["cafile"] = certifi.where()
     return {
+        # La ficha del cliente dispara 13 peticiones en paralelo y client_detail
+        # abre 5 sesiones (principal + 4 hilos): con el default del pool (5+10)
+        # se quedaban esperando conexión fuera de la BD y la ráfaga se alargaba.
         "pool_pre_ping": True,
         "pool_recycle": 1800,
         "pool_timeout": 30,
+        "pool_size": 10,
+        "max_overflow": 25,
         "connect_args": connect_args,
     }
 
