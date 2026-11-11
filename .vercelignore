@@ -1,0 +1,45 @@
+# Nada local a Vercel: el limite de subida es de 100 MB.
+# Espejo de .gitignore + streamlit_original (que .gitignore solo cubre como
+# "streamlit_origen/" y por eso se subio entero rompiendo el deploy).
+streamlit_original/
+streamlit_origen/
+
+# Secrets
+.env
+.env.*
+*.local
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+frontend/dist/
+.pnpm-store/
+
+# Datos locales
+data/
+*.csv
+*.parquet
+*.feather
+*.db
+*.db-journal
+*.sqlite*
+carga_checkpoint.json
+carga_checkpoint.json.tmp
+carga_checkpoint.json.temp
+
+# IDE/OS y estado de Vercel
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.vercel/
+.vercel
+.vercel-env-check
