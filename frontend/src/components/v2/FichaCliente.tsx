@@ -75,36 +75,27 @@ type EntradaFicha = { vencimiento: number; datos: Promise<Datos>; valor?: Datos 
 const CACHE_FICHA = new Map<string, EntradaFicha>();
 const CACHE_TTL_MS = 5 * 60_000;
 
-/** Las 13 consultas de la ficha, todas en paralelo. */
+/**
+ * Los datos de la ficha: UNA sola petición agrupada en el servidor (el endpoint
+ * /clients/{niu}/ficha corre las13 consultas en paralelo con sesión por hilo).
+ * Antes eran13 peticiones y cada una pagaba su propio arranque mientras Vercel
+ * encolaba ~5 concurrentes; ahora el navegador paga ese arranque una sola vez.
+ */
 const cargarFicha = (token: string | null | undefined, niu: string): Promise<Datos> =>
-  Promise.all([
-    api.client(token ?? undefined, niu).catch(() => null),
-    api.dataset(token ?? undefined, "operational", { niu, limit: 1 }).catch(() => null),
-    api.dataset(token ?? undefined, "churn_scores", { niu, limit: 1 }).catch(() => null),
-    api.dataset(token ?? undefined, "locations", { niu, limit: 1 }).catch(() => null),
-    api.dataset(token ?? undefined, "churn_other_supplier", { niu, limit: 1 }).catch(() => null),
-    api.dataset(token ?? undefined, "churn_non_regulated", { niu, limit: 1 }).catch(() => null),
-    api.dataset(token ?? undefined, "zero_sustained", { niu, limit: 1 }).catch(() => null),
-    api.consumption(token ?? undefined, niu).catch(() => []),
-    api.forecast(token ?? undefined, niu).catch(() => []),
-    api.dataset(token ?? undefined, "autogenerators", { niu, limit: 1 }).catch(() => null),
-    api.dataset(token ?? undefined, "clusters", { niu, limit: 1 }).catch(() => null),
-    api.dataset(token ?? undefined, "zone_cuts", { limit: 5 }).catch(() => null),
-    api.dataset(token ?? undefined, "model_usage", { limit: 30 }).catch(() => null),
-  ]).then(([cliente, operativa, fuga, ubicacion, otros, noRegulado, cero, consumo, pronostico, auto, segmento, cortes, uso]) => ({
-    cliente,
-    operativa: soloItem(operativa as DatasetPage),
-    fuga: soloItem(fuga as DatasetPage),
-    ubicacion: soloItem(ubicacion as DatasetPage),
-    otros: soloItem(otros as DatasetPage),
-    noRegulado: soloItem(noRegulado as DatasetPage),
-    cero: soloItem(cero as DatasetPage),
-    auto: soloItem(auto as DatasetPage),
-    segmento: soloItem(segmento as DatasetPage),
-    cortes: todosItems(cortes as DatasetPage),
-    usoModelos: todosItems(uso as DatasetPage),
-    consumo,
-    pronostico,
+  api.ficha(token ?? undefined, niu).then((r) => ({
+    cliente: r.cliente,
+    operativa: soloItem(r.operational),
+    fuga: soloItem(r.churn_scores),
+    ubicacion: soloItem(r.locations),
+    otros: soloItem(r.churn_other_supplier),
+    noRegulado: soloItem(r.churn_non_regulated),
+    cero: soloItem(r.zero_sustained),
+    auto: soloItem(r.autogenerators),
+    segmento: soloItem(r.clusters),
+    cortes: todosItems(r.zone_cuts),
+    usoModelos: todosItems(r.model_usage),
+    consumo: r.consumo,
+    pronostico: r.pronostico,
   }));
 
 /** es_rural del último mes de la serie (sc["es_rural"].iloc[-1] del original). */

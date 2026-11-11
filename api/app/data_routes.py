@@ -178,16 +178,95 @@ def client_detail(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = D
         raise schema_error(exc) from exc
 
 
-@router.get("/clients/{niu}/consumption")
-def client_consumption(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> list[dict[str, Any]]:
+def _consumo_de(niu: str, db: Session) -> list[dict[str, Any]]:
+    """Serie de consumo del cliente (hasta 120 meses) sobre la sesión indicada."""
     rows = db.scalars(select(ClientConsumptionMonthly).where(niu_igual(ClientConsumptionMonthly.niu, niu)).order_by(ClientConsumptionMonthly.periodo.asc()).limit(120)).all()
     return [{"periodo": row.periodo.isoformat(), "consumo_kwh": float(row.consumo_kwh) if row.consumo_kwh is not None else None, "es_rural": row.es_rural, "estado_mes": row.estado_mes} for row in rows]
 
 
-@router.get("/clients/{niu}/forecast")
-def client_forecast(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> list[dict[str, Any]]:
+@router.get("/clients/{niu}/consumption")
+def client_consumption(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> list[dict[str, Any]]:
+    return _consumo_de(niu, db)
+
+
+def _pronostico_de(niu: str, db: Session) -> list[dict[str, Any]]:
+    """Pronóstico a 6 meses del cliente (hasta 12 filas) sobre la sesión indicada."""
     rows = db.scalars(select(ClientForecast).where(niu_igual(ClientForecast.niu, niu)).order_by(ClientForecast.periodo_pronosticado.asc()).limit(12)).all()
     return [{"horizonte": row.horizonte, "periodo_pronosticado": row.periodo_pronosticado.isoformat() if row.periodo_pronosticado else None, "consumo_pronosticado_kwh": float(row.consumo_pronosticado_kwh) if row.consumo_pronosticado_kwh is not None else None, "grupo_consumo": row.grupo_consumo, "fecha_corte": row.fecha_corte.isoformat() if row.fecha_corte else None, "modelo": (row.payload or {}).get("modelo")} for row in rows]
+
+
+@router.get("/clients/{niu}/forecast")
+def client_forecast(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> list[dict[str, Any]]:
+    return _pronostico_de(niu, db)
+
+
+@router.get("/clients/{niu}/ficha")
+def client_ficha(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> dict[str, Any]:
+    """Las 13 consultas de la ficha del cliente en UNA sola petición.
+
+    El frontend disparaba 13 consultas en paralelo y cada una pagaba su propio
+    arranque (token, sesión, TLS) mientras Vercel encola a ~5 concurrentes: la
+    ráfaga se alargaba a 9-13 s aunque ninguna consulta pasara de 0,4 s. Aquí se
+    ejecutan en el servidor con una sesión por hilo (mismo patrón que
+    client_detail) y el navegador paga ese arranque una sola vez. Cada sección se
+    protege por separado y devuelve null/vacío si falla, igual que los .catch por
+    consulta que hacía el frontend; si el cliente no existe, cliente viene null."""
+    con_niu = (
+        "operational",
+        "churn_scores",
+        "locations",
+        "churn_other_supplier",
+        "churn_non_regulated",
+        "zero_sustained",
+        "autogenerators",
+        "clusters",
+    )
+    sin_niu = (("zone_cuts", 5), ("model_usage", 30))
+    resultados: dict[str, Any] = {}
+
+    def seccion_dataset(clave: str, limit: int, filtrar: bool) -> None:
+        with SessionLocal() as sesion:
+            try:
+                items, total = dataset_service.query_dataset(sesion, clave, limit, 0, niu=niu if filtrar else None)
+            except Exception:
+                resultados[clave] = None
+                return
+        resultados[clave] = {"dataset_key": clave, "items": items, "limit": limit, "offset": 0, "returned": len(items), "total": total}
+
+    def seccion_lista(funcion: Any) -> list[dict[str, Any]]:
+        with SessionLocal() as sesion:
+            try:
+                return funcion(sesion)
+            except Exception:
+                return []
+
+    with ThreadPoolExecutor(max_workers=14) as pool:
+        futuros = [pool.submit(seccion_dataset, clave, 1, True) for clave in con_niu]
+        futuros += [pool.submit(seccion_dataset, clave, limite, False) for clave, limite in sin_niu]
+        futuros.append(pool.submit(lambda: resultados.__setitem__("consumo", seccion_lista(lambda s: _consumo_de(niu, s)))))
+        futuros.append(pool.submit(lambda: resultados.__setitem__("pronostico", seccion_lista(lambda s: _pronostico_de(niu, s)))))
+        try:
+            resultados["cliente"] = client_detail(niu, db=db, _=None)
+        except Exception:
+            # NIU inexistente (404) o fallo de BD: igual que el .catch del frontend (null).
+            resultados["cliente"] = None
+        for futuro in futuros:
+            futuro.result()
+    return {
+        "cliente": resultados.get("cliente"),
+        "operational": resultados.get("operational"),
+        "churn_scores": resultados.get("churn_scores"),
+        "locations": resultados.get("locations"),
+        "churn_other_supplier": resultados.get("churn_other_supplier"),
+        "churn_non_regulated": resultados.get("churn_non_regulated"),
+        "zero_sustained": resultados.get("zero_sustained"),
+        "autogenerators": resultados.get("autogenerators"),
+        "clusters": resultados.get("clusters"),
+        "zone_cuts": resultados.get("zone_cuts"),
+        "model_usage": resultados.get("model_usage"),
+        "consumo": resultados.get("consumo", []),
+        "pronostico": resultados.get("pronostico", []),
+    }
 
 
 @router.get("/locations")

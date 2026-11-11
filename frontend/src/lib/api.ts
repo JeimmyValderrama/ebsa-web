@@ -78,6 +78,23 @@ function query(params: Record<string, string | number | undefined | string[]>): 
 export type DatasetQuery = { limit?: number; offset?: number; search?: string; niu?: string; filters?: string[] };
 export type DatasetPage = { dataset_key: string; items: Array<{ id: number | string; niu?: string | null; payload: Record<string, unknown> }>; limit: number; offset: number; returned: number; total: number };
 
+/** Las 13 consultas de la ficha del cliente agrupadas en una sola petición (clients/{niu}/ficha). */
+export type FichaData = {
+  cliente: Record<string, any> | null;
+  operational: DatasetPage | null;
+  churn_scores: DatasetPage | null;
+  locations: DatasetPage | null;
+  churn_other_supplier: DatasetPage | null;
+  churn_non_regulated: DatasetPage | null;
+  zero_sustained: DatasetPage | null;
+  autogenerators: DatasetPage | null;
+  clusters: DatasetPage | null;
+  zone_cuts: DatasetPage | null;
+  model_usage: DatasetPage | null;
+  consumo: Array<{ periodo: string; consumo_kwh: number | null; estado_mes?: string | null; es_rural?: boolean | null }>;
+  pronostico: Array<{ horizonte: number | null; periodo_pronosticado: string | null; consumo_pronosticado_kwh: number | null; grupo_consumo?: string | null; fecha_corte?: string | null; modelo?: string | null }>;
+};
+
 /** Filtros de las listas de negocio (un valor vacío = sin filtro, como en el Streamlit). */
 export type FiltroLista = {
   pri?: string[]; tip?: string[]; grav?: string[]; ten?: string[];
@@ -346,6 +363,8 @@ export const api = {
   client: (token: string | undefined, niu: string) => request<Record<string, any>>(`/api/data/clients/${encodeURIComponent(niu)}`, { token }),
   consumption: (token: string | undefined, niu: string) => request<Array<{ periodo: string; consumo_kwh: number | null; estado_mes?: string | null; es_rural?: boolean | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/consumption`, { token }),
   forecast: (token: string | undefined, niu: string) => request<Array<{ horizonte: number | null; periodo_pronosticado: string | null; consumo_pronosticado_kwh: number | null; grupo_consumo?: string | null; fecha_corte?: string | null; modelo?: string | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/forecast`, { token }),
+  /** Las 13 consultas de la ficha en UNA sola petición: una sola entrada de auth/sesión en vez de 13. */
+  ficha: (token: string | undefined, niu: string) => request<FichaData>(`/api/data/clients/${encodeURIComponent(niu)}/ficha`, { token }),
   locations: (token: string | undefined, limit = 5000) => request<Array<Record<string, unknown>>>(`/api/data/locations${query({ limit })}`, { token }),
   catalog: (token: string | undefined) => request<Array<{ dataset_key: string; rows: number }>>("/api/data/datasets/catalog", { token }),
   /** Consumo total proyectado por mes: la tarjeta "Consumo total proyectado por mes" del pronóstico. */
