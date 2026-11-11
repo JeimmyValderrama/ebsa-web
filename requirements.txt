@@ -4,3 +4,7 @@ mssql-python==1.15.0
 sqlalchemy==2.1.4
 uvicorn[standard]==0.35.0
 python-dotenv==1.2.4
+python-tds==1.17.1
+sqlalchemy-pytds==1.0.3
+pyOpenSSL==24.3.0
+certifi==2026.10.23

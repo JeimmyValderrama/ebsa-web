@@ -4,6 +4,7 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
+import certifi
 from dotenv import load_dotenv
 from sqlalchemy import URL, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -27,23 +28,33 @@ def database_url() -> str:
     """
     configured = os.getenv("EBSA_DATABASE_URL")
     if configured:
-        if configured.startswith(("mssql+mssqlpython://", "sqlite:///")):
+        if configured.startswith(("mssql+mssqlpython://", "mssql+pytds://", "sqlite:///")):
             return configured
-        raise RuntimeError("EBSA_DATABASE_URL debe usar mssql+mssqlpython:// para Azure SQL o sqlite:/// para pruebas locales.")
+        raise RuntimeError("EBSA_DATABASE_URL debe usar mssql+mssqlpython:// o mssql+pytds:// para Azure SQL o sqlite:/// para pruebas locales.")
 
     server = os.getenv("AZURE_SQL_SERVER")
     database = os.getenv("AZURE_SQL_DATABASE", "ebsa")
     username = os.getenv("AZURE_SQL_USERNAME")
     password = os.getenv("AZURE_SQL_PASSWORD")
     if server and username and password:
+        # En Vercel (Linux) el driver ODBC de mssql-python no puede cargar sus
+        # librerías de sistema, así que ahí se usa pytds (puro Python, con TLS
+        # vía pyOpenSSL). Local sigue con mssql-python salvo que se pida lo otro
+        # con EBSA_SQL_DRIVER=pytds.
+        if os.getenv("EBSA_SQL_DRIVER") == "pytds":
+            driver = "mssql+pytds"
+            query = {"timeout": "30", "login_timeout": "30"}
+        else:
+            driver = "mssql+mssqlpython"
+            query = {"encrypt": "yes", "trustservercertificate": "no"}
         url = URL.create(
-            "mssql+mssqlpython",
+            driver,
             username=username,
             password=password,
             host=server,
             port=int(os.getenv("AZURE_SQL_PORT", "1433")),
             database=database,
-            query={"encrypt": "yes", "trustservercertificate": "no"},
+            query=query,
         )
         return url.render_as_string(hide_password=False)
 
@@ -56,11 +67,17 @@ def _engine_kwargs(url: str) -> dict[str, object]:
         return {"connect_args": {"check_same_thread": False}}
     # timeout=30 es el intento de conexión (login); sin él, una ruta caída a
     # Azure deja el proceso esperando indefinidamente.
+    connect_args: dict[str, object] = {"timeout": 30}
+    if url.startswith("mssql+pytds"):
+        # pytds solo activa el TLS si recibe el bundle de CAs (Azure SQL obliga
+        # a cifrar). El dialecto descarta parámetros de URL desconocidos, así
+        # que el cafile va por connect_args.
+        connect_args["cafile"] = certifi.where()
     return {
         "pool_pre_ping": True,
         "pool_recycle": 1800,
         "pool_timeout": 30,
-        "connect_args": {"timeout": 30},
+        "connect_args": connect_args,
     }
 
 
