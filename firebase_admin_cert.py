@@ -26,11 +26,17 @@ def certificado_servicio() -> dict[str, Any]:
     faltan = [name for name in FIREBASE_VARS if not os.getenv(name)]
     if faltan:
         raise RuntimeError(f"Faltan variables de Firebase: {', '.join(faltan)}")
+    # La llave puede llegar con comillas (estilo dotenv) y con \n literales:
+    # se normaliza para que el PEM siempre quede con saltos de línea reales.
+    # Sin esto, cryptography 44 (la que trae pyOpenSSL 24) rechaza el PEM
+    # ("Could not deserialize key data") y el login falla con "El token de
+    # Firebase es inválido".
+    clave_pem = os.environ["FIREBASE_PRIVATE_KEY"].strip().strip("\"'").strip().replace("\\n", "\n")
     return {
         "type": "service_account",
         "project_id": os.environ["FIREBASE_PROJECT_ID"],
         "client_email": os.environ["FIREBASE_CLIENT_EMAIL"],
-        "private_key": os.environ["FIREBASE_PRIVATE_KEY"].replace("\\n", "\n"),
+        "private_key": clave_pem,
         # google-auth exige token_uri; el JSON descargado lo trae, aquí se reconstruye.
         "token_uri": "https://oauth2.googleapis.com/token",
     }
