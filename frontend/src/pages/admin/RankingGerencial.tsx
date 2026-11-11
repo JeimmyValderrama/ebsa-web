@@ -6,6 +6,7 @@ import { Deslizador, PanelFiltros, type CampoFiltro } from "../../components/v2/
 import { TablaPro, type Fila } from "../../components/v2/TablaPro";
 import { Conteo, md, useEsMovil } from "../../charts/textos";
 import { AYUDA_MUNICIPIO, AYUDA_ZONA_REGIONAL, GRUPOS_CONSUMO_ORDEN } from "../../lib/negocio";
+import { FichaCliente } from "../../components/v2/FichaCliente";
 import { fmtMedida, fmtN, formatoTabla } from "../../lib/format";
 import { useCorte } from "../../lib/useCorte";
 
@@ -208,6 +209,7 @@ export function RankingGerencial({ token }: { token?: string | null }) {
             destacada={colMedida}
             que="clientes"
             descargar={descarga}
+            ficha={(niu) => <FichaCliente niu={niu} token={token} />}
           />
           <p className="v2-caption">{md(PIE)}</p>
         </>

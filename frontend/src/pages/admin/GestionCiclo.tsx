@@ -8,6 +8,7 @@ import { Barras, BarrasApiladas } from "../../charts/Graficas";
 import { AZUL, COLOR_GRAVEDAD, GRIS_ANTIGUA } from "../../charts/paleta";
 import { AYUDA_ZONA_REGIONAL, GRUPOS_CONSUMO_ORDEN, ZONAS_REGIONALES, etiquetaCiclo } from "../../lib/negocio";
 import { BAJADA_SEVERIDAD, ORDEN_SEVERIDAD } from "../../components/v2/textos";
+import { FichaCliente } from "../../components/v2/FichaCliente";
 import { fmtN, formatoTabla, pesos } from "../../lib/format";
 import { useCorte } from "../../lib/useCorte";
 
@@ -356,6 +357,7 @@ export function GestionCiclo({ token }: { token?: string | null }) {
             destacada="valor_riesgo_mes"
             que="clientes"
             descargar={descarga}
+            ficha={(niu) => <FichaCliente niu={niu} token={token} />}
           />
 
           <details className="v2-exp" open={!movil}>

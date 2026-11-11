@@ -4,6 +4,7 @@ import { usePresentation } from "../app/Presentation";
 import { Aviso, ComoLeer, Kpis, Tarjeta, TituloPagina, type ItemKpi } from "./v2/ui";
 import { PanelFiltros, type CampoFiltro } from "./v2/filtros";
 import { TablaPro, type Fila } from "./v2/TablaPro";
+import { FichaCliente } from "./v2/FichaCliente";
 import { Conteo, md, useEsMovil } from "../charts/textos";
 import { energia, fmtN, formatoTabla, mesLargo, pesos, probPct } from "../lib/format";
 import { AYUDA_MUNICIPIO, AYUDA_ZONA_REGIONAL, ESTADO_LISTA_SIMPLE, etiqueta } from "../lib/negocio";
@@ -319,6 +320,7 @@ export function Fuga({ token }: { token?: string | null }) {
         columnaId="NIU"
         ordenNumerico={ordenNumerico}
         sensibles={["NIU"]}
+        ficha={(niu) => <FichaCliente token={token} niu={niu} />}
       />
 
       <Aviso texto={AVISO_LIMITE} tipo="limite" />
@@ -344,6 +346,7 @@ export function Fuga({ token }: { token?: string | null }) {
             ordenNumerico={{ "Probabilidad (6 meses)": datos.vigilancia.map((fila) => fila.prob ?? 0) }}
             sensibles={["NIU"]}
             descargar={descargaVigilancia}
+            ficha={(niu) => <FichaCliente token={token} niu={niu} />}
           />
         )}
       </Tarjeta>

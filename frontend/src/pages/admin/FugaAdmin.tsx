@@ -3,6 +3,7 @@ import { api, type FugaData } from "../../lib/api";
 import { Aviso, Encabezado, Kpis, TablaSimple, Tarjeta, TituloPagina, type ItemKpi } from "../../components/v2/ui";
 import { PanelFiltros, type CampoFiltro } from "../../components/v2/filtros";
 import { TablaPro, type Fila } from "../../components/v2/TablaPro";
+import { FichaCliente } from "../../components/v2/FichaCliente";
 import { Barras, BarrasApiladas } from "../../charts/Graficas";
 import { Conteo, md, useEsMovil } from "../../charts/textos";
 import { AZUL, NARANJA } from "../../charts/paleta";
@@ -532,6 +533,7 @@ export function FugaAdmin({ token }: { token?: string | null }) {
                   prob_fuga_6m: filas.map((fila) => Number(fila.prob_fuga_6m ?? 0)),
                   ranking: filas.map((fila) => Number(fila.ranking ?? 0)),
                 }}
+                ficha={(niu) => <FichaCliente token={token} niu={niu} />}
               />
 
               <details className="v2-exp" open={!movil}>
