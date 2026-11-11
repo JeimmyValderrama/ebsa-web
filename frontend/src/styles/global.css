@@ -1146,6 +1146,21 @@ textarea.search-input {
 .map-dot:hover { fill-opacity: 1; }
 
 /* ---------- ficha de cliente ---------- */
+
+/* Aire extra SOLO en la ficha (raíz .ficha-cliente): la versión base de .stack/.v2-pie
+   dejaba los bloques muy pegados (pies a 2px de los KPIs, secciones a 16px). */
+.ficha-cliente { gap: 30px; }
+.ficha-cliente .v2-ch { margin-bottom: 16px; }
+.ficha-cliente .v2-kpis { gap: 18px; }
+.ficha-cliente .v2-pie { margin: 14px 0 0; }
+.ficha-cliente .v2-pie + .v2-pie { margin-top: 8px; }
+.ficha-cliente .v2-aviso { margin-top: 20px; }
+.ficha-cliente .v2-aviso + .v2-kpis { margin-top: 4px; }
+.ficha-cliente .v2-ley { margin-top: 6px; }
+.ficha-cliente .vega-lite-figura { margin-top: 10px; }
+.ficha-cliente .v2-exp { margin-top: 16px; }
+.ficha-cliente .pron-grid { gap: 22px; }
+
 .ficha-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 14px; }
 .ficha-item {
   display: grid;

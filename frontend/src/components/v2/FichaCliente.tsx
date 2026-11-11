@@ -363,7 +363,7 @@ export function FichaCliente({ token, niu }: { token?: string | null; niu: strin
   }
 
   return (
-    <div className="stack">
+    <div className="stack ficha-cliente">
       <div>
         <Encabezado titulo="Quién es y dónde está" />
         <Kpis items={donde} columnas={4} compacto />
