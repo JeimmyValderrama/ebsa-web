@@ -63,6 +63,48 @@ type Datos = {
 const soloItem = (pagina: DatasetPage | null): Record<string, unknown> | null => pagina?.items[0]?.payload ?? null;
 const todosItems = (pagina: DatasetPage | null): Array<Record<string, unknown>> => pagina?.items.map((item) => item.payload) ?? [];
 
+/**
+ * Fichas ya consultadas por NIU: al volver a elegir un cliente (o abrir la
+ * misma ficha en otra tabla) se pinta al instante en vez de repetir las 13
+ * consultas y volver a mostrar "Consultando el corte vigente…". Los datos solo
+ * cambian cuando el pipeline vuelve a correr, así que la entrada vive 5 minutos
+ * y un fallo (p. ej. token vencido) la borra para reintentar limpia.
+ */
+const CACHE_FICHA = new Map<string, { vencimiento: number; datos: Promise<Datos> }>();
+const CACHE_TTL_MS = 5 * 60_000;
+
+/** Las 13 consultas de la ficha, todas en paralelo. */
+const cargarFicha = (token: string | null | undefined, niu: string): Promise<Datos> =>
+  Promise.all([
+    api.client(token ?? undefined, niu).catch(() => null),
+    api.dataset(token ?? undefined, "operational", { niu, limit: 1 }).catch(() => null),
+    api.dataset(token ?? undefined, "churn_scores", { niu, limit: 1 }).catch(() => null),
+    api.dataset(token ?? undefined, "locations", { niu, limit: 1 }).catch(() => null),
+    api.dataset(token ?? undefined, "churn_other_supplier", { niu, limit: 1 }).catch(() => null),
+    api.dataset(token ?? undefined, "churn_non_regulated", { niu, limit: 1 }).catch(() => null),
+    api.dataset(token ?? undefined, "zero_sustained", { niu, limit: 1 }).catch(() => null),
+    api.consumption(token ?? undefined, niu).catch(() => []),
+    api.forecast(token ?? undefined, niu).catch(() => []),
+    api.dataset(token ?? undefined, "autogenerators", { niu, limit: 1 }).catch(() => null),
+    api.dataset(token ?? undefined, "clusters", { niu, limit: 1 }).catch(() => null),
+    api.dataset(token ?? undefined, "zone_cuts", { limit: 5 }).catch(() => null),
+    api.dataset(token ?? undefined, "model_usage", { limit: 30 }).catch(() => null),
+  ]).then(([cliente, operativa, fuga, ubicacion, otros, noRegulado, cero, consumo, pronostico, auto, segmento, cortes, uso]) => ({
+    cliente,
+    operativa: soloItem(operativa as DatasetPage),
+    fuga: soloItem(fuga as DatasetPage),
+    ubicacion: soloItem(ubicacion as DatasetPage),
+    otros: soloItem(otros as DatasetPage),
+    noRegulado: soloItem(noRegulado as DatasetPage),
+    cero: soloItem(cero as DatasetPage),
+    auto: soloItem(auto as DatasetPage),
+    segmento: soloItem(segmento as DatasetPage),
+    cortes: todosItems(cortes as DatasetPage),
+    usoModelos: todosItems(uso as DatasetPage),
+    consumo,
+    pronostico,
+  }));
+
 /** es_rural del último mes de la serie (sc["es_rural"].iloc[-1] del original). */
 const esRuralDe = (consumo: Datos["consumo"]): boolean => Boolean(consumo.length ? consumo[consumo.length - 1]?.es_rural : false);
 
@@ -87,45 +129,25 @@ export function FichaCliente({ token, niu }: { token?: string | null; niu: strin
       return;
     }
     let cancelled = false;
+    const guardado = CACHE_FICHA.get(niu);
+    const entrada = guardado && guardado.vencimiento > Date.now()
+      ? guardado
+      : { vencimiento: Date.now() + CACHE_TTL_MS, datos: cargarFicha(token ?? undefined, niu) };
+    CACHE_FICHA.set(niu, entrada);
     setCargando(true);
-    Promise.all([
-      api.client(token ?? undefined, niu).catch(() => null),
-      api.dataset(token ?? undefined, "operational", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "churn_scores", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "locations", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "churn_other_supplier", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "churn_non_regulated", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "zero_sustained", { niu, limit: 1 }).catch(() => null),
-      api.consumption(token ?? undefined, niu).catch(() => []),
-      api.forecast(token ?? undefined, niu).catch(() => []),
-      api.dataset(token ?? undefined, "autogenerators", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "clusters", { niu, limit: 1 }).catch(() => null),
-      api.dataset(token ?? undefined, "zone_cuts", { limit: 5 }).catch(() => null),
-      api.dataset(token ?? undefined, "model_usage", { limit: 30 }).catch(() => null),
-    ])
-      .then(([cliente, operativa, fuga, ubicacion, otros, noRegulado, cero, consumo, pronostico, auto, segmento, cortes, uso]) => {
+    entrada.datos
+      .then((valor) => {
+        // Si la consulta principal falló no se guarda: una ficha vacía no debe
+        // servirse de cache la próxima vez que se pida.
+        if (valor.cliente === null) CACHE_FICHA.delete(niu);
         if (cancelled) return;
-        setDatos({
-          cliente,
-          operativa: soloItem(operativa as DatasetPage),
-          fuga: soloItem(fuga as DatasetPage),
-          ubicacion: soloItem(ubicacion as DatasetPage),
-          otros: soloItem(otros as DatasetPage),
-          noRegulado: soloItem(noRegulado as DatasetPage),
-          cero: soloItem(cero as DatasetPage),
-          auto: soloItem(auto as DatasetPage),
-          segmento: soloItem(segmento as DatasetPage),
-          cortes: todosItems(cortes as DatasetPage),
-          usoModelos: todosItems(uso as DatasetPage),
-          consumo,
-          pronostico,
-        });
+        setDatos(valor);
         setError(null);
+        setCargando(false);
       })
       .catch((cause: unknown) => {
+        CACHE_FICHA.delete(niu);
         if (!cancelled) setError(cause instanceof Error ? cause.message : "No fue posible consultar el cliente.");
-      })
-      .finally(() => {
         if (!cancelled) setCargando(false);
       });
     return () => {
