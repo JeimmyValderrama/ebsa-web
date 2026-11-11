@@ -20,7 +20,7 @@ import { Aviso, Encabezado, Kpis, TablaSimple, type ItemKpi } from "./ui";
 /**
  * Ficha de un cliente (ficha_cliente_simple del Streamlit): quién es y dónde está, situación hoy
  * (avisos, la caída con sus tres casos y la fuga), cómo ha venido consumiendo y el pronóstico a
- * 6 meses con sus columnas. Se usa debajo de las tablas (tabla_con_ficha) y en "Consultar un cliente".
+ * 6 meses con sus columnas. Se usa en "Consultar un cliente".
  */
 
 /** AYUDA_NIVEL_TENSION del Streamlit. */

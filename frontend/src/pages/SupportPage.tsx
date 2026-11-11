@@ -698,7 +698,6 @@ function VisitasPorCiclo({ token }: { token?: string | null }) {
                   nombre: `Descargar la ruta del ciclo ${codigoCiclo} (CSV)`,
                   archivo: `visitas_ciclo_${codigoCiclo}_${corte || ""}.csv`,
                 }}
-                ficha={(niu) => <FichaCliente token={token} niu={niu} />}
               />
 
               {puntos.length > 0 && (

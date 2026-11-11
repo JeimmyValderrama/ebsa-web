@@ -5,7 +5,6 @@ import { useCorte } from "../lib/useCorte";
 import { Aviso, ComoLeer, Kpis, TituloPagina, type ItemKpi } from "./v2/ui";
 import { Deslizador, PanelFiltros, type CampoFiltro } from "./v2/filtros";
 import { TablaPro, type Fila } from "./v2/TablaPro";
-import { FichaCliente } from "./v2/FichaCliente";
 import { Conteo, Leyenda, md, useEsMovil } from "../charts/textos";
 import { BarrasApiladas } from "../charts/Graficas";
 import { C, COLOR_GRAVEDAD, SEVERIDAD_SIMPLE } from "../charts/paleta";
@@ -21,8 +20,8 @@ import {
 } from "../lib/negocio";
 
 /**
- * Sección "Caídas de consumo" del Streamlit: filtros de la lista, indicadores, tabla con la ficha
- * del cliente elegido, gravedad por zona de toda la lista, aviso de clientes en cero y cómo leer.
+ * Sección "Caídas de consumo" del Streamlit: filtros de la lista, indicadores, tabla,
+ * gravedad por zona de toda la lista, aviso de clientes en cero y cómo leer.
  */
 
 const DEFECTO: Record<string, string[]> = { pri: ["GESTIONAR"], tip: [], grav: [], ten: [], zon: [], mun: [], cla: [], tam: [] };
@@ -305,7 +304,6 @@ export function ListaCaida({ token }: { token?: string | null }) {
               ordenNumerico={ordenNumerico}
               sensibles={["NIU"]}
               descargar={descarga}
-              ficha={(niu) => <FichaCliente token={token} niu={niu} />}
             />
           </>
         )}

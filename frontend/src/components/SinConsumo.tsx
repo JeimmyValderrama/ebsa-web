@@ -5,7 +5,6 @@ import { useCorte } from "../lib/useCorte";
 import { Aviso, ComoLeer, Kpis, Tarjeta, TituloPagina, type ItemKpi } from "./v2/ui";
 import { PanelFiltros, type CampoFiltro } from "./v2/filtros";
 import { TablaPro, type Fila } from "./v2/TablaPro";
-import { FichaCliente } from "./v2/FichaCliente";
 import { Conteo, Pie, md, useEsMovil } from "../charts/textos";
 import { Barras } from "../charts/Graficas";
 import { AZUL } from "../charts/paleta";
@@ -334,7 +333,6 @@ export function SinConsumo({ token }: { token?: string | null }) {
         columnaId="NIU"
         sensibles={["NIU"]}
         descargar={descarga}
-        ficha={(niu) => <FichaCliente token={token} niu={niu} />}
       />
 
       <ComoLeer
