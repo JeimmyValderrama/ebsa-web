@@ -1596,11 +1596,12 @@ def resultados_de_las_visitas(
 ) -> dict[str, Any]:
     """Resultados de las visitas contra la lista (sección "Retroalimentación" del Streamlit).
 
-    Primero se lee el resumen real (dataset retro_resumen, Evaluacion_retroalimentacion_gestion.ipynb);
-    si no hay ninguno se cae al ejemplo simulado del disco —igual que hace el original con
-    R.gestion/retroalimentacion/ejemplo_simulado— y la respuesta lo marca con `ejemplo`."""
+    Primero se lee el resumen real (dataset feedback_summary, Evaluacion_retroalimentacion_gestion.ipynb;
+    el manifiesto del importador lo guarda con esa clave); si no hay ninguno se cae al ejemplo
+    simulado del disco —igual que hace el original con R.gestion/retroalimentacion/ejemplo_simulado—
+    y la respuesta lo marca con `ejemplo`."""
     try:
-        filas, total = dataset_service.query_dataset(db, "retro_resumen", 2000, 0)
+        filas, total = dataset_service.query_dataset(db, "feedback_summary", 2000, 0)
     except OperationalError as exc:
         raise schema_error(exc) from exc
     if total:
