@@ -13,6 +13,10 @@ from sqlalchemy import String, case, cast, func, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from database.db import get_db
 from database.models import (
     Client,
@@ -69,6 +73,13 @@ def _corte_operativo(db: Session) -> int:
 
 
 def schema_error(exc: Exception) -> HTTPException:
+    # Diagnostico: el503 no dice la causa real; el mensaje se registra en los
+    # logs de Vercel (sin la contrasena, por si aparece en el texto).
+    detalle = str(exc)
+    password = os.getenv("AZURE_SQL_PASSWORD") or ""
+    if password:
+        detalle = detalle.replace(password, "***")
+    logger.error("Fallo de base de datos: %s", detalle)
     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="El esquema Azure SQL aún no está aplicado o no se puede alcanzar.")
 
 
