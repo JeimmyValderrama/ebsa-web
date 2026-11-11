@@ -69,8 +69,10 @@ const todosItems = (pagina: DatasetPage | null): Array<Record<string, unknown>> 
  * consultas y volver a mostrar "Consultando el corte vigente…". Los datos solo
  * cambian cuando el pipeline vuelve a correr, así que la entrada vive 5 minutos
  * y un fallo (p. ej. token vencido) la borra para reintentar limpia.
+ * `valor` guarda la respuesta ya resuelta para servirla sin pasar por "cargando".
  */
-const CACHE_FICHA = new Map<string, { vencimiento: number; datos: Promise<Datos> }>();
+type EntradaFicha = { vencimiento: number; datos: Promise<Datos>; valor?: Datos };
+const CACHE_FICHA = new Map<string, EntradaFicha>();
 const CACHE_TTL_MS = 5 * 60_000;
 
 /** Las 13 consultas de la ficha, todas en paralelo. */
@@ -130,16 +132,28 @@ export function FichaCliente({ token, niu }: { token?: string | null; niu: strin
     }
     let cancelled = false;
     const guardado = CACHE_FICHA.get(niu);
-    const entrada = guardado && guardado.vencimiento > Date.now()
+    const entrada: EntradaFicha = guardado && guardado.vencimiento > Date.now()
       ? guardado
       : { vencimiento: Date.now() + CACHE_TTL_MS, datos: cargarFicha(token ?? undefined, niu) };
     CACHE_FICHA.set(niu, entrada);
-    setCargando(true);
+    if (entrada.valor) {
+      // Ya consultada antes: se pinta al instante, sin parpadear "cargando".
+      setDatos(entrada.valor);
+      setError(null);
+      setCargando(false);
+    } else {
+      // Sin dato de ESTE cliente todavía: se borra la ficha anterior para que
+      // mientras carga se vea el estado de carga y no los datos del cliente previo.
+      setDatos(null);
+      setError(null);
+      setCargando(true);
+    }
     entrada.datos
       .then((valor) => {
         // Si la consulta principal falló no se guarda: una ficha vacía no debe
         // servirse de cache la próxima vez que se pida.
         if (valor.cliente === null) CACHE_FICHA.delete(niu);
+        else entrada.valor = valor;
         if (cancelled) return;
         setDatos(valor);
         setError(null);
