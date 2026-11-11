@@ -4,12 +4,15 @@ import csv
 import io
 import json
 import os
+import urllib.error
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy import String, case, cast, func, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
@@ -1194,21 +1197,73 @@ def _dentro_de(ruta: Path, base: Path) -> bool:
         return False
 
 
+def _blob_config() -> tuple[str, str]:
+    """URL base del contenedor de exportes en Azure Blob y su SAS de lectura.
+
+    Vienen de EBSA_BLOB_BASE_URL/EBSA_BLOB_SAS (panel de Vercel); sin ellas las
+    descargas siguen siendo solo locales, como antes de existir el Blob."""
+    base = os.getenv("EBSA_BLOB_BASE_URL", "").strip().rstrip("/")
+    sas = os.getenv("EBSA_BLOB_SAS", "").strip()
+    if sas and not sas.startswith("?"):
+        sas = "?" + sas
+    return base, sas
+
+
+def _blob_url(relativa: str) -> str | None:
+    """URL directa (con SAS) de un archivo del índice dentro del contenedor."""
+    base, sas = _blob_config()
+    if not base:
+        return None
+    return f"{base}/{quote(relativa, safe='/')}{sas}"
+
+
+def _blob_tamano(url: str) -> int | None:
+    """Tamaño en bytes si el blob responde 200 a un HEAD; None si no existe o no se pudo consultar."""
+    try:
+        peticion = urllib.request.Request(url, method="HEAD")
+        with urllib.request.urlopen(peticion, timeout=15) as respuesta:
+            if respuesta.status == 200:
+                return int(respuesta.headers.get("Content-Length") or 0)
+    except (urllib.error.URLError, ValueError, TimeoutError, OSError):
+        return None
+    return None
+
+
 @router.get("/exportes")
 def listar_exportes(db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> dict[str, Any]:
     """Índice de exportes del negocio (11_exportes_negocio) agrupado por producto, con el estado y el
-    tamaño reales de cada archivo en disco. Solo se lee el índice: los CSV pesan hasta ~145 MB."""
+    tamaño reales de cada archivo. Solo se lee el índice: los CSV pesan hasta ~145 MB. El estado se
+    resuelve contra disco y, lo que no esté ahí, contra Azure Blob (HEAD en paralelo) si está configurado."""
     try:
         items, total = dataset_service.query_dataset(db, "exports_index", 500, 0)
     except OperationalError as exc:
         raise schema_error(exc) from exc
     base = _directorio_datos()
+    # Disco primero (dev local); lo que no esté ahí y tenga Blob configurado se
+    # consulta al contenedor con un HEAD por archivo, en paralelo (21 ≈ un segundo).
+    estados: dict[str, tuple[bool, int | None]] = {}
+    pendientes: list[str] = []
+    for item in items:
+        relativa = str((item.get("payload") or {}).get("archivo") or "").replace("\\", "/")
+        if not relativa or relativa in estados:
+            continue
+        ruta = base / relativa
+        if ruta.is_file() and _dentro_de(ruta, base):
+            estados[relativa] = (True, ruta.stat().st_size)
+        else:
+            estados[relativa] = (False, None)
+            pendientes.append(relativa)
+    if pendientes and _blob_config()[0]:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            tamanos = list(pool.map(lambda rel: _blob_tamano(_blob_url(rel) or ""), pendientes))
+        for relativa, tamano in zip(pendientes, tamanos):
+            if tamano is not None:
+                estados[relativa] = (True, tamano)
     productos: dict[str, list[dict[str, Any]]] = {}
     for item in items:
         fila = item.get("payload") or {}
         relativa = str(fila.get("archivo") or "").replace("\\", "/")
-        ruta = (base / relativa) if relativa else None
-        existe = bool(ruta and ruta.is_file() and _dentro_de(ruta, base))
+        existe, tamano = estados.get(relativa, (False, None))
         clientes = fila.get("clientes")
         productos.setdefault(str(fila.get("producto") or "otros"), []).append({
             "grupo_consumo": fila.get("grupo_consumo"),
@@ -1216,7 +1271,7 @@ def listar_exportes(db: Session = Depends(get_db), _: dict[str, Any] = Depends(r
             "fecha_corte": fila.get("fecha_corte"),
             "archivo": Path(relativa).name,
             "ruta": relativa,
-            "tamano_mb": round(ruta.stat().st_size / 1e6, 1) if existe else None,
+            "tamano_mb": round(tamano / 1e6, 1) if existe and tamano is not None else None,
             "estado": "disponible" if existe else "no encontrado",
         })
     return {"productos": [{"producto": producto, "filas": filas} for producto, filas in productos.items()], "total": total, "directorio": base.name}
@@ -1228,8 +1283,9 @@ def descargar_exporte(
     db: Session = Depends(get_db),
     _: dict[str, Any] = Depends(require_roles(*ALL_ROLES)),
 ) -> Response:
-    """Descarga un archivo de 11_exportes_negocio tal como está en disco. Solo se sirven las rutas que
-    están en el índice (y dentro de la carpeta de datos); el archivo va por streaming."""
+    """Descarga un archivo de 11_exportes_negocio. Solo se sirven las rutas que están en el índice
+    (y dentro de la carpeta de datos): si está en disco va por streaming como siempre; si no, se
+    redirige con 307 a Azure Blob (EBSA_BLOB_BASE_URL + SAS) y el archivo baja sin pasar por Vercel."""
     try:
         items, _ = dataset_service.query_dataset(db, "exports_index", 500, 0)
     except OperationalError as exc:
@@ -1240,9 +1296,12 @@ def descargar_exporte(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ese archivo no está en el índice de exportes.")
     base = _directorio_datos()
     ruta = base / relativa
-    if not _dentro_de(ruta, base) or not ruta.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El archivo no existe en disco en este equipo. Corre el pipeline (paso 15) y vuelve a intentarlo.")
-    return FileResponse(ruta, media_type="text/csv; charset=utf-8", filename=ruta.name)
+    if _dentro_de(ruta, base) and ruta.is_file():
+        return FileResponse(ruta, media_type="text/csv; charset=utf-8", filename=ruta.name)
+    destino = _blob_url(relativa)
+    if destino:
+        return RedirectResponse(destino, status_code=307)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El archivo no existe en disco en este equipo. Corre el pipeline (paso 15) y vuelve a intentarlo.")
 
 
 # Claves del payload que lee el frontend de la ruta de visitas (GestionCiclo.aFila, sus filtros y
