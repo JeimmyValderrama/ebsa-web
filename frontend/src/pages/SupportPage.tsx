@@ -257,7 +257,19 @@ function BuscaPorMunicipio({ token }: { token?: string | null }) {
         </p>
       )}
 
-      {filas.length > 0 && <TablaSimple columnas={columnas} filas={filas} formato={formato} alto={360} />}
+      {filas.length > 0 && (
+        <TablaPro
+          filas={filas}
+          columnas={columnas}
+          formato={formato}
+          que="resultados"
+          columnaId="NIU"
+          buscar={false}
+          porPagina={50}
+          sensibles={["NIU"]}
+          ficha={(niu) => <FichaCliente token={token} niu={niu} />}
+        />
+      )}
       {filas.length === 0 && !error && <div className="empty-state">Ningún cliente cumple estos filtros. Prueba a quitar alguno.</div>}
     </div>
   );
