@@ -26,6 +26,7 @@ export function TablaPro({
   sensibles = [],
   descargar,
   ficha,
+  sinMenu = false,
 }: {
   filas: Fila[];
   columnas: string[];
@@ -45,6 +46,9 @@ export function TablaPro({
   /** Descarga: el CSV se genera aquí con las filas filtradas y ordenadas (ver descargarCsv). */
   descargar?: { nombre: string; archivo: string } | null;
   ficha?: (niu: string) => ReactNode;
+  /** Oculta el menú desplegable "Ordenar y columnas"; el orden por las flechas del
+   *  encabezado sigue funcionando. Si tampoco hay búsqueda, se omite toda la barra. */
+  sinMenu?: boolean;
 }) {
   const esMovil = useEsMovil();
   const [q, setQ] = useState("");
@@ -236,6 +240,7 @@ export function TablaPro({
 
   return (
     <div className="tabla-pro">
+      {(buscar && total > 8) || !sinMenu ? (
       <div className="ctl-fila">
         <div>{buscar && total > 8 ? (
           <input
@@ -247,6 +252,7 @@ export function TablaPro({
           />
         ) : null}</div>
         <div className="ctl-pops">
+          {sinMenu ? null : (
           <Pop etiqueta="Ordenar y columnas">
             <label className="campo">
               <span>Ordenar por</span>
@@ -314,8 +320,10 @@ export function TablaPro({
               </div>
             ) : null}
           </Pop>
+          )}
         </div>
       </div>
+      ) : null}
 
       {n === 0 ? (
         <p className="empty-state">

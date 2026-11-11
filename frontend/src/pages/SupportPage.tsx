@@ -265,6 +265,7 @@ function BuscaPorMunicipio({ token }: { token?: string | null }) {
           que="resultados"
           columnaId="NIU"
           buscar={false}
+          sinMenu
           porPagina={50}
           sensibles={["NIU"]}
           ficha={(niu) => <FichaCliente token={token} niu={niu} />}
