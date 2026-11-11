@@ -2,7 +2,16 @@
 # Espejo de .gitignore + streamlit_original (que .gitignore solo cubre como
 # "streamlit_origen/" y por eso se subio entero rompiendo el deploy).
 streamlit_original/
-streamlit_origen/
+# Igual que en .gitignore: solo entra el ejemplo simulado de retroalimentacion.
+streamlit_origen/*
+!streamlit_origen/datos
+streamlit_origen/datos/*
+!streamlit_origen/datos/07_gestion_caida
+streamlit_origen/datos/07_gestion_caida/*
+!streamlit_origen/datos/07_gestion_caida/retroalimentacion
+streamlit_origen/datos/07_gestion_caida/retroalimentacion/*
+!streamlit_origen/datos/07_gestion_caida/retroalimentacion/ejemplo_simulado
+streamlit_origen/datos/07_gestion_caida/retroalimentacion/ejemplo_simulado/*
 
 # Secrets
 .env
@@ -31,6 +40,8 @@ data/
 *.db
 *.db-journal
 *.sqlite*
+# Debe ir despues de *.csv: ultima regla que gana para ese archivo.
+!streamlit_origen/datos/07_gestion_caida/retroalimentacion/ejemplo_simulado/EJEMPLO_SIMULADO_evaluacion_resumen.csv
 carga_checkpoint.json
 carga_checkpoint.json.tmp
 carga_checkpoint.json.temp

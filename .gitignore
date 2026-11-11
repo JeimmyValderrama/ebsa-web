@@ -20,13 +20,26 @@ frontend/dist/
 
 # Local data and generated files
 data/
-streamlit_origen/
+# streamlit_origen queda fuera excepto por la cadena de abajo: el ejemplo
+# simulado de retroalimentacion que la API de produccion sirve en Resultados
+# de las visitas (un solo CSV de pocos KB; el resto del arbol sigue fuera).
+streamlit_origen/*
+!streamlit_origen/datos
+streamlit_origen/datos/*
+!streamlit_origen/datos/07_gestion_caida
+streamlit_origen/datos/07_gestion_caida/*
+!streamlit_origen/datos/07_gestion_caida/retroalimentacion
+streamlit_origen/datos/07_gestion_caida/retroalimentacion/*
+!streamlit_origen/datos/07_gestion_caida/retroalimentacion/ejemplo_simulado
+streamlit_origen/datos/07_gestion_caida/retroalimentacion/ejemplo_simulado/*
 *.csv
 *.parquet
 *.feather
 *.db
 *.db-journal
 *.sqlite*
+# Debe ir despues de *.csv: ultima regla que gana para ese archivo.
+!streamlit_origen/datos/07_gestion_caida/retroalimentacion/ejemplo_simulado/EJEMPLO_SIMULADO_evaluacion_resumen.csv
 
 # Estado de la importacion escalonada (se regenera en cada corrida)
 carga_checkpoint.json
