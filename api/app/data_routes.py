@@ -1149,13 +1149,32 @@ def locations_by_niu(db: Session, nius: list[str], solo_municipio: bool = False)
 
 
 def clients_by_niu(db: Session, nius: list[str]) -> dict[str, dict[str, Any]]:
-    """Atributos de catálogo del cliente (zona, ciclo, clase) por lote."""
+    """Atributos de catálogo del cliente (zona, ciclo, clase) por lote.
+
+    En Azure la lista viaja como JSON (OPENJSON con CAST para conservar el índice PK de niu):
+    con pymssql los 1.000 parámetros de un IN() caían en conversión implícita y cada lote
+    barria las 608 mil filas de clients (~35 s por lote y ~3 min por la tabla, que era justo
+    lo que tardaba Visitas por ciclo). En SQLite, sin esa latencia, se sigue consultando por
+    lotes de 1.000 como antes."""
     result: dict[str, dict[str, Any]] = {}
     unique = list(dict.fromkeys(niu for niu in nius if niu))
-    for start in range(0, len(unique), 1000):
-        chunk = unique[start : start + 1000]
-        for row in db.execute(select(Client.niu, Client.zona_regional, Client.zona_nombre, Client.ciclo_etiqueta, Client.clase_servicio_nombre).where(Client.niu.in_(chunk))).all():
-            result[row.niu] = {"zona_regional": row.zona_regional, "zona_nombre": row.zona_nombre, "ciclo_etiqueta": row.ciclo_etiqueta, "clase_servicio_nombre": row.clase_servicio_nombre}
+    seleccion = select(Client.niu, Client.zona_regional, Client.zona_nombre, Client.ciclo_etiqueta, Client.clase_servicio_nombre)
+
+    def guardar(row: Any) -> None:
+        result[row.niu] = {"zona_regional": row.zona_regional, "zona_nombre": row.zona_nombre, "ciclo_etiqueta": row.ciclo_etiqueta, "clase_servicio_nombre": row.clase_servicio_nombre}
+
+    if db.get_bind().dialect.name == "mssql":
+        ancho = Client.niu.type.length or 80
+        condicion = text(f"niu IN (SELECT CAST(value AS varchar({ancho})) FROM OPENJSON(:lista))")
+        for start in range(0, len(unique), 20000):
+            lote = unique[start : start + 20000]
+            for row in db.execute(seleccion.where(condicion).params(lista=json.dumps(lote))).all():
+                guardar(row)
+    else:
+        for start in range(0, len(unique), 1000):
+            chunk = unique[start : start + 1000]
+            for row in db.execute(seleccion.where(Client.niu.in_(chunk))).all():
+                guardar(row)
     return result
 
 
