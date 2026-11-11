@@ -9,6 +9,10 @@ from firebase_admin import auth
 
 from .firebase_auth import firebase_is_configured, verify_id_token
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 bearer_scheme = HTTPBearer(auto_error=False)
 VALID_ROLES = {"COMERCIAL", "SOPORTE", "ADMIN_MODELO"}
 
@@ -40,6 +44,9 @@ def current_user(
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
     except (ValueError, auth.InvalidIdTokenError, auth.ExpiredIdTokenError, auth.RevokedIdTokenError) as exc:
+        # Diagnostico: el 401 no dice por que se rechazo el token; la causa real
+        # queda en los logs de Vercel (sin el token ni datos del usuario).
+        logger.error("Token de Firebase rechazado: %s: %s", type(exc).__name__, exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="El token de Firebase es inválido, expiró o fue revocado.",
