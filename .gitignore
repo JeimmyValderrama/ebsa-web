@@ -55,3 +55,7 @@ Thumbs.db
 # Vercel
 .vercel/
 .vercel
+
+# Copia local del Streamlit original (641 MB, con .streamlit/secrets.toml):
+# jamas se sube a git; su espejo para Vercel esta en .vercelignore.
+streamlit_original/
