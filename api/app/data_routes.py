@@ -13,7 +13,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import FileResponse, RedirectResponse
-from sqlalchemy import String, case, cast, func, select, text
+from sqlalchemy import String, case, cast, func, literal, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
@@ -123,6 +123,16 @@ def risks(limit: int = Query(200, ge=1, le=2000), offset: int = Query(0, ge=0), 
         raise schema_error(exc) from exc
 
 
+def niu_igual(columna: Any, niu: str) -> Any:
+    """Igualdad de NIU con el tipo exacto de la columna (varchar(80)).
+
+    pymssql envía el parámetro como NVARCHAR y, sin el CAST, SQL Server convierte
+    la columna para comparar: el índice de NIU cae a escaneo completo. En
+    client_consumption_monthly (28,5 M de filas) eso pasaba la consulta de 0,13 s
+    a 21 s; con el CAST el plan vuelve a ser un seek. SQLite ignora el CAST."""
+    return columna == cast(literal(niu), String(80))
+
+
 def _ultima_fila(modelo: Any, niu: str) -> Any:
     """Fila más reciente de un modelo por NIU usando sesión propia.
 
@@ -133,7 +143,7 @@ def _ultima_fila(modelo: Any, niu: str) -> Any:
     la suya (el context manager la cierra y no hay nada que guardar).
     """
     with SessionLocal() as sesion:
-        return sesion.scalars(select(modelo).where(modelo.niu == niu).order_by(modelo.id.desc()).limit(1)).first()
+        return sesion.scalars(select(modelo).where(niu_igual(modelo.niu, niu)).order_by(modelo.id.desc()).limit(1)).first()
 
 
 def _filas_operacionales(niu: str) -> list[Any]:
@@ -142,7 +152,7 @@ def _filas_operacionales(niu: str) -> list[Any]:
         return list(
             sesion.scalars(
                 select(OperationalManagement)
-                .where(OperationalManagement.niu == niu)
+                .where(niu_igual(OperationalManagement.niu, niu))
                 .order_by(OperationalManagement.id.desc())
                 .limit(20)
             ).all()
@@ -170,13 +180,13 @@ def client_detail(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = D
 
 @router.get("/clients/{niu}/consumption")
 def client_consumption(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> list[dict[str, Any]]:
-    rows = db.scalars(select(ClientConsumptionMonthly).where(ClientConsumptionMonthly.niu == niu).order_by(ClientConsumptionMonthly.periodo.asc()).limit(120)).all()
+    rows = db.scalars(select(ClientConsumptionMonthly).where(niu_igual(ClientConsumptionMonthly.niu, niu)).order_by(ClientConsumptionMonthly.periodo.asc()).limit(120)).all()
     return [{"periodo": row.periodo.isoformat(), "consumo_kwh": float(row.consumo_kwh) if row.consumo_kwh is not None else None, "es_rural": row.es_rural, "estado_mes": row.estado_mes} for row in rows]
 
 
 @router.get("/clients/{niu}/forecast")
 def client_forecast(niu: str, db: Session = Depends(get_db), _: dict[str, Any] = Depends(require_roles(*ALL_ROLES))) -> list[dict[str, Any]]:
-    rows = db.scalars(select(ClientForecast).where(ClientForecast.niu == niu).order_by(ClientForecast.periodo_pronosticado.asc()).limit(12)).all()
+    rows = db.scalars(select(ClientForecast).where(niu_igual(ClientForecast.niu, niu)).order_by(ClientForecast.periodo_pronosticado.asc()).limit(12)).all()
     return [{"horizonte": row.horizonte, "periodo_pronosticado": row.periodo_pronosticado.isoformat() if row.periodo_pronosticado else None, "consumo_pronosticado_kwh": float(row.consumo_pronosticado_kwh) if row.consumo_pronosticado_kwh is not None else None, "grupo_consumo": row.grupo_consumo, "fecha_corte": row.fecha_corte.isoformat() if row.fecha_corte else None, "modelo": (row.payload or {}).get("modelo")} for row in rows]
 
 
