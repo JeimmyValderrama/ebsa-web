@@ -477,6 +477,15 @@ h3 { font-size: 20px; }
   min-width: 22ch;
   display: inline-block;
 }
+/* Columna de texto corrido ("Qué revisar" en Visitas por ciclo): ancho generoso para
+   que la celda no se apile en vertical; el contenedor hace scroll horizontal si hace falta. */
+.table-card th.th-texto {
+  min-width: max(min-content, 60ch);
+}
+.table-card th.th-texto .th-sort span:first-child {
+  min-width: 44ch;
+  display: inline-block;
+}
 .grafico-sin-consumo {
   padding-top: 40px;
 }

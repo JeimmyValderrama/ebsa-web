@@ -182,12 +182,16 @@ export function TablaPro({
     "Caída: valor en riesgo / mes",
     "Caída: kWh en riesgo / mes",
   ]);
+  // Columnas de texto corrido (párrafos enteros, p. ej. "Qué revisar"): ancho de sobra
+  // para que la celda no se apile en vertical; la tabla hace scroll horizontal si hace falta.
+  const COLUMNAS_TEXTO = new Set(["Qué revisar"]);
   const claseDe = (columna: string): string =>
     [
       columna === destacada ? "destacada" : "",
       columnasCifra.has(columna) ? "num" : "",
       fijadas.includes(columna) ? "fijada" : "",
       COLUMNAS_LARGAS.has(columna) ? "th-largo" : "",
+      COLUMNAS_TEXTO.has(columna) ? "th-texto" : "",
     ]
       .filter(Boolean)
       .join(" ");
