@@ -1,2 +1,15 @@
+[project]
+name = "ebsa-api"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.116.1",
+    "firebase-admin==7.1.0",
+    "mssql-python==1.15.0",
+    "sqlalchemy==2.1.4",
+    "uvicorn[standard]==0.35.0",
+    "python-dotenv==1.2.4",
+]
+
 [tool.vercel]
 entrypoint = "api/index.py:app"
