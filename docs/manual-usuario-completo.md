@@ -44,6 +44,7 @@ Y sus notas complementarias (misma tarjeta):
 
 - **Corte activo** (píldora "Corte …", arriba a la derecha): mes de datos consultado; lo fija el pipeline.
   - Leyenda de periodo (texto literal): *"Periodo facturado: **urbano \<mes\>** · **rural \<mes\>** (los rurales se leen por trimestres, por eso su periodo puede ir un par de meses atrás)."*
+- **Sesión:** permanece abierta aunque apagues el equipo o cierres el navegador (se guarda en el navegador, no en el servidor); se cierra con el botón **Cerrar sesión** o automáticamente después de **1 hora 30 minutos de inactividad**.
 - **Medidor Consumo / Facturación** con su explicación literal:
   - En consumo: *"**Consumo**: energía que se deja de consumir, en kWh, MWh o GWh por mes. **Facturación**: esa misma energía valorada con la tarifa real de cada cliente, en pesos por mes. Cambia la unidad de medida; los clientes y las listas son los mismos."*
   - En facturación: *"**Facturación**: pesos por mes que se dejan de facturar, medido con la tarifa real de cada cliente. **Consumo**: la misma pérdida medida en energía (kWh, MWh o GWh). Cambia la unidad de medida; los clientes y las listas son los mismos."*

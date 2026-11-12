@@ -29,6 +29,7 @@ El valor en pesos siempre usa la **tarifa real** del cliente, nunca una tarifa s
 ### Elementos globales (aparecen en las partes superiores)
 
 - **Corte activo** (píldora "Corte …" arriba a la derecha): identifica el mes de datos que se está consultando; lo fija el pipeline, no el usuario.
+- **Sesión:** permanece abierta aunque apagues el equipo o cierres el navegador (se guarda en el navegador, no en el servidor); se cierra con el botón **Cerrar sesión** o automáticamente después de **1 hora 30 minutos de inactividad**.
 - **Medidor Consumo / Facturación**: conmutador que cambia **la unidad de medida de TODA la página** (kWh/MWh/GWh por mes ↔ pesos por mes con la tarifa real). Los clientes y las listas son los mismos; solo cambia la métrica mostrada y el orden de algunas columnas de medida.
 - **Modo presentación "Ocultar NIU y direcciones"** (caja lateral izquierda): enmascara los NIU y las direcciones en tablas y fichas para proyectar o compartir pantalla. **Las descargas no cambian** (los CSV se descargan completos).
 - **Menú lateral**: las secciones están agrupadas (Resumen / Listas / Planeación, etc.); la navegación también funciona con el teclado y el historial del navegador.
