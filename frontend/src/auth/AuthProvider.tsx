@@ -28,6 +28,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const SESSION_EXPIRED = "Tu sesión expiró. Vuelve a iniciar sesión.";
 
+/** Minutos de inactividad antes de cerrar la sesión sola (protege PCs compartidas). */
+const IDLE_MINUTES = 90;
+
 async function loadBackendUser(user: User): Promise<BackendUser> {
   const token = await getIdToken(user);
   const response = await fetch("/api/me", {
@@ -62,10 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return token;
       },
       onUnauthorized: () => {
-        setAuthError(SESSION_EXPIRED);
         setCurrentUser(null);
         setIdToken(null);
-        void signOutCurrentUser();
+        // El mensaje se pone DESPUÉS del cierre: la suscripción de auth limpia el
+        // error al recibir el cierre y este texto debe ser lo último que se pinta.
+        void signOutCurrentUser().finally(() => setAuthError(SESSION_EXPIRED));
       },
     });
   }, []);
@@ -101,6 +105,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthError(error instanceof Error ? error.message : "Sesión no autorizada.");
         setLoading(false);
       });
+  }, [firebaseUser]);
+
+  // Cierre por inactividad: sin actividad del usuario durante IDLE_MINUTES se
+  // cierra la sesión (mismo camino visual que un 401: mensaje existente + cierre
+  // de la persistencia del navegador). La renovación silenciosa del token NO
+  // cuenta como actividad; volver a la pestaña sí.
+  useEffect(() => {
+    if (!firebaseUser) return;
+    let ultimaActividad = Date.now();
+    const marcarActividad = () => {
+      ultimaActividad = Date.now();
+    };
+    const eventos = ["mousemove", "mousedown", "keydown", "wheel", "scroll", "touchstart", "focus", "visibilitychange"] as const;
+    for (const evento of eventos) {
+      window.addEventListener(evento, marcarActividad, { passive: true, capture: true });
+    }
+    const revisar = window.setInterval(() => {
+      if (Date.now() - ultimaActividad < IDLE_MINUTES * 60_000) return;
+      window.clearInterval(revisar);
+      setFirebaseUser(null);
+      setCurrentUser(null);
+      setIdToken(null);
+      // Después del signOut: la suscripción limpia el error al recibir el cierre.
+      void signOutCurrentUser().finally(() => setAuthError(SESSION_EXPIRED));
+    }, 30_000);
+    return () => {
+      for (const evento of eventos) window.removeEventListener(evento, marcarActividad, { capture: true });
+      window.clearInterval(revisar);
+    };
   }, [firebaseUser]);
 
   const refreshBackendUser = useCallback(async () => {
