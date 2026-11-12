@@ -249,7 +249,11 @@ function Panorama({ token }: { token?: string | null }) {
   ];
 
   // Clientes con caída por zona regional y gravedad (grafico_gravedad_por_zona).
+  // Pedido de negocio: fuera "SIN ZONA" y "USUARIOS NO REGULADOS" (ciclo33) de la
+  // gráfica apilada y de la tabla por zona; los KPIs no se tocan.
+  const ZONAS_EXCLUIDAS = new Set(["SIN ZONA", "USUARIOS NO REGULADOS"]);
   const zonas = Object.entries(data.por_zona)
+    .filter(([zona]) => !ZONAS_EXCLUIDAS.has(zona))
     .map(([zona, valor]) => ({
       zona,
       clientes: valor.clientes,
@@ -274,7 +278,9 @@ function Panorama({ token }: { token?: string | null }) {
   const filasZona = [...zonas].sort((a, b) => (esConsumo ? b.perdida - a.perdida : b.valorRiesgo - a.valorRiesgo));
 
   // Consumo/facturación en riesgo por clase de servicio y por tamaño (mismo orden: de mayor a menor).
+  // Pedido de negocio: la clase CR queda fuera de la gráfica de clase (solo afecta a esa gráfica).
   const porClase = Object.entries(data.por_clase)
+    .filter(([clase]) => clase !== "CR")
     .map(([clase, valor]) => ({ nombre: clase, medida: esConsumo ? valor.perdida_kwh_mes : valor.valor_riesgo_mes }))
     .sort((a, b) => b.medida - a.medida);
   const porGrupo = Object.entries(data.por_grupo)
