@@ -70,10 +70,6 @@ CREATE TABLE client_churn_risk (
 
 GO
 
-CREATE INDEX ix_client_churn_risk_data_run_id ON client_churn_risk (data_run_id);
-
-GO
-
 CREATE INDEX ix_client_churn_risk_niu ON client_churn_risk (niu);
 
 GO
@@ -102,10 +98,6 @@ CREATE INDEX ix_client_consumption_monthly_data_run_id ON client_consumption_mon
 
 GO
 
-CREATE INDEX ix_client_consumption_monthly_niu ON client_consumption_monthly (niu);
-
-GO
-
 CREATE INDEX ix_client_consumption_monthly_periodo ON client_consumption_monthly (periodo);
 
 GO
@@ -129,10 +121,6 @@ CREATE TABLE client_drop_analysis (
 
 GO
 
-CREATE INDEX ix_client_drop_analysis_data_run_id ON client_drop_analysis (data_run_id);
-
-GO
-
 CREATE INDEX ix_client_drop_analysis_niu ON client_drop_analysis (niu);
 
 GO
@@ -151,10 +139,6 @@ CREATE TABLE client_forecasts (
     FOREIGN KEY(data_run_id) REFERENCES data_runs (id) ON DELETE CASCADE,
     CONSTRAINT uq_forecast_run_niu_horizon UNIQUE (data_run_id, niu, horizonte)
 );
-
-GO
-
-CREATE INDEX ix_client_forecasts_data_run_id ON client_forecasts (data_run_id);
 
 GO
 
@@ -188,10 +172,6 @@ CREATE INDEX ix_client_locations_municipio ON client_locations (municipio);
 
 GO
 
-CREATE INDEX ix_client_locations_niu ON client_locations (niu);
-
-GO
-
 CREATE TABLE data_files (
     id INTEGER NOT NULL IDENTITY,
     data_run_id INTEGER NOT NULL,
@@ -206,10 +186,6 @@ CREATE TABLE data_files (
     FOREIGN KEY(data_run_id) REFERENCES data_runs (id) ON DELETE CASCADE,
     CONSTRAINT uq_data_file_run_dataset UNIQUE (data_run_id, dataset_key)
 );
-
-GO
-
-CREATE INDEX ix_data_files_data_run_id ON data_files (data_run_id);
 
 GO
 
@@ -243,10 +219,6 @@ CREATE INDEX ix_operational_management_ciclo ON operational_management (ciclo);
 
 GO
 
-CREATE INDEX ix_operational_management_data_run_id ON operational_management (data_run_id);
-
-GO
-
 CREATE INDEX ix_operational_management_fecha_corte ON operational_management (fecha_corte);
 
 GO
@@ -264,52 +236,6 @@ CREATE INDEX ix_operational_management_valor_riesgo_mes ON operational_managemen
 GO
 
 CREATE INDEX ix_operational_run_risk ON operational_management (data_run_id, valor_riesgo_mes);
-
-GO
-
-CREATE TABLE visits (
-    id INTEGER NOT NULL IDENTITY,
-    niu VARCHAR(80) NOT NULL,
-    data_run_id INTEGER NULL,
-    assigned_to_uid VARCHAR(160) NULL,
-    cycle INTEGER NULL,
-    scheduled_for DATETIME NULL,
-    status VARCHAR(30) NOT NULL,
-    created_at DATETIMEOFFSET NOT NULL,
-    PRIMARY KEY (id),
-    FOREIGN KEY(data_run_id) REFERENCES data_runs (id) ON DELETE SET NULL,
-    FOREIGN KEY(niu) REFERENCES clients (niu) ON DELETE CASCADE
-);
-
-GO
-
-CREATE INDEX ix_visits_assigned_to_uid ON visits (assigned_to_uid);
-
-GO
-
-CREATE INDEX ix_visits_cycle ON visits (cycle);
-
-GO
-
-CREATE INDEX ix_visits_niu ON visits (niu);
-
-GO
-
-CREATE INDEX ix_visits_status ON visits (status);
-
-GO
-
-CREATE TABLE visit_results (
-    id INTEGER NOT NULL IDENTITY,
-    visit_id INTEGER NOT NULL,
-    result VARCHAR(80) NOT NULL,
-    notes TEXT NULL,
-    created_by_uid VARCHAR(160) NOT NULL,
-    created_at DATETIMEOFFSET NOT NULL,
-    PRIMARY KEY (id),
-    FOREIGN KEY(visit_id) REFERENCES visits (id) ON DELETE CASCADE,
-    UNIQUE (visit_id)
-);
 
 GO
 
@@ -355,10 +281,6 @@ CREATE TABLE dataset_records (
     PRIMARY KEY (id),
     FOREIGN KEY(data_run_id) REFERENCES data_runs (id) ON DELETE CASCADE
 );
-
-GO
-
-CREATE INDEX ix_dataset_records_data_run_id ON dataset_records (data_run_id);
 
 GO
 
