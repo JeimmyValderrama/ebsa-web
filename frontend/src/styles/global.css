@@ -1170,6 +1170,11 @@ textarea.search-input {
 .ficha-cliente .v2-exp { margin-top: 16px; }
 .ficha-cliente .pron-grid { gap: 22px; }
 
+/* Resultados de visitas (Retroalimentacion): aire uniforme entre bloques (titulo,
+   avisos, KPIs, pies y tarjetas); el panel venia casi sin separacion. */
+.retro-panel { margin-top: 0; gap: 26px; }
+.retro-panel .v2-aviso { margin-top: 0; }
+
 .ficha-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-top: 14px; }
 .ficha-item {
   display: grid;

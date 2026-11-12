@@ -896,19 +896,9 @@ export function Retroalimentacion({ token }: { token?: string | null }) {
   ];
 
   return (
-    <>
+    <div className="stack retro-panel">
       <TituloPagina titulo="Resultados de las visitas contra la lista" />
 
-      {/* El aviso de "sin resultados" se ve antes de caer en el ejemplo, igual que en el original. */}
-      {ejemplo && (
-        <Aviso
-          tipo="info"
-          texto={
-            "Aún no hay resultados de campo. Llenar la plantilla resultado_gestion_plantilla.csv (carpeta "
-            + "07_gestion_caida/retroalimentacion de los datos) y correr Evaluacion_retroalimentacion_gestion.ipynb."
-          }
-        />
-      )}
       {ejemplo && (
         <Aviso
           tipo="ejemplo"
@@ -952,6 +942,6 @@ export function Retroalimentacion({ token }: { token?: string | null }) {
           </Tarjeta>
         );
       })}
-    </>
+    </div>
   );
 }
