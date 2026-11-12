@@ -199,7 +199,7 @@ function Panorama({ token }: { token?: string | null }) {
     },
     {
       titulo: "Probabilidad de fuga alta o media",
-      valor: fmtN(data.fuga.clientes),
+      valor: fmtN(data.fuga.alto_medio),
       unidad: " clientes",
       nota: "No significa que se vayan a ir: es a quién contactar primero",
       ayuda:
