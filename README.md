@@ -154,3 +154,5 @@ Reglas del repositorio: commits en español sin tildes; push y despliegue solo c
 ## Configuración final
 
 Consulta [`docs/configuracion-final.md`](docs/configuracion-final.md). Ahí solo debes colocar las variables de Firebase, la conexión de Azure SQL y ejecutar la migración/importación desde Windows.
+
+El manual de usuario (todas las pantallas, tablas y gráficas) está en [`docs/manual-usuario.md`](docs/manual-usuario.md).
