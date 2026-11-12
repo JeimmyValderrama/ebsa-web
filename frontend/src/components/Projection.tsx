@@ -383,13 +383,12 @@ export function Proyeccion({ token }: { token?: string | null }) {
           titulo: "Error del backtest a 1 año",
           valor: fmtN(errorZona.wape_anio1_pct, 1),
           unidad: " %",
-          nota: `${fmtN(errorZona.puntos_anio1)} puntos`,
+          nota: "Lo que la proyección se equivocó al probarla contra el pasado",
         },
         {
           titulo: "Error del backtest a 2 años",
           valor: fmtN(errorZona.wape_anio2_pct, 1),
           unidad: " %",
-          nota: `${fmtN(errorZona.puntos_anio2)} puntos`,
         },
       ]
     : [
@@ -402,21 +401,6 @@ export function Proyeccion({ token }: { token?: string | null }) {
         },
         { titulo: "Margen de error medido a dos años", valor: fmtN(errorZona.wape_anio2_pct, 1), unidad: " %" },
       ];
-
-  // Verificación técnica (solo administrador): sesgo, cobertura de la banda y Ljung-Box.
-  let verificacion: string | null = null;
-  if (tecnico && errorZona.cobertura_banda80_pct !== null && errorZona.cobertura_banda80_pct !== undefined) {
-    const factor = Number(errorZona.factor_calibracion_banda);
-    const ljung = Number(errorZona.ljung_box_p);
-    const conFactor = Number.isFinite(factor) && factor > 1 ? `; por eso se ensanchó ×${fmtN(factor, 2)}` : "";
-    const conLjung = Number.isFinite(ljung) ? fmtN(ljung, 2) : "—";
-    const residuos = Number.isFinite(ljung) && ljung > 0.05 ? "sí ✓" : "no ⚠";
-    verificacion =
-      `Verificación: sesgo a 1 año ${fmtN(errorZona.sesgo_anio1_pct, 1)} % (cerca de 0 = no sobre ni subestima) · `
-      + `la banda del 80 % cubrió el ${fmtN(errorZona.cobertura_banda80_pct, 0)} % de los meses reales en el backtest (ideal ≈ 80 %${conFactor}) · `
-      + `residuos sin estructura (Ljung-Box p = ${conLjung}): ${residuos}`
-      + (errorZona.supera_linea_base === false ? " · ⚠ el modelo no supera la línea base estacional en esta zona" : "");
-  }
 
   // Tabla anual de la zona y escenario elegidos (los años cuya proyección cabe en el horizonte mostrado).
   const filasAnuales = [...recorte.anual].sort((a, b) => a.anio - b.anio);
@@ -619,8 +603,6 @@ export function Proyeccion({ token }: { token?: string | null }) {
       </Tarjeta>
 
       <Kpis items={kpis} columnas={2} compacto />
-
-      {verificacion ? <p className="v2-caption">{md(verificacion)}</p> : null}
 
       <Tarjeta titulo="Consumo mes a mes y proyección (GWh)" bajada={bajadaGrafica}>
         <SerieChart mensual={recorte.mensual} />
