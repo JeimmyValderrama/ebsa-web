@@ -3,7 +3,9 @@ import { api } from "./api";
 
 /**
  * Periodo del corte vigente ("2026-04") compartido por toda la app.
- * Se pide una sola vez al summary y queda en caché en memoria, como corte_actual del Streamlit.
+ * Se pide una sola vez al summary y queda en caché en memoria, como corte_actual del Streamlit
+ * (max fecha_corte de la lista). Ojo: latest_run.period es el período de IMPORTACIÓN (2026-10),
+ * no el corte; se usa solo como respaldo si la lista aún no tiene fecha_corte.
  */
 
 let cache: { token?: string | null; periodo?: string } = {};
@@ -23,7 +25,7 @@ export function useCorte(token?: string | null): string {
       pendientes.get(token) ??
       api
         .summary(token)
-        .then((resumen) => resumen.latest_run?.period ?? "")
+        .then((resumen) => resumen.corte ?? resumen.latest_run?.period ?? "")
         .finally(() => pendientes.delete(token));
     pendientes.set(token, promesa);
     promesa

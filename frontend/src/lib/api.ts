@@ -358,7 +358,7 @@ export type ProyectadoData = {
 export const api = {
   health: () => request<{ status: string; service: string; timestamp: string }>("/api/health"),
   status: () => request<{ status: string; database_configured: boolean; database_engine: string; firebase_configured: boolean }>("/api/status"),
-  summary: (token?: string) => request<{ latest_run: { period: string; rows_imported: number; completed_at?: string } | null; counts: Record<string, number> }>("/api/data/summary", { token }),
+  summary: (token?: string) => request<{ latest_run: { period: string; rows_imported: number; completed_at?: string } | null; corte: string | null; counts: Record<string, number> }>("/api/data/summary", { token }),
   risks: (token: string | undefined, limit = 200, offset = 0, severity = "", prioridad = "") => request<{ items: Array<Record<string, unknown>>; limit: number; offset: number; total: number }>(`/api/data/risks${query({ limit, offset, severity, prioridad })}`, { token }),
   client: (token: string | undefined, niu: string) => request<Record<string, any>>(`/api/data/clients/${encodeURIComponent(niu)}`, { token }),
   consumption: (token: string | undefined, niu: string) => request<Array<{ periodo: string; consumo_kwh: number | null; estado_mes?: string | null; es_rural?: boolean | null }>>(`/api/data/clients/${encodeURIComponent(niu)}/consumption`, { token }),

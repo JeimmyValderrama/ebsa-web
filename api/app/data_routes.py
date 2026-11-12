@@ -95,7 +95,11 @@ def run_dict(run: DataRun) -> dict[str, Any]:
 def summary(db: Session = Depends(get_db), _: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
     try:
         latest = db.scalar(select(DataRun).where(DataRun.status == "COMPLETED").order_by(DataRun.created_at.desc()).limit(1))
-        return {"latest_run": run_dict(latest) if latest else None, "counts": {"clients": db.scalar(select(func.count()).select_from(Client)) or 0, "operational": db.scalar(select(func.count()).select_from(OperationalManagement)) or 0, "churn_risks": db.scalar(select(func.count()).select_from(ClientChurnRisk)) or 0, "drop_analysis": db.scalar(select(func.count()).select_from(ClientDropAnalysis)) or 0, "locations": db.scalar(select(func.count()).select_from(ClientLocation)) or 0}}
+        # Corte vigente de los datos (max fecha_corte de la lista), igual que
+        # corte_actual del Streamlit. latest_run.period es el de IMPORTACIÓN
+        # (ej. 2026-10) y no debe confundirse con el corte (2026-04).
+        corte = db.scalar(select(func.max(OperationalManagement.fecha_corte)))
+        return {"latest_run": run_dict(latest) if latest else None, "corte": corte.strftime("%Y-%m") if corte else None, "counts": {"clients": db.scalar(select(func.count()).select_from(Client)) or 0, "operational": db.scalar(select(func.count()).select_from(OperationalManagement)) or 0, "churn_risks": db.scalar(select(func.count()).select_from(ClientChurnRisk)) or 0, "drop_analysis": db.scalar(select(func.count()).select_from(ClientDropAnalysis)) or 0, "locations": db.scalar(select(func.count()).select_from(ClientLocation)) or 0}}
     except OperationalError as exc:
         raise schema_error(exc) from exc
 
