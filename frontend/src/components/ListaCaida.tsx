@@ -243,7 +243,10 @@ export function ListaCaida({ token }: { token?: string | null }) {
     : null;
 
   // Gravedad de toda la lista por zona regional (grafico_gravedad_por_zona).
+  // Pedido de negocio: fuera "SIN ZONA" y "USUARIOS NO REGULADOS" (ciclo33) de la gráfica.
+  const ZONAS_EXCLUIDAS = new Set(["SIN ZONA", "USUARIOS NO REGULADOS"]);
   const zonas = Object.entries(datos.gravedad_zona)
+    .filter(([zona]) => !ZONAS_EXCLUIDAS.has(zona))
     .map(([zona, conteos]) => ({ zona, conteos, total: Object.values(conteos).reduce((suma, conteo) => suma + conteo, 0) }))
     .sort((a, b) => b.total - a.total);
   const ordenSev = GRAVEDADES.filter((sev) => zonas.some((zona) => zona.conteos[sev] !== undefined));
