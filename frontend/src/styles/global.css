@@ -491,9 +491,15 @@ h3 { font-size: 20px; }
   display: inline-block;
 }
 /* Columna de sugerencias ("Qué hacer (sugerido)" en Clientes sin consumo): ancho medio
-   para que la frase no se apile en vertical y la fila no quede tan alta. */
+   para que la frase no se apile en vertical y la fila no quede tan alta. Ojo: en Chrome
+   el min-width del <th> no fija el piso de la columna; el que funciona es el del span
+   interno (mismo mecanismo que th-largo y th-texto). */
 .table-card th.th-medio {
   min-width: max(min-content, 40ch);
+}
+.table-card th.th-medio .th-sort span:first-child {
+  min-width: 32ch;
+  display: inline-block;
 }
 .grafico-sin-consumo {
   padding-top: 40px;
