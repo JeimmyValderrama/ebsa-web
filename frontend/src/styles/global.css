@@ -495,6 +495,16 @@ h3 { font-size: 20px; }
   line-height: 1.55;
 }
 .table-card td { padding: 9px 12px; border-bottom: 1px solid var(--linea2); color: var(--ink); vertical-align: top; }
+/* Línea tenue entre columnas: separa las celdas sin saturar la tabla (convención UI).
+   La primera columna no lleva (sería el borde de la tabla) y en el encabezado negro
+   la línea es clara para que se note sobre el fondo. */
+.table-card th + th,
+.table-card td + td {
+  border-left: 1px solid var(--linea2);
+}
+.table-card thead th + th {
+  border-left-color: rgba(255, 255, 255, 0.14);
+}
 /* Columna fijada (chincheta): queda pegada al borde izquierdo al desplazar en horizontal.
    El offset "left" va en línea (lo calcula la tabla midiendo el ancho de cada fijada).
    Va antes de los realces (destacada, hover, fila seleccionada) para que estos sigan ganando. */
