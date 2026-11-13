@@ -303,7 +303,9 @@ p { margin: 0; }
 
 .page-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding-bottom: 22px; border-bottom: 1px solid var(--linea); }
 .page-intro h1 { font-size: 34px; line-height: 1.05; margin: 8px 0 6px; }
-.page-intro p { color: var(--ink2); font-size: 15.5px; max-width: 92ch; }
+/* Textos explicativos (bajadas, notas, pies y captions): sin tope de ancho —
+   usan todo el espacio disponible de su tarjeta o sección (pedido de diseño). */
+.page-intro p { color: var(--ink2); font-size: 15.5px; }
 
 .section-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; padding: 34px 0 16px; }
 h2 { font-size: 24px; padding: .3rem 0 .1rem; }
@@ -330,7 +332,7 @@ h3 { font-size: 20px; }
 .data-module { margin-top: 22px; }
 .module-heading { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 16px; }
 .module-heading h2 { margin-bottom: 6px; }
-.module-heading p { color: var(--ink2); font-size: 14px; line-height: 1.6; max-width: 86ch; }
+.module-heading p { color: var(--ink2); font-size: 14px; line-height: 1.6; }
 .filter-card h3 { font-size: 17px; }
 .filter-card p { color: var(--ink2); font-size: 13.5px; line-height: 1.6; margin-top: 12px; }
 
@@ -380,7 +382,7 @@ h3 { font-size: 20px; }
 }
 .hero-copy { position: relative; z-index: 1; max-width: 720px; }
 .hero-copy h1 { font-size: 34px; line-height: 1.05; margin: 10px 0 8px; max-width: none; letter-spacing: .1px; }
-.hero-copy p { color: var(--ink2); font-size: 15.5px; line-height: 1.6; max-width: 86ch; }
+.hero-copy p { color: var(--ink2); font-size: 15.5px; line-height: 1.6; }
 .hero-actions { display: flex; align-items: center; gap: 18px; margin-top: 18px; flex-wrap: wrap; }
 .hero-orbit { position: absolute; right: 30px; top: 26px; width: 330px; height: 280px; opacity: .55; }
 .orbit-ring { position: absolute; border: 1px solid rgba(255, 198, 41, .6); border-radius: 50%; transform: rotate(-25deg); }
@@ -792,19 +794,19 @@ textarea.search-input {
 .v2-ley i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .v2-conteo { font-size: 14px; color: var(--ink2); margin: 0; }
 .v2-conteo b { color: var(--ink); }
-.v2-pie { margin: 2px 0 0; font-size: 13.5px; color: var(--ink2); max-width: 86ch; }
+.v2-pie { margin: 2px 0 0; font-size: 13.5px; color: var(--ink2); }
 .v2-pie i { font-style: italic; }
 
 /* ---------- títulos y tarjetas (v2-ph / v2-card / v2-hero del Streamlit) ---------- */
 .v2-ph { margin: 0 0 6px; }
 .v2-ph h1 { font-family: var(--disp); font-weight: 600; font-size: 34px; line-height: 1.05; margin: 0 0 4px; padding: 0; color: var(--ink); letter-spacing: .1px; }
-.v2-ph p { margin: 0; color: var(--ink2); font-size: 15.5px; line-height: 1.6; max-width: 96ch; }
+.v2-ph p { margin: 0; color: var(--ink2); font-size: 15.5px; line-height: 1.6; }
 .v2-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 16px 18px 14px; min-width: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 .v2-hero { background: var(--sup); border: 1px solid var(--linea); border-top: 4px solid var(--marca); border-radius: 8px; padding: 18px 22px 14px; min-width: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 /* Cabecera de tarjeta: un poco de aire debajo del título para que el cuerpo no le quede pegado. */
 .v2-ch { margin: 0 0 10px; }
 .v2-ch h3 { font-family: var(--disp); font-weight: 600; font-size: 20px; line-height: 1.2; margin: 0; padding: 0; color: var(--ink); }
-.v2-ch p { margin: 3px 0 0; color: var(--ink2); font-size: 14px; line-height: 1.6; max-width: 86ch; }
+.v2-ch p { margin: 3px 0 0; color: var(--ink2); font-size: 14px; line-height: 1.6; }
 .v2-hero-h h3 { font-size: 26px; }
 .v2-hero-h p { font-size: 15.5px; }
 .fila-3-2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 16px; }
@@ -823,7 +825,7 @@ textarea.search-input {
 /* st.columns(3) del Streamlit: tres columnas iguales (la fila de Municipio / Gravedad / Tendencia). */
 .fila-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .v2-fila-medida { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; align-items: start; margin-bottom: 14px; }
-.v2-fila-medida p { margin: 6px 0 0; font-size: 13.5px; color: var(--ink2); line-height: 1.6; max-width: 96ch; }
+.v2-fila-medida p { margin: 6px 0 0; font-size: 13.5px; color: var(--ink2); line-height: 1.6; }
 
 /* ---------- indicadores (v2-kpis del Streamlit) ---------- */
 .v2-kpis { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 16px; }
@@ -877,7 +879,7 @@ textarea.search-input {
   flex: 0 0 auto; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2);
   border: 1px solid var(--linea); background: var(--sup); border-radius: 4px; padding: 2px 7px; margin-top: 1px;
 }
-.v2-aviso div { max-width: 100ch; }
+/* Sin tope de lectura: el texto del aviso usa todo el ancho de su tarjeta. */
 .v2-aviso.a-info { background: var(--neutro-f); border-left-color: var(--carbon); }
 .v2-aviso.a-alerta { background: var(--alerta-f); border-left-color: var(--alerta); }
 .v2-aviso.a-alerta .ico { color: var(--alerta); border-color: var(--alerta); }
@@ -1084,7 +1086,7 @@ textarea.search-input {
 .mapa-st-baldosa { position: absolute; width: 256px; height: 256px; pointer-events: none; -webkit-user-drag: none; }
 .mapa-st-lienzo { position: absolute; left: 0; top: 0; pointer-events: none; }
 .mapa-st-atrib { position: absolute; right: 0; bottom: 0; z-index: 2; font-size: 10px; color: #6b6b6b; background: rgba(255, 255, 255, 0.75); padding: 1px 5px; border-radius: 4px 0 0 0; pointer-events: none; }
-.v2-exp-cuerpo p { margin: 0 0 10px; max-width: 100ch; }
+.v2-exp-cuerpo p { margin: 0 0 10px; }
 .v2-exp-cuerpo p:last-child { margin-bottom: 0; }
 
 /* ---------- filtros de lista (ui.filtros del Streamlit) ---------- */
@@ -1094,14 +1096,14 @@ textarea.search-input {
   display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center;
   margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--linea2);
 }
-.filtros-pie p { margin: 0; font-size: 13px; color: var(--ink3); max-width: 76ch; }
+.filtros-pie p { margin: 0; font-size: 13px; color: var(--ink3); }
 .v2-slider { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
 .v2-slider input[type="range"] { width: 100%; accent-color: var(--carbon); }
 .v2-slider b { font-family: var(--disp); font-size: 18px; color: var(--ink); }
 .v2-check { display: flex; gap: 8px; align-items: center; font-size: 13.5px; font-weight: 400; color: var(--ink); cursor: pointer; }
 /* Lista de columnas del menú "Mostrar columnas": con scroll propio si son muchas. */
 .v2-check-lista { display: grid; gap: 6px; max-height: 180px; overflow-y: auto; padding: 2px 0; }
-.v2-caption { margin: 0 0 4px; font-size: 13.5px; color: var(--ink3); line-height: 1.55; max-width: 96ch; }
+.v2-caption { margin: 0 0 4px; font-size: 13.5px; color: var(--ink3); line-height: 1.55; }
 
 /* ---------- controles de la tabla de trabajo (ui.tabla_pro) ---------- */
 .tabla-pro { display: grid; gap: 8px; margin-top: 12px; }
