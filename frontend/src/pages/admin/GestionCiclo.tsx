@@ -11,6 +11,7 @@ import { BAJADA_SEVERIDAD, ORDEN_SEVERIDAD } from "../../components/v2/textos";
 import { FichaCliente } from "../../components/v2/FichaCliente";
 import { fmtN, formatoTabla, pesos } from "../../lib/format";
 import { useCorte } from "../../lib/useCorte";
+import { cajaFrase } from "../../lib/columnas";
 
 /**
  * Réplica de la sección "Gestión por ciclo" (app_ebsa_v2.py).
@@ -317,7 +318,7 @@ export function GestionCiclo({ token }: { token?: string | null }) {
             <select className="filter-select" value={ciclo === null ? "" : String(ciclo)} onChange={(evento) => setCiclo(Number(evento.target.value))}>
               {(ciclos ?? []).map((entrada) => (
                 <option key={entrada.ciclo} value={String(entrada.ciclo)}>
-                  {entrada.etiqueta}
+                  {cajaFrase(entrada.etiqueta)}
                 </option>
               ))}
             </select>

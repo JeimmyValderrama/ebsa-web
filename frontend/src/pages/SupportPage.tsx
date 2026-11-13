@@ -644,7 +644,7 @@ function VisitasPorCiclo({ token }: { token?: string | null }) {
                 >
                   {ciclos.map((entrada) => (
                     <option key={entrada.ciclo} value={entrada.ciclo}>
-                      {entrada.etiqueta}
+                      {cajaFrase(entrada.etiqueta)}
                     </option>
                   ))}
                 </select>

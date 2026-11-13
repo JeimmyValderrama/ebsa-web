@@ -128,28 +128,34 @@ export function etiquetaColumna(clave: string): string {
     .replace(/\bpct\b/g, "%");
 }
 
-/** Excepciones de caja de frase para nombres propios compuestos de los datos. */
+/** Excepciones de caja de frase para valores de datos que no se pueden derivar solos. */
 const EXCEPCIONES_CAJA: Record<string, string> = {
-  "PUERTO BOYACA": "Puerto Boyacá",
+  "SIN HISTORIA EN TC2 (se fue antes de la historia)": "Sin historia en TC2 (se fue antes de la historia)",
+  "REGRESÓ A EBSA": "Regresó a EBSA",
+  "SALIÓ DEL ARCHIVO DE OTROS (verificar)": "Salió del archivo de otros (verificar)",
 };
 
 /**
- * Caja de frase para VALORES de datos en los desplegables de filtro: primera
- * letra mayúscula, resto minúsculas ("CENTRO" → "Centro", "ALTO" → "Alto").
- * Solo cambia la presentación: el valor que viaja en el filtro sigue siendo el
- * crudo. No toca lo que ya tiene forma mixta ("Tunja", "GWh"), siglas cortas de
- * tres letras o menos ("CR", "OF") ni marcadores entre paréntesis ("(todos)").
+ * Caja de frase para VALORES de datos en desplegables y títulos derivados de datos:
+ * primera letra mayúscula, resto minúsculas ("CENTRO" → "Centro", "00 — CENTRO" →
+ * "00 — Centro"). Solo cambia la presentación: el valor que viaja en el filtro sigue
+ * siendo el crudo. No toca lo que ya tiene forma mixta ("Tunja", "GWh", "(todos)")
+ * ni siglas cortas de tres letras o menos ("CR", "OF"). Los nombres propios
+ * compuestos de los datos se corrigen con la lista de excepciones y con "boyacá".
  */
 export function cajaFrase(valor: string): string {
   if (!valor) return valor;
   const excepcion = EXCEPCIONES_CAJA[valor];
   if (excepcion) return excepcion;
-  const primera = valor.charAt(0);
-  const esLetra = primera === primera.toUpperCase() && primera !== primera.toLowerCase();
-  const esMinuscula = primera === primera.toLowerCase() && primera !== primera.toUpperCase();
-  if (esMinuscula) return capitalizarPrimera(valor);
-  if (!esLetra) return valor;
-  if (valor !== valor.toUpperCase()) return valor;
+  if (/[a-záéíóúñ]/.test(valor)) return valor;
+  const letras = valor.match(/[A-ZÁÉÍÓÚÑ]/g);
+  if (!letras) return valor;
   if (valor.length <= 3) return valor;
-  return capitalizarPrimera(valor.toLowerCase());
+  const minus = valor.toLowerCase();
+  const primeraLetra = minus.search(/[a-záéíóúñ]/);
+  const conInicial =
+    primeraLetra >= 0
+      ? minus.slice(0, primeraLetra) + minus.charAt(primeraLetra).toUpperCase() + minus.slice(primeraLetra + 1)
+      : minus;
+  return conInicial.replace(/\bboyac[áa]\b/g, "Boyacá");
 }

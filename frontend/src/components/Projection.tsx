@@ -4,6 +4,7 @@ import { useAuthOptional } from "../auth/AuthProvider";
 import { api } from "../lib/api";
 import { csvCelda, fmtN, mesLargo } from "../lib/format";
 import { ZONAS_REGIONALES } from "../lib/negocio";
+import { cajaFrase } from "../lib/columnas";
 import { HORIZONTES_PROY, usePresentation } from "../app/Presentation";
 import { PlotlyChart } from "../charts/Plotly";
 import { AZUL, C, NARANJA } from "../charts/paleta";
@@ -553,7 +554,7 @@ export function Proyeccion({ token }: { token?: string | null }) {
             <select className="filter-select" value={zona} onChange={(event) => setZonaElegida(event.target.value)} aria-label="Zona">
               {zonas.map((opcion) => (
                 <option key={opcion} value={opcion}>
-                  {opcion}
+                  {cajaFrase(opcion)}
                 </option>
               ))}
             </select>

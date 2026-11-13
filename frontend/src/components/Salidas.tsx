@@ -5,7 +5,7 @@ import { Aviso, Kpis, TituloPagina, type ItemKpi } from "./v2/ui";
 import { PanelFiltros, type CampoFiltro } from "./v2/filtros";
 import { TablaPro, type Fila } from "./v2/TablaPro";
 import { FichaCliente } from "./v2/FichaCliente";
-import { etiquetaColumna } from "../lib/columnas";
+import { cajaFrase, etiquetaColumna } from "../lib/columnas";
 import { md, useEsMovil } from "../charts/textos";
 import { energia, fmtN, formatoTabla, pesos } from "../lib/format";
 import { ESTADO_OTRO_TEXTO } from "../lib/negocio";
@@ -114,12 +114,15 @@ export function Salidas({ token }: { token?: string | null }) {
   }
 
   const { resumen } = datos;
-  const kpis: ItemKpi[] = resumen.estados.map((entrada) => ({
-    titulo: entrada.estado.length < 30 ? entrada.estado : entrada.estado.slice(0, 28) + "…",
-    valor: fmtN(entrada.clientes),
-    ayuda: ESTADO_OTRO_TEXTO[entrada.estado] ?? entrada.estado,
-    tono: entrada.estado.startsWith("CON OTRO") ? "alerta" : undefined,
-  }));
+  const kpis: ItemKpi[] = resumen.estados.map((entrada) => {
+    const estado = cajaFrase(entrada.estado);
+    return {
+      titulo: estado.length < 30 ? estado : estado.slice(0, 28) + "…",
+      valor: fmtN(entrada.clientes),
+      ayuda: ESTADO_OTRO_TEXTO[entrada.estado] ?? entrada.estado,
+      tono: entrada.estado.startsWith("CON OTRO") ? "alerta" : undefined,
+    };
+  });
 
   const conHistoria = resumen.con_historia_consumo > 0 || resumen.con_historia_valor > 0;
   const lineaHistoria = esConsumo
