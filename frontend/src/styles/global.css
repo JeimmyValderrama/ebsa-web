@@ -330,6 +330,8 @@ h3 { font-size: 20px; }
   box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
 }
 .data-module { margin-top: 22px; }
+/* Entre los bloques del módulo (encabezado, formulario, tabla) siempre hay aire. */
+.data-module > * + * { margin-top: 16px; }
 .module-heading { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 16px; }
 .module-heading h2 { margin-bottom: 6px; }
 .module-heading p { color: var(--ink2); font-size: 14px; line-height: 1.6; }
@@ -790,7 +792,7 @@ textarea.search-input {
 .bar-value { text-align: right; color: var(--ink); font-weight: 600; font-size: 13px; }
 
 /* ---------- piezas bajo gráficas y mapas (v2-ley / v2-conteo / v2-pie del Streamlit) ---------- */
-.v2-ley { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; font-size: 13.5px; color: var(--ink2); }
+.v2-ley { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 10px; font-size: 13.5px; color: var(--ink2); }
 .v2-ley i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .v2-conteo { font-size: 14px; color: var(--ink2); margin: 0; }
 .v2-conteo b { color: var(--ink); }
@@ -806,6 +808,9 @@ textarea.search-input {
 .v2-ph p { margin: 0; color: var(--ink2); font-size: 15.5px; line-height: 1.6; }
 .v2-card { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 16px 18px 14px; min-width: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 .v2-hero { background: var(--sup); border: 1px solid var(--linea); border-top: 4px solid var(--marca); border-radius: 8px; padding: 18px 22px 14px; min-width: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
+/* Ritmo dentro de tarjetas: todo hijo después del encabezado (gráficas, tablas, notas,
+   plegables) respira; los que traen margen propio mayor lo respetan por cascada. */
+.v2-card > * + *, .v2-hero > * + * { margin-top: 14px; }
 /* Cabecera de tarjeta: un poco de aire debajo del título para que el cuerpo no le quede pegado. */
 .v2-ch { margin: 0 0 10px; }
 .v2-ch h3 { font-family: var(--disp); font-weight: 600; font-size: 20px; line-height: 1.2; margin: 0; padding: 0; color: var(--ink); }
@@ -1089,7 +1094,8 @@ textarea.search-input {
 .mapa-st-baldosa { position: absolute; width: 256px; height: 256px; pointer-events: none; -webkit-user-drag: none; }
 .mapa-st-lienzo { position: absolute; left: 0; top: 0; pointer-events: none; }
 .mapa-st-atrib { position: absolute; right: 0; bottom: 0; z-index: 2; font-size: 10px; color: #6b6b6b; background: rgba(255, 255, 255, 0.75); padding: 1px 5px; border-radius: 4px 0 0 0; pointer-events: none; }
-.v2-exp-cuerpo p { margin: 0 0 10px; }
+.v2-exp-cuerpo > * + * { margin-top: 14px; }
+.v2-exp-cuerpo p { margin-bottom: 10px; }
 .v2-exp-cuerpo p:last-child { margin-bottom: 0; }
 
 /* ---------- filtros de lista (ui.filtros del Streamlit) ---------- */
@@ -1106,10 +1112,10 @@ textarea.search-input {
 .v2-check { display: flex; gap: 8px; align-items: center; font-size: 13.5px; font-weight: 400; color: var(--ink); cursor: pointer; }
 /* Lista de columnas del menú "Mostrar columnas": con scroll propio si son muchas. */
 .v2-check-lista { display: grid; gap: 6px; max-height: 180px; overflow-y: auto; padding: 2px 0; }
-.v2-caption { margin: 0 0 4px; font-size: 13.5px; color: var(--ink3); line-height: 1.55; }
+.v2-caption { margin-bottom: 4px; font-size: 13.5px; color: var(--ink3); line-height: 1.55; }
 
 /* ---------- controles de la tabla de trabajo (ui.tabla_pro) ---------- */
-.tabla-pro { display: grid; gap: 8px; margin-top: 12px; }
+.tabla-pro { display: grid; gap: 10px; }
 /* Resultados de la lista: misma separación que .stack pero sin su margen, para poder
    atarearlos (aviso "Actualizando…") mientras el servidor vuelve con los filtros nuevos. */
 .resultados { display: grid; gap: 16px; }
@@ -1139,7 +1145,7 @@ textarea.search-input {
 .table-card th.destacada { background: var(--marca); color: #000; font-weight: 700; }
 .table-card td.destacada { background: var(--neutro-f); font-weight: 700; }
 .table-card tbody tr.fila-sel td { background: #f5e1b6; }
-.v2-tarjetas { display: grid; gap: 8px; }
+.v2-tarjetas { display: grid; gap: 10px; }
 .ficha-en-tabla { margin-top: 14px; }
 
 /* Responsivo de filtros y controles de tabla: va después de sus reglas base para poder ganarles. */
@@ -1421,4 +1427,22 @@ textarea.search-input {
 /* ---------- movimiento reducido (va al final: debe ganarle a las transiciones de las media queries) ---------- */
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .side-item, .admin-tab, .v2-radio button, .v2-exp summary, .v2-pop summary { transition: none; }
+}
+
+/* ---------- ritmo vertical entre bloques (va al final: unifica las separaciones) ----------
+   Donde el contenedor ya separa con gap (pila, filas, tabla-pro), el margen propio del hijo
+   se anula: en grid el margen suma al gap y creaba separaciones desiguales (16 px en unos
+   lados y 30 px en otros). Aquí todos los hermanos quedan a la misma distancia. */
+.stack > *,
+.resultados > *,
+.tabla-pro > *,
+.fila-1-1 > *, .fila-1-2 > *, .fila-2-1 > *, .fila-2-3 > *, .fila-3-2 > *, .fila-3 > *,
+.fila-mapa > * {
+  margin-top: 0;
+}
+/* Hijos directos de la página: cualquier bloque que sigue a otro respira 16 px. Los hijos
+   sin margen propio (plegables, tablas, captions, tarjetas en raíces con fragmento)
+   quedaban pegados; los stacks conservan su margen superior de 22 px. */
+.page-content > * + *:not(.stack) {
+  margin-top: 16px;
 }
