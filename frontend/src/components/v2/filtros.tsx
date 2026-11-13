@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { fmtN } from "../../lib/format";
+import { cajaFrase } from "../../lib/columnas";
 
 /**
  * Filtros de lista del Streamlit (ui.filtros): un desplegable "Filtros · N activos" con los campos
@@ -56,7 +57,7 @@ export function Multiselect({
     };
   }, [abierto]);
 
-  const mostrar = formato ?? ((opcion: string) => opcion);
+  const mostrar = (opcion: string): string => cajaFrase(formato ? formato(opcion) : opcion);
   const alternar = (opcion: string): void =>
     onChange(valor.includes(opcion) ? valor.filter((v) => v !== opcion) : [...valor, opcion]);
 

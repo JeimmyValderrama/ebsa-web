@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { api, type BusquedaData, type CicloRuta, type EjemplosData, type RetroData, type RutaData } from "../lib/api";
+import { cajaFrase } from "../lib/columnas";
 import { useSectionNav } from "../app/SectionNav";
 import { useCorte } from "../lib/useCorte";
 import { fmtN, formatoTabla, limpiarNiu, pesos, queRevisar } from "../lib/format";
@@ -219,7 +220,7 @@ function BuscaPorMunicipio({ token }: { token?: string | null }) {
             <option value="">(todos)</option>
             {(datos?.municipios ?? []).map((nombre) => (
               <option key={nombre} value={nombre}>
-                {nombre}
+                {cajaFrase(nombre)}
               </option>
             ))}
           </select>
@@ -627,7 +628,7 @@ function VisitasPorCiclo({ token }: { token?: string | null }) {
                   <option value="">(todas)</option>
                   {zonas.map((nombre) => (
                     <option key={nombre} value={nombre}>
-                      {nombre}
+                      {cajaFrase(nombre)}
                     </option>
                   ))}
                 </select>

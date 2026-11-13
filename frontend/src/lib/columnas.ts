@@ -127,3 +127,29 @@ export function etiquetaColumna(clave: string): string {
     .replace(/\bgwh\b/g, "GWh")
     .replace(/\bpct\b/g, "%");
 }
+
+/** Excepciones de caja de frase para nombres propios compuestos de los datos. */
+const EXCEPCIONES_CAJA: Record<string, string> = {
+  "PUERTO BOYACA": "Puerto Boyacá",
+};
+
+/**
+ * Caja de frase para VALORES de datos en los desplegables de filtro: primera
+ * letra mayúscula, resto minúsculas ("CENTRO" → "Centro", "ALTO" → "Alto").
+ * Solo cambia la presentación: el valor que viaja en el filtro sigue siendo el
+ * crudo. No toca lo que ya tiene forma mixta ("Tunja", "GWh"), siglas cortas de
+ * tres letras o menos ("CR", "OF") ni marcadores entre paréntesis ("(todos)").
+ */
+export function cajaFrase(valor: string): string {
+  if (!valor) return valor;
+  const excepcion = EXCEPCIONES_CAJA[valor];
+  if (excepcion) return excepcion;
+  const primera = valor.charAt(0);
+  const esLetra = primera === primera.toUpperCase() && primera !== primera.toLowerCase();
+  const esMinuscula = primera === primera.toLowerCase() && primera !== primera.toUpperCase();
+  if (esMinuscula) return capitalizarPrimera(valor);
+  if (!esLetra) return valor;
+  if (valor !== valor.toUpperCase()) return valor;
+  if (valor.length <= 3) return valor;
+  return capitalizarPrimera(valor.toLowerCase());
+}
