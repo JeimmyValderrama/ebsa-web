@@ -473,9 +473,9 @@ export function FichaCliente({ token, niu }: { token?: string | null; niu: strin
                 <table>
                   <thead>
                     <tr>
-                      <th>mes</th>
-                      <th>pronóstico kWh</th>
-                      <th>modelo</th>
+                      <th>Mes</th>
+                      <th>Pronóstico kWh</th>
+                      <th>Modelo</th>
                     </tr>
                   </thead>
                   <tbody>

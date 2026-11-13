@@ -20,6 +20,7 @@ import { Barras, BarrasApiladas } from "../charts/Graficas";
 import { VegaLite } from "../charts/VegaLite";
 import { proyeccionTotalSpec } from "../charts/vegaSpec";
 import { AZUL, COLOR_GRAVEDAD, C, NARANJA, SEVERIDAD_SIMPLE } from "../charts/paleta";
+import { etiquetaColumna } from "../lib/columnas";
 import { Leyenda, Pie, md, useEsMovil } from "../charts/textos";
 
 type PanoramaData = Awaited<ReturnType<typeof api.panorama>>;
@@ -565,7 +566,7 @@ function TablaEntradasSalidas({ filas }: { filas: Row[] }) {
         <thead>
           <tr>
             {columnas.map((columna) => (
-              <th key={columna}>{columna}</th>
+              <th key={columna}>{etiquetaColumna(columna)}</th>
             ))}
           </tr>
         </thead>

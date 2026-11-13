@@ -6,6 +6,7 @@ import { Aviso, ComoLeer, Kpis, Tarjeta, TituloPagina, type ItemKpi } from "./v2
 import { PanelFiltros, type CampoFiltro } from "./v2/filtros";
 import { TablaPro, type Fila } from "./v2/TablaPro";
 import { FichaCliente } from "./v2/FichaCliente";
+import { etiquetaColumna } from "../lib/columnas";
 import { Conteo, Pie, md, useEsMovil } from "../charts/textos";
 import { Barras } from "../charts/Graficas";
 import { AZUL } from "../charts/paleta";
@@ -272,7 +273,7 @@ export function SinConsumo({ token }: { token?: string | null }) {
                 <tr>
                   {COLUMNAS_RESUMEN(esConsumo).map((columna) => (
                     <th key={columna} className={["Consumían antes (kWh/mes)", "Facturaban antes ($/mes)"].includes(columna) ? "th-largo" : ""}>
-                      {columna}
+                      {etiquetaColumna(columna)}
                     </th>
                   ))}
                 </tr>

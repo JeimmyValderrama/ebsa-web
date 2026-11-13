@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { md, useEsMovil } from "../../charts/textos";
+import { capitalizarPrimera, etiquetaColumna } from "../../lib/columnas";
 
 /**
  * Piezas de la interfaz del Streamlit (componentes_v2.py), una a una:
@@ -11,7 +12,7 @@ import { md, useEsMovil } from "../../charts/textos";
 export function TituloPagina({ titulo, bajada }: { titulo: string; bajada?: string }) {
   return (
     <div className="v2-ph">
-      <h1>{titulo}</h1>
+      <h1>{capitalizarPrimera(titulo)}</h1>
       {bajada ? <p>{md(bajada)}</p> : null}
     </div>
   );
@@ -21,7 +22,7 @@ export function TituloPagina({ titulo, bajada }: { titulo: string; bajada?: stri
 export function Encabezado({ titulo, bajada, hero }: { titulo: string; bajada?: string; hero?: boolean }) {
   return (
     <div className={hero ? "v2-ch v2-hero-h" : "v2-ch"}>
-      <h3>{titulo}</h3>
+      <h3>{capitalizarPrimera(titulo)}</h3>
       {bajada ? <p>{md(bajada)}</p> : null}
     </div>
   );
@@ -47,7 +48,7 @@ export function Tarjeta({
   if (plegable && titulo && movil) {
     return (
       <details className="v2-exp">
-        <summary>{titulo}</summary>
+        <summary>{capitalizarPrimera(titulo)}</summary>
         <div className="v2-exp-cuerpo">
           {bajada ? <p>{md(bajada)}</p> : null}
           {children}
@@ -87,7 +88,7 @@ export function Kpis({ items, columnas, compacto }: { items: Array<ItemKpi | nul
               i
             </span>
           ) : null}
-          <div className="v2-kpi-t">{item.titulo ?? ""}</div>
+          <div className="v2-kpi-t">{capitalizarPrimera(item.titulo ?? "")}</div>
           <div className={`v2-kpi-v${item.texto ? " texto" : ""}${String(item.valor).length > 10 ? " largo" : ""}`}>
             {item.valor}
             {item.unidad ? <small>{item.unidad}</small> : null}
@@ -495,7 +496,7 @@ export function ThTabla({
     >
       <div className="th-cuerpo">
         <button type="button" className="th-sort" onClick={() => onOrdenar(columna)}>
-          <span>{children ?? columna}</span>
+          <span>{children ?? etiquetaColumna(columna)}</span>
           {/* Indicador de la columna ordenada: triángulo según el sentido. */}
           <span className="th-sort-flecha" aria-hidden="true">
             {activo ? (sentido === "asc" ? "▲" : "▼") : "↕"}
@@ -506,7 +507,7 @@ export function ThTabla({
             type="button"
             className={`th-fijar${fijada ? " activo" : ""}`}
             aria-pressed={Boolean(fijada)}
-            aria-label={`Fijar la columna ${columna} a la izquierda`}
+            aria-label={`Fijar la columna ${etiquetaColumna(columna)} a la izquierda`}
             onClick={() => onFijar(columna)}
           >
             <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false">

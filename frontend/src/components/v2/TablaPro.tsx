@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { csvCelda, fmtN } from "../../lib/format";
+import { etiquetaColumna } from "../../lib/columnas";
 import { Sensitive } from "../../app/Presentation";
 import { useEsMovil } from "../../charts/textos";
 import { columnaCifra, Encabezado } from "./ui";
@@ -264,7 +265,7 @@ export function TablaPro({
                 <option value="(orden recomendado)">(orden recomendado)</option>
                 {columnas.map((columna) => (
                   <option key={columna} value={columna}>
-                    {columna}
+                    {etiquetaColumna(columna)}
                   </option>
                 ))}
               </select>
@@ -311,7 +312,7 @@ export function TablaPro({
                           disabled={visible && campos.length === 1}
                           onChange={() => alternarColumna(columna)}
                         />
-                        {columna}
+                        {etiquetaColumna(columna)}
                       </label>
                     );
                   })}
@@ -343,7 +344,7 @@ export function TablaPro({
             >
               {campos.map((columna) => (
                 <div key={columna} className={columna === destacada ? "fuerte" : ""}>
-                  <span>{columna}</span>
+                  <span>{etiquetaColumna(columna)}</span>
                   {celda(fila, columna)}
                 </div>
               ))}
@@ -365,7 +366,7 @@ export function TablaPro({
                   >
                     <div className="th-cuerpo">
                       <button type="button" className="th-sort" onClick={() => ordenarPor(columna)}>
-                        <span>{columna}</span>
+                        <span>{etiquetaColumna(columna)}</span>
                         {/* Indicador de la columna ordenada: triángulo según el sentido. */}
                         <span className="th-sort-flecha" aria-hidden="true">
                           {orden === columna ? (sentido === "asc" ? "▲" : "▼") : "↕"}
@@ -378,7 +379,7 @@ export function TablaPro({
                           type="button"
                           className={`th-fijar${fijadas.includes(columna) ? " activo" : ""}`}
                           aria-pressed={fijadas.includes(columna)}
-                          aria-label={`Fijar la columna ${columna} a la izquierda`}
+                          aria-label={`Fijar la columna ${etiquetaColumna(columna)} a la izquierda`}
                           onClick={() => alternarFijada(columna)}
                         >
                           <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false">

@@ -501,8 +501,8 @@ export function TablaZonaMapa({ info }: { info: InfoMapa }) {
         <thead>
           <tr>
             <th>Zona</th>
-            <th>municipios</th>
-            <th>clientes</th>
+            <th>Municipios</th>
+            <th>Clientes</th>
             <th className={["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)", "Caída: valor en riesgo / mes", "Caída: kWh en riesgo / mes"].includes(tabla.nombreValorZona) ? "th-largo" : ""}>
               {tabla.nombreValorZona}
             </th>
