@@ -206,7 +206,7 @@ export function Salidas({ token }: { token?: string | null }) {
                     <thead>
                       <tr>
                         {COLUMNAS_PERFIL.map((columna) => (
-                          <th key={columna} className="num">{etiquetaColumna(columna)}</th>
+                          <th key={columna} className={columna === "valor" ? "" : "num"}>{etiquetaColumna(columna)}</th>
                         ))}
                       </tr>
                     </thead>
@@ -214,7 +214,7 @@ export function Salidas({ token }: { token?: string | null }) {
                       {grupo.filas.slice(0, 15).map((fila, index) => (
                         <tr key={index}>
                           {COLUMNAS_PERFIL.map((columna) => (
-                            <td key={columna} className="num">{formatoPerfil(fila[columna], columna)}</td>
+                            <td key={columna} className={columna === "valor" ? "" : "num"}>{formatoPerfil(fila[columna], columna)}</td>
                           ))}
                         </tr>
                       ))}

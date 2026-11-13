@@ -500,7 +500,7 @@ export function TablaZonaMapa({ info }: { info: InfoMapa }) {
       <table>
         <thead>
           <tr>
-            <th className="centro">Zona</th>
+            <th>Zona</th>
             <th className="num">Municipios</th>
             <th className="num">Clientes</th>
             <th className={["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)", "Caída: valor en riesgo / mes", "Caída: kWh en riesgo / mes"].includes(tabla.nombreValorZona) ? "num th-largo" : "num"}>
@@ -511,7 +511,7 @@ export function TablaZonaMapa({ info }: { info: InfoMapa }) {
         <tbody>
           {tabla.filas.map((zona) => (
             <tr key={zona.clave}>
-              <td className="centro">{zona.Zona}</td>
+              <td>{zona.Zona}</td>
               <td className="num">{fmtN(zona.municipios)}</td>
               <td className="num">{fmtN(zona.clientes)}</td>
               <td className="num">{info.enProporcion ? fmtN(zona.valor, 1) : fmtCelda(zona.valor, info.metCol)}</td>
@@ -542,9 +542,10 @@ export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: st
   // texto a la izquierda; el encabezado va igual que sus datos.
   const claseCol = (columna: string): string => {
     if (columna === info.metNombre) return "num";
-    const muestra = visibles[0]?.[columna];
-    if (typeof muestra === "number") return "num";
+    // Primer valor definido de la columna (algunas filas pueden no traerla).
+    const muestra = visibles.find((fila) => fila[columna] !== undefined)?.[columna];
     if (typeof muestra === "string" && aFecha(muestra) !== null) return "centro";
+    if (typeof muestra === "number") return "num";
     return "";
   };
   return (

@@ -320,7 +320,8 @@ export function tipoColumna(valores: unknown[]): TipoColumna {
   return "texto";
 }
 
-/** Columnas de códigos cortos que van centradas (convención UI: IDs, fechas, estados). */
+/** Columnas de códigos cortos que van centradas (convención UI: IDs, fechas, estados).
+ *  Los nombres de texto (zona, clase, grupo de consumo, tamaño) NO entran: van a la izquierda. */
 const COLUMNAS_CENTRO = new Set([
   "NIU",
   "Ciclo",
@@ -334,14 +335,8 @@ const COLUMNAS_CENTRO = new Set([
   "Riesgo",
   "Nivel",
   "Prioridad",
-  "Zona",
-  "Zona regional",
-  "Zona del ciclo",
   "Tipo de lectura",
   "Confiabilidad",
-  "Grupo de consumo",
-  "Clase",
-  "Tamaño",
   "Ventana completa",
   "Observable",
 ]);

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { api, type DatasetPage } from "../lib/api";
 import { enmascarar, formatCelda, fmtN, esColumnaSensible } from "../lib/format";
 import { usePresentation } from "../app/Presentation";
-import { ordenarFilas, ThTabla, useFijadas, useOrdenTabla } from "./v2/ui";
+import { columnaCentro, columnaCifra, ordenarFilas, ThTabla, useFijadas, useOrdenTabla } from "./v2/ui";
 
 export type Row = { id: number | string; niu?: string | null; payload: Record<string, unknown> };
 
@@ -115,6 +115,13 @@ export function DatasetTable({
   const conIndice = flat.map((row, index) => ({ row, index }));
   const visibles = ordenarFilas(conIndice, orden.orden, orden.sentido, (item, columna) => item.row[columna]);
 
+  // Convención UI por tipo de dato (solo presentación): cifras a la derecha, códigos y
+  // fechas al centro y texto a la izquierda; el encabezado va igual que sus datos.
+  const columnasCifra = new Set(columns.filter((column) => columnaCifra(flat, column, formatCelda)));
+  const columnasCentro = new Set(columns.filter((column) => columnaCentro(flat, column)));
+  const claseDe = (column: string): string =>
+    [columnasCifra.has(column) ? "num" : "", columnasCentro.has(column) ? "centro" : ""].filter(Boolean).join(" ");
+
   return (
     <div ref={fijadas.contenedorRef} className="table-card">
       <table ref={fijadas.tablaRef}>
@@ -131,6 +138,7 @@ export function DatasetTable({
                 hayScrollX={fijadas.hayScrollX}
                 fijada={fijadas.esFijada(column)}
                 left={fijadas.izquierda(column)}
+                className={claseDe(column)}
               >
                 {human(column)}
               </ThTabla>
@@ -142,7 +150,7 @@ export function DatasetTable({
           {visibles.map(({ row, index }) => (
             <tr key={`${String(row.NIU)}-${index}`}>
               {columns.map((column) => (
-                <td key={column} {...fijadas.celdaFijada(column)}>
+                <td key={column} {...fijadas.celdaFijada(column, claseDe(column))}>
                   {hideIds && esColumnaSensible(column) ? enmascarar(row[column]) : formatCelda(row[column], column)}
                 </td>
               ))}

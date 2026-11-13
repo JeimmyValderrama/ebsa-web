@@ -10,7 +10,7 @@ import { SinConsumo } from "../components/SinConsumo";
 import { Fuga } from "../components/Fuga";
 import { Salidas } from "../components/Salidas";
 import { Proyeccion, recortarProyeccion, type Anual, type Mensual } from "../components/Projection";
-import { Aviso, Banda, ComoLeer, Kpis, Tarjeta, TituloPagina, ordenarFilas, ThTabla, useFijadas, useOrdenTabla, type ItemKpi } from "../components/v2/ui";
+import { Aviso, Banda, ComoLeer, Kpis, Tarjeta, TituloPagina, aFecha, ordenarFilas, ThTabla, useFijadas, useOrdenTabla, type ItemKpi } from "../components/v2/ui";
 import { NOTA_CERO_SOSTENIDO, NOTA_REGLAS_LISTA, QUE_ES_ESTO, periodoTexto } from "../components/v2/textos";
 import { useCorte } from "../lib/useCorte";
 import { MeasureSelector, usePresentation } from "../app/Presentation";
@@ -497,7 +497,6 @@ function TablaCaidasZona({ columnas, filas, esConsumo }: { columnas: string[]; f
                 className={[
                   ["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)", "Clientes con caída"].includes(columna) ? "num" : "",
                   ["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)"].includes(columna) ? "th-largo" : "",
-                  columna === "Zona regional" ? "centro" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
@@ -508,7 +507,7 @@ function TablaCaidasZona({ columnas, filas, esConsumo }: { columnas: string[]; f
         <tbody>
           {visibles.map((zona) => (
             <tr key={zona.zona}>
-              <td {...fijadas.celdaFijada(columnas[0], "centro")}>
+              <td {...fijadas.celdaFijada(columnas[0])}>
                 {tituloPropio(zona.zona.replace("USUARIOS NO REGULADOS", "NO REGULADOS"))}
               </td>
               <td {...fijadas.celdaFijada(columnas[1], "num")}>{fmtN(zona.clientes)}</td>
@@ -566,13 +565,22 @@ function TopDiez({ info }: { info: InfoMapa }) {
 /** Tabla de entradas y salidas de la lista (list_entries_exits), con las columnas del archivo. */
 function TablaEntradasSalidas({ filas }: { filas: Row[] }) {
   const columnas = ["fecha_corte", "corte_anterior", "en_lista_anterior", "en_lista_actual", "permanecen", "salieron", "entraron"];
+  // Convención UI por tipo de dato: fechas al centro y conteos a la derecha; el encabezado
+  // va igual que sus datos. Se decide con la primera fila (el esquema no cambia entre filas).
+  const claseCol = (columna: string): string => {
+    // Primer valor definido de la columna (algunas filas pueden no traerla).
+    const muestra = filas.find((fila) => fila.payload?.[columna] !== undefined)?.payload?.[columna];
+    if (typeof muestra === "number") return "num";
+    if (typeof muestra === "string" && aFecha(muestra) !== null) return "centro";
+    return "";
+  };
   return (
     <div className="table-card">
       <table>
         <thead>
           <tr>
             {columnas.map((columna) => (
-              <th key={columna}>{etiquetaColumna(columna)}</th>
+              <th key={columna} className={claseCol(columna)}>{etiquetaColumna(columna)}</th>
             ))}
           </tr>
         </thead>
@@ -581,7 +589,7 @@ function TablaEntradasSalidas({ filas }: { filas: Row[] }) {
             <tr key={index}>
               {columnas.map((columna) => {
                 const valor = fila.payload?.[columna];
-                return <td key={columna}>{typeof valor === "number" ? fmtN(valor) : String(valor ?? "—")}</td>;
+                return <td key={columna} className={claseCol(columna)}>{typeof valor === "number" ? fmtN(valor) : String(valor ?? "—")}</td>;
               })}
             </tr>
           ))}

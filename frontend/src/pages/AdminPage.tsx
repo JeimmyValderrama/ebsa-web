@@ -368,8 +368,8 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
           <thead>
             <tr>
               <th>Correo</th>
-              <th>Rol</th>
-              <th>Estado</th>
+              <th className="centro">Rol</th>
+              <th className="centro">Estado</th>
               <th className="acciones">Acciones</th>
             </tr>
           </thead>
@@ -385,7 +385,7 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
               return (
                 <tr key={row.uid} className={row.disabled ? "fila-inactiva" : undefined}>
                   <td>{row.email ?? row.uid}</td>
-                  <td>
+                  <td className="centro">
                     {/* "Sin rol" queda solo como etiqueta (disabled): nunca se envía "" al backend. */}
                     <select
                       value={row.role ?? ""}
@@ -402,7 +402,7 @@ function Users({ rows, ocupado, onUpdate, onCrear, onEliminar }: UsersProps) {
                       ))}
                     </select>
                   </td>
-                  <td>
+                  <td className="centro">
                     {row.disabled ? (
                       <span className="badge">Deshabilitado</span>
                     ) : (
