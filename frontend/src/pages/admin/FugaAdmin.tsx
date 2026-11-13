@@ -585,13 +585,13 @@ function PestanaZona({ token }: { token?: string | null }) {
   const filasGrupo = grupos ?? [];
 
   return (
-    <div className="fila-1-1">
-      <Tarjeta>
-        <Encabezado titulo="Por zona" />
-        {zonas === null ? (
-          <div className="empty-state cargando" role="status">Consultando el resumen por zona…</div>
-        ) : filasZona.length ? (
-          <>
+    <>
+      <div className="fila-1-1">
+        <Tarjeta>
+          <Encabezado titulo="Por zona" />
+          {zonas === null ? (
+            <div className="empty-state cargando" role="status">Consultando el resumen por zona…</div>
+          ) : filasZona.length ? (
             <BarrasApiladas
               filas={filasZona.map((fila) => ({
                 cat: String(fila.zona_nombre ?? "—"),
@@ -601,25 +601,30 @@ function PestanaZona({ token }: { token?: string | null }) {
               colores={{ "Riesgo alto": NARANJA, "Riesgo medio": AZUL }}
               opciones={{ nombreCategoria: "Zona", nombreSerie: "Nivel", altoFila: 26 }}
             />
-            <TablaSimple columnas={COLUMNAS_ZONA} filas={filasZona} formato={formatoTabla(filasZona, COLUMNAS_ZONA)} />
-          </>
-        ) : null}
-      </Tarjeta>
+          ) : null}
+        </Tarjeta>
 
-      <Tarjeta>
-        <Encabezado titulo="Por grupo de consumo" />
-        {grupos === null ? (
-          <div className="empty-state cargando" role="status">Consultando el resumen por grupo…</div>
-        ) : filasGrupo.length ? (
-          <>
-            <TablaSimple columnas={COLUMNAS_GRUPO} filas={filasGrupo} formato={formatoTabla(filasGrupo, COLUMNAS_GRUPO)} />
-            <p className="v2-pie">
-              {md(GRUPOS_CONSUMO_ORDEN.map((grupo) => `**${grupo}**: ${GRUPO_CONSUMO_DESCRIPCION[grupo] ?? ""}`).join(" · "))}
-            </p>
-          </>
-        ) : null}
-      </Tarjeta>
-    </div>
+        <Tarjeta>
+          <Encabezado titulo="Por grupo de consumo" />
+          {grupos === null ? (
+            <div className="empty-state cargando" role="status">Consultando el resumen por grupo…</div>
+          ) : filasGrupo.length ? (
+            <>
+              <TablaSimple columnas={COLUMNAS_GRUPO} filas={filasGrupo} formato={formatoTabla(filasGrupo, COLUMNAS_GRUPO)} />
+              <p className="v2-pie">
+                {md(GRUPOS_CONSUMO_ORDEN.map((grupo) => `**${grupo}**: ${GRUPO_CONSUMO_DESCRIPCION[grupo] ?? ""}`).join(" · "))}
+              </p>
+            </>
+          ) : null}
+        </Tarjeta>
+      </div>
+
+      {/* La tabla por zona va debajo de la fila y a todo el ancho: dentro de la tarjeta
+          quedaba apretada (columnas cortadas) y desbalanceaba las dos columnas. */}
+      {zonas !== null && filasZona.length > 0 && (
+        <TablaSimple columnas={COLUMNAS_ZONA} filas={filasZona} formato={formatoTabla(filasZona, COLUMNAS_ZONA)} />
+      )}
+    </>
   );
 }
 
