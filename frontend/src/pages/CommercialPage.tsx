@@ -372,7 +372,7 @@ function Panorama({ token }: { token?: string | null }) {
         plegable
       >
         <div className="fila-3-2">
-          <div>
+          <div className="zona-grafica">
             <Leyenda items={seriesSev.map((serie) => [serie, COLOR_GRAVEDAD[serie] ?? C.mudo] as [string, string])} />
             <BarrasApiladas
               filas={filasApiladas}
@@ -380,15 +380,15 @@ function Panorama({ token }: { token?: string | null }) {
               colores={COLOR_GRAVEDAD}
               opciones={{ nombreCategoria: "Zona regional", nombreSerie: "Gravedad", movil }}
             />
+            <Pie
+              texto={md(
+                "**Grave** = caída reciente muy por encima de lo normal del segmento: revisar medidor y lectura primero. "
+                + "**Antigua** = lleva meses en ese nivel; va en seguimiento, no como urgente.",
+              )}
+            />
           </div>
           <TablaCaidasZona columnas={columnasZona} filas={filasZona} esConsumo={esConsumo} />
         </div>
-        <Pie
-          texto={md(
-            "**Grave** = caída reciente muy por encima de lo normal del segmento: revisar medidor y lectura primero. "
-            + "**Antigua** = lleva meses en ese nivel; va en seguimiento, no como urgente.",
-          )}
-        />
       </Tarjeta>
 
       <div className="fila-1-1">

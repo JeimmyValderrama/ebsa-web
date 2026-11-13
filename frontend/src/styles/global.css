@@ -796,6 +796,9 @@ textarea.search-input {
 .v2-conteo b { color: var(--ink); }
 .v2-pie { margin: 2px 0 0; font-size: 13.5px; color: var(--ink2); }
 .v2-pie i { font-style: italic; }
+/* Nota de gravedad de la tarjeta de zonas del Panorama: vive debajo de la gráfica, en el
+   espacio que deja la tabla más alta de la derecha, con aire para no quedar pegada. */
+.zona-grafica .v2-pie { margin-top: 18px; }
 
 /* ---------- títulos y tarjetas (v2-ph / v2-card / v2-hero del Streamlit) ---------- */
 .v2-ph { margin: 0 0 6px; }
