@@ -183,6 +183,7 @@ export function Salidas({ token }: { token?: string | null }) {
         filas={filasTabla}
         columnas={columnas}
         formato={formato}
+        izquierda={["Estado"]}
         centro={["Consumía antes (kWh/mes)"]}
         movil={["NIU", "Estado", "Municipio", "Desde", colAntes]}
         destacada={colAntes}

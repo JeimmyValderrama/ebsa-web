@@ -689,6 +689,7 @@ function VisitasPorCiclo({ token }: { token?: string | null }) {
                 filas={filas}
                 columnas={columnas}
                 formato={formato}
+                centro={["Orden", "Consume ahora (kWh/mes)"]}
                 prioritarias={[
                   "Orden",
                   "NIU",
@@ -939,7 +940,20 @@ export function Retroalimentacion({ token }: { token?: string | null }) {
         const columnas = Object.keys(bloque[0]).filter((columna) => columna !== "corte_por");
         return (
           <Tarjeta titulo={`Por ${cortePor.toLowerCase().replaceAll("_", " ")}${sufijo}`} key={cortePor}>
-            <TablaSimple columnas={columnas} filas={bloque} formato={formatoTabla(bloque, columnas)} />
+            <TablaSimple
+              columnas={columnas}
+              filas={bloque}
+              formato={formatoTabla(bloque, columnas)}
+              centro={[
+                "Visitados",
+                "Verificados",
+                "Con causa gestionable",
+                "Caída real sin gestión",
+                "Sin novedad",
+                "Precisión gestionable (%)",
+                "Precisión caída real (%)",
+              ]}
+            />
           </Tarjeta>
         );
       })}
