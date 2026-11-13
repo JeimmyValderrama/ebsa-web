@@ -195,6 +195,9 @@ export function TablaPro({
   // Columnas de texto corrido (párrafos enteros, p. ej. "Qué revisar"): ancho de sobra
   // para que la celda no se apile en vertical; la tabla hace scroll horizontal si hace falta.
   const COLUMNAS_TEXTO = new Set(["Qué revisar"]);
+  // Columna de sugerencias ("Qué hacer (sugerido)" en Clientes sin consumo): ancho medio
+  // para que la frase no se apile en vertical y la fila no quede tan alta.
+  const COLUMNAS_SUGERENCIA = new Set(["Qué hacer (sugerido)"]);
   // Alineación: primero las reglas explícitas de la tabla (izquierda/centro/derecha) y
   // después la detección automática por tipo de dato; el resto de clases no se tocan.
   const alineacionDe = (columna: string): string => {
@@ -209,6 +212,7 @@ export function TablaPro({
       alineacionDe(columna),
       fijadas.includes(columna) ? "fijada" : "",
       COLUMNAS_LARGAS.has(columna) ? "th-largo" : "",
+      COLUMNAS_SUGERENCIA.has(columna) ? "th-medio" : "",
       COLUMNAS_TEXTO.has(columna) ? "th-texto" : "",
     ]
       .filter(Boolean)

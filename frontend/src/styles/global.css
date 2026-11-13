@@ -490,6 +490,11 @@ h3 { font-size: 20px; }
   min-width: 44ch;
   display: inline-block;
 }
+/* Columna de sugerencias ("Qué hacer (sugerido)" en Clientes sin consumo): ancho medio
+   para que la frase no se apile en vertical y la fila no quede tan alta. */
+.table-card th.th-medio {
+  min-width: max(min-content, 40ch);
+}
 .grafico-sin-consumo {
   padding-top: 40px;
 }
