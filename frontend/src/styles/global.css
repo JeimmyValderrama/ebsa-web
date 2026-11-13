@@ -523,10 +523,15 @@ h3 { font-size: 20px; }
 .table-card th .th-cuerpo { display: flex; align-items: center; gap: 6px; }
 .table-card th .th-sort {
   display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
+  /* Estructura unificada del encabezado: la etiqueta va según el tipo de columna y la flecha
+     de orden queda anclada a la derecha, junto a la chincheta —los dos controles siempre
+     juntos al borde derecho, sin importar qué tan ancha sea la celda. */
+  justify-content: space-between;
   background: none; border: 0; padding: 0; margin: 0;
   font: inherit; font-weight: 600; color: inherit; text-align: left; cursor: pointer;
 }
-.table-card th.num .th-cuerpo { flex-direction: row-reverse; }
+/* Cifras: la etiqueta va a la derecha y la flecha queda junto a la chincheta (sin invertir
+   la fila: la chincheta siempre permanece al borde derecho de la celda). */
 .table-card th.num .th-sort { justify-content: flex-end; text-align: right; }
 /* Chincheta de fijar columna: discreta hasta que se pasa el cursor o se activa. */
 .table-card th .th-fijar {
@@ -550,8 +555,10 @@ h3 { font-size: 20px; }
 .table-card td.num { font-variant-numeric: tabular-nums; }
 /* Convención UI: códigos cortos y fechas centrados; el encabezado va igual que sus datos. */
 .table-card th.centro, .table-card td.centro { text-align: center; }
-.table-card th.centro .th-cuerpo { justify-content: center; }
-.table-card th.centro .th-sort { justify-content: center; text-align: center; }
+/* Centradas: la etiqueta se centra con márgenes automáticos y la flecha sigue anclada
+   a la derecha junto a la chincheta. */
+.table-card th.centro .th-sort { justify-content: space-between; text-align: center; }
+.table-card th.centro .th-sort span:first-child { margin-inline: auto; }
 /* Filas alternas en gris claro (tabla rayada del sitio): va antes de los realces para que
    hover/selection puedan ganarle por especificidad. */
 .table-card tbody tr:nth-child(even) td { background: #f9f9f9; }
