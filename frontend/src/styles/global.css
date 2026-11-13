@@ -471,10 +471,10 @@ h3 { font-size: 20px; }
   z-index: 1;
 }
 .table-card th.th-largo {
-  min-width: max(min-content, 30ch);
+  min-width: max(min-content, 22ch);
 }
 .table-card th.th-largo .th-sort span:first-child {
-  min-width: 22ch;
+  min-width: 16ch;
   display: inline-block;
 }
 /* Columna de texto corrido ("Qué revisar" en Visitas por ciclo): ancho generoso para
