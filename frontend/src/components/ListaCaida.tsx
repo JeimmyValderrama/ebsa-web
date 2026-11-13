@@ -300,6 +300,7 @@ export function ListaCaida({ token }: { token?: string | null }) {
               filas={filas}
               columnas={COLUMNAS}
               formato={formato}
+              centro={["Consumía (kWh/mes)", "Consume ahora (kWh/mes)", "Consumo que se pierde (kWh/mes)"]}
               prioritarias={["Puesto", "NIU", "Municipio", "Clase", "Consumía (kWh/mes)", "Consume ahora (kWh/mes)", "Caída", colVis, "Gravedad", "Tendencia"]}
               movil={["NIU", "Municipio", colVis, "Caída", "Gravedad", "Tendencia"]}
               destacada={colVis}

@@ -478,6 +478,13 @@ function TablaCaidasZona({ columnas, filas, esConsumo }: { columnas: string[]; f
     return fila.zona;
   };
   const visibles = ordenarFilas(filas, orden.orden, orden.sentido, valorDe);
+  // Alineación por regla de la subpestaña: la zona va a la izquierda; los conteos y el kWh
+  // consumido, al centro; la facturación, a la derecha. El encabezado va igual que sus datos.
+  const claseCol = (columna: string): string => {
+    if (columna === columnas[0]) return "";
+    if (["Clientes con caída", "Consumo que se pierde (kWh/mes)"].includes(columna)) return "centro";
+    return "num";
+  };
   return (
     <div ref={fijadas.contenedorRef} className="table-card tabla-alta">
       <table ref={fijadas.tablaRef}>
@@ -495,7 +502,7 @@ function TablaCaidasZona({ columnas, filas, esConsumo }: { columnas: string[]; f
                 fijada={fijadas.esFijada(columna)}
                 left={fijadas.izquierda(columna)}
                 className={[
-                  ["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)", "Clientes con caída"].includes(columna) ? "num" : "",
+                  claseCol(columna),
                   ["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)"].includes(columna) ? "th-largo" : "",
                 ]
                   .filter(Boolean)
@@ -510,11 +517,11 @@ function TablaCaidasZona({ columnas, filas, esConsumo }: { columnas: string[]; f
               <td {...fijadas.celdaFijada(columnas[0])}>
                 {tituloPropio(zona.zona.replace("USUARIOS NO REGULADOS", "NO REGULADOS"))}
               </td>
-              <td {...fijadas.celdaFijada(columnas[1], "num")}>{fmtN(zona.clientes)}</td>
-              <td {...fijadas.celdaFijada(columnas[2], "num")}>
+              <td {...fijadas.celdaFijada(columnas[1], claseCol(columnas[1]))}>{fmtN(zona.clientes)}</td>
+              <td {...fijadas.celdaFijada(columnas[2], claseCol(columnas[2]))}>
                 {esConsumo ? fmtN(Math.round(zona.perdida)) : pesos(Math.round(zona.valorRiesgo))}
               </td>
-              <td {...fijadas.celdaFijada(columnas[3], "num")}>
+              <td {...fijadas.celdaFijada(columnas[3], claseCol(columnas[3]))}>
                 {esConsumo ? pesos(Math.round(zona.valorRiesgo)) : fmtN(Math.round(zona.perdida))}
               </td>
             </tr>
@@ -568,6 +575,8 @@ function TablaEntradasSalidas({ filas }: { filas: Row[] }) {
   // Convención UI por tipo de dato: fechas al centro y conteos a la derecha; el encabezado
   // va igual que sus datos. Se decide con la primera fila (el esquema no cambia entre filas).
   const claseCol = (columna: string): string => {
+    // Regla de la subpestaña Panorama: los conteos de la tabla van al centro.
+    if (["en_lista_anterior", "en_lista_actual", "permanecen", "salieron", "entraron"].includes(columna)) return "centro";
     // Primer valor definido de la columna (algunas filas pueden no traerla).
     const muestra = filas.find((fila) => fila.payload?.[columna] !== undefined)?.payload?.[columna];
     if (typeof muestra === "number") return "num";

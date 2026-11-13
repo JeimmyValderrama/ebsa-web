@@ -161,6 +161,8 @@ export function Descargas({ token, esAdmin = false }: { token?: string | null; e
               columnas={COLUMNAS}
               filas={filas}
               formato={formato}
+              izquierda={["Estado"]}
+              centro={["Clientes", "Tamaño (MB)"]}
               tituloAcciones="Descarga"
               acciones={(_fila, indiceFila) => {
                 const origen = producto.filas[indiceFila];

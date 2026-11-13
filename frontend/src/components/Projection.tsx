@@ -628,7 +628,14 @@ export function Proyeccion({ token }: { token?: string | null }) {
           </div>
         ) : null}
 
-        <TablaSimple columnas={COLUMNAS_ANUAL} filas={filasTablaAnual} alto={420} />
+        <TablaSimple
+          columnas={COLUMNAS_ANUAL}
+          filas={filasTablaAnual}
+          alto={420}
+          izquierda={["Confiabilidad"]}
+          centro={["Año", "Meses reales", "Meses proyectados", "Consumo real (GWh)", "Proyección (GWh)", "Total del año (GWh)", "Banda 80 % (GWh)", "Banda 95 % (GWh)"]}
+          derecha={["Error del backtest"]}
+        />
 
         <p>{md(mensajeUso)}</p>
         <p className="v2-caption">{md(pieAnual)}</p>
@@ -641,7 +648,7 @@ export function Proyeccion({ token }: { token?: string | null }) {
       <details className="v2-exp">
         <summary>Resumen de todas las zonas por año</summary>
         <div className="v2-exp-cuerpo">
-          <TablaSimple columnas={pivotBase.columnas} filas={pivotBase.filas} formato={fmtPivote} alto={420} />
+          <TablaSimple columnas={pivotBase.columnas} filas={pivotBase.filas} formato={fmtPivote} alto={420} centro={["2022", "2023", "2024", "2025", "2026"]} />
           <p className="v2-caption">
             {md(`GWh por año calendario (real + proyección, escenario base). Los años ${aniosConProyeccion.join(", ")} incluyen meses proyectados.`)}
           </p>
@@ -651,13 +658,32 @@ export function Proyeccion({ token }: { token?: string | null }) {
               <p>
                 <b>Escenario alternativo (GWh por año)</b>
               </p>
-              <TablaSimple columnas={pivotAlternativo.columnas} filas={pivotAlternativo.filas} formato={fmtPivote} alto={420} />
+              <TablaSimple columnas={pivotAlternativo.columnas} filas={pivotAlternativo.filas} formato={fmtPivote} alto={420} centro={["2022", "2023", "2024", "2025", "2026"]} />
             </div>
           ) : null}
 
           {!tecnico ? <TablaSimple columnas={columnasError} filas={filasError} formato={fmtTabla(1)} alto={420} /> : null}
 
-          {tecnico ? <TablaSimple columnas={columnasTecnicas} filas={filasTecnicas} formato={fmtTabla(2)} alto={420} /> : null}
+          {tecnico ? (
+            <TablaSimple
+              columnas={columnasTecnicas}
+              filas={filasTecnicas}
+              formato={fmtTabla(2)}
+              alto={420}
+              centro={[
+                "Error 2 años (%)",
+                "Línea base 1 año (%)",
+                "Sesgo 1 año (%)",
+                "Cobertura banda 80 % (%)",
+                "Factor de ensanche de banda",
+                "Ljung-Box p",
+                "Alternativo: error 1 año (%)",
+                "Alternativo: error 2 años (%)",
+                "Puntos 1 año",
+                "Puntos 2 años",
+              ]}
+            />
+          ) : null}
         </div>
       </details>
 

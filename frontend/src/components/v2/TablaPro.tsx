@@ -3,7 +3,7 @@ import { csvCelda, fmtN } from "../../lib/format";
 import { etiquetaColumna } from "../../lib/columnas";
 import { Sensitive } from "../../app/Presentation";
 import { useEsMovil } from "../../charts/textos";
-import { columnaCentro, columnaCifra, Encabezado } from "./ui";
+import { columnaCentro, columnaCifra, coincideColumna, Encabezado } from "./ui";
 
 /**
  * Tabla de trabajo del Streamlit (ui.tabla_pro): buscar, ordenar, elegir cuántas columnas y filas ver,
@@ -28,6 +28,9 @@ export function TablaPro({
   descargar,
   ficha,
   sinMenu = false,
+  centro,
+  izquierda,
+  derecha,
 }: {
   filas: Fila[];
   columnas: string[];
@@ -50,6 +53,10 @@ export function TablaPro({
   /** Oculta el menú desplegable "Ordenar y columnas"; el orden por las flechas del
    *  encabezado sigue funcionando. Si tampoco hay búsqueda, se omite toda la barra. */
   sinMenu?: boolean;
+  /** Alineación explícita (reglas por subpestaña): manda sobre la detección automática. */
+  centro?: string[];
+  izquierda?: string[];
+  derecha?: string[];
 }) {
   const esMovil = useEsMovil();
   const [q, setQ] = useState("");
@@ -188,11 +195,18 @@ export function TablaPro({
   // Columnas de texto corrido (párrafos enteros, p. ej. "Qué revisar"): ancho de sobra
   // para que la celda no se apile en vertical; la tabla hace scroll horizontal si hace falta.
   const COLUMNAS_TEXTO = new Set(["Qué revisar"]);
+  // Alineación: primero las reglas explícitas de la tabla (izquierda/centro/derecha) y
+  // después la detección automática por tipo de dato; el resto de clases no se tocan.
+  const alineacionDe = (columna: string): string => {
+    if (coincideColumna(izquierda, columna)) return "";
+    if (coincideColumna(centro, columna)) return "centro";
+    if (coincideColumna(derecha, columna)) return "num";
+    return [columnasCifra.has(columna) ? "num" : "", columnasCentro.has(columna) ? "centro" : ""].filter(Boolean).join(" ");
+  };
   const claseDe = (columna: string): string =>
     [
       columna === destacada ? "destacada" : "",
-      columnasCifra.has(columna) ? "num" : "",
-      columnasCentro.has(columna) ? "centro" : "",
+      alineacionDe(columna),
       fijadas.includes(columna) ? "fijada" : "",
       COLUMNAS_LARGAS.has(columna) ? "th-largo" : "",
       COLUMNAS_TEXTO.has(columna) ? "th-texto" : "",

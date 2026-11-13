@@ -313,6 +313,8 @@ export function Fuga({ token }: { token?: string | null }) {
         filas={filasTabla}
         columnas={COLUMNAS}
         formato={formato}
+        izquierda={["Riesgo"]}
+        centro={["Consumo promedio 6 meses (kWh/mes)", "Consumo esperado en riesgo (kWh/mes)"]}
         prioritarias={["Prioridad", "NIU", "Municipio", "Clase", "Tamaño", colProm, "Probabilidad de fuga (6 meses)", "Riesgo", colEsperado, "Señales observadas"]}
         movil={["NIU", "Municipio", "Clase", "Riesgo", "Probabilidad de fuga (6 meses)", colEsperado, "Señales observadas"]}
         destacada={colEsperado}
@@ -340,6 +342,7 @@ export function Fuga({ token }: { token?: string | null }) {
             filas={filasVigilancia}
             columnas={COLUMNAS_VIGILANCIA}
             formato={formatoVigilancia}
+            centro={["Consumo promedio (kWh/mes)"]}
             movil={["NIU", "Municipio", "Por qué está aquí", colVig, "Probabilidad de fuga", "Probabilidad (6 meses)"]}
             que="clientes"
             columnaId="NIU"

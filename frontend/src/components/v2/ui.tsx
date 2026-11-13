@@ -111,6 +111,9 @@ export function TablaSimple({
   alto,
   acciones,
   tituloAcciones,
+  centro,
+  izquierda,
+  derecha,
 }: {
   columnas: string[];
   filas: Array<Record<string, unknown>>;
@@ -119,6 +122,10 @@ export function TablaSimple({
   /** Columna final con un botón por fila (p. ej. descargar); su celda puede devolver null. */
   acciones?: (fila: Record<string, unknown>, indice: number) => ReactNode;
   tituloAcciones?: string;
+  /** Alineación explícita (reglas por subpestaña): manda sobre la detección automática. */
+  centro?: string[];
+  izquierda?: string[];
+  derecha?: string[];
 }) {
   // Orden y columnas fijadas (siempre disponibles: no cambian el orden inicial hasta que la
   // persona elige uno, y la chincheta solo aparece si hay scroll horizontal real).
@@ -128,8 +135,12 @@ export function TablaSimple({
   const fmt = formato ?? ((valor: unknown) => (valor === null || valor === undefined ? "" : String(valor)));
   const columnasCifra = new Set(columnas.filter((columna) => columnaCifra(filas, columna, fmt)));
   const columnasCentro = new Set(columnas.filter((columna) => columnaCentro(filas, columna)));
-  const claseDe = (columna: string): string =>
-    [columnasCifra.has(columna) ? "num" : "", columnasCentro.has(columna) ? "centro" : ""].filter(Boolean).join(" ");
+  const claseDe = (columna: string): string => {
+    if (coincideColumna(izquierda, columna)) return "";
+    if (coincideColumna(centro, columna)) return "centro";
+    if (coincideColumna(derecha, columna)) return "num";
+    return [columnasCifra.has(columna) ? "num" : "", columnasCentro.has(columna) ? "centro" : ""].filter(Boolean).join(" ");
+  };
   // El índice que recibe `acciones` siempre es el de la lista que llegó: aunque se ordene,
   // el botón sigue apuntando a la misma fila original (p. ej. la descarga correcta).
   const conIndice = filas.map((fila, indice) => ({ fila, indice }));
@@ -346,6 +357,13 @@ const COLUMNAS_CENTRO = new Set([
 export function columnaCentro(filas: Array<Record<string, unknown>>, columna: string): boolean {
   if (COLUMNAS_CENTRO.has(columna)) return true;
   return tipoColumna(filas.map((fila) => fila[columna])) === "fecha";
+}
+
+/** ¿La columna está en la lista de alineación explícita de una tabla? Acepta la clave cruda
+ *  o su etiqueta de presentación. Reglas por subpestaña: mandan sobre la detección automática. */
+export function coincideColumna(lista: string[] | undefined, columna: string): boolean {
+  if (!lista || lista.length === 0) return false;
+  return lista.includes(columna) || lista.includes(etiquetaColumna(columna));
 }
 
 /** Comparador de celdas: números numéricamente, fechas cronológicamente y texto

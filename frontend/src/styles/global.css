@@ -1081,7 +1081,7 @@ textarea.search-input {
 /* Escenario alternativo: un poco de aire arriba para que no quede pegado a la tabla base (como en Streamlit). */
 .proy-bloque-alt { display: grid; gap: 10px; margin-top: 20px; }
 /* Descargas por grupo: columna con el botón de descarga de cada fila (una celda por archivo). */
-.col-accion { text-align: right; white-space: nowrap; }
+.col-accion { text-align: center; white-space: nowrap; }
 .col-accion .ghost-button { padding: 5px 11px; font-size: 13px; }
 .v2-exp { background: var(--sup); border: 1px solid var(--linea); border-radius: 8px; padding: 0; min-width: 0; }
 .v2-exp summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: 15px; padding: 11px 15px; list-style-position: inside; border-radius: 8px 8px 0 0; transition: background .12s ease; }
