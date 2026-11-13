@@ -494,7 +494,13 @@ function TablaCaidasZona({ columnas, filas, esConsumo }: { columnas: string[]; f
                 hayScrollX={fijadas.hayScrollX}
                 fijada={fijadas.esFijada(columna)}
                 left={fijadas.izquierda(columna)}
-                className={["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)"].includes(columna) ? "th-largo" : ""}
+                className={[
+                  ["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)", "Clientes con caída"].includes(columna) ? "num" : "",
+                  ["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)"].includes(columna) ? "th-largo" : "",
+                  columna === "Zona regional" ? "centro" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               />
             ))}
           </tr>
@@ -502,14 +508,14 @@ function TablaCaidasZona({ columnas, filas, esConsumo }: { columnas: string[]; f
         <tbody>
           {visibles.map((zona) => (
             <tr key={zona.zona}>
-              <td {...fijadas.celdaFijada(columnas[0])}>
+              <td {...fijadas.celdaFijada(columnas[0], "centro")}>
                 {tituloPropio(zona.zona.replace("USUARIOS NO REGULADOS", "NO REGULADOS"))}
               </td>
-              <td {...fijadas.celdaFijada(columnas[1])}>{fmtN(zona.clientes)}</td>
-              <td {...fijadas.celdaFijada(columnas[2])}>
+              <td {...fijadas.celdaFijada(columnas[1], "num")}>{fmtN(zona.clientes)}</td>
+              <td {...fijadas.celdaFijada(columnas[2], "num")}>
                 {esConsumo ? fmtN(Math.round(zona.perdida)) : pesos(Math.round(zona.valorRiesgo))}
               </td>
-              <td {...fijadas.celdaFijada(columnas[3])}>
+              <td {...fijadas.celdaFijada(columnas[3], "num")}>
                 {esConsumo ? pesos(Math.round(zona.valorRiesgo)) : fmtN(Math.round(zona.perdida))}
               </td>
             </tr>

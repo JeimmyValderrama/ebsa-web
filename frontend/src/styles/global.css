@@ -534,6 +534,10 @@ h3 { font-size: 20px; }
    tabulares (misma posición vertical para comparar de un vistazo). Solo presentación. */
 .table-card th.num, .table-card td.num { text-align: right; }
 .table-card td.num { font-variant-numeric: tabular-nums; }
+/* Convención UI: códigos cortos y fechas centrados; el encabezado va igual que sus datos. */
+.table-card th.centro, .table-card td.centro { text-align: center; }
+.table-card th.centro .th-cuerpo { justify-content: center; }
+.table-card th.centro .th-sort { justify-content: center; text-align: center; }
 /* Filas alternas en gris claro (tabla rayada del sitio): va antes de los realces para que
    hover/selection puedan ganarle por especificidad. */
 .table-card tbody tr:nth-child(even) td { background: #f9f9f9; }

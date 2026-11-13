@@ -3,7 +3,7 @@ import { csvCelda, fmtN } from "../../lib/format";
 import { etiquetaColumna } from "../../lib/columnas";
 import { Sensitive } from "../../app/Presentation";
 import { useEsMovil } from "../../charts/textos";
-import { columnaCifra, Encabezado } from "./ui";
+import { columnaCentro, columnaCifra, Encabezado } from "./ui";
 
 /**
  * Tabla de trabajo del Streamlit (ui.tabla_pro): buscar, ordenar, elegir cuántas columnas y filas ver,
@@ -172,6 +172,8 @@ export function TablaPro({
   }, [claveDeteccion]);
   // Solo presentación: las columnas de solo cifras se alinean a la derecha (se decide con la página visible).
   const columnasCifra = new Set(campos.filter((columna) => columnaCifra(pagina, columna, formato)));
+  // Convención UI: códigos cortos y fechas al centro (se decide con la página visible).
+  const columnasCentro = new Set(campos.filter((columna) => columnaCentro(pagina, columna)));
   // Columnas con texto largo que necesitan más ancho para no partirse en >2 líneas.
   const COLUMNAS_LARGAS = new Set([
     "Facturación que se pierde ($/mes)",
@@ -190,6 +192,7 @@ export function TablaPro({
     [
       columna === destacada ? "destacada" : "",
       columnasCifra.has(columna) ? "num" : "",
+      columnasCentro.has(columna) ? "centro" : "",
       fijadas.includes(columna) ? "fijada" : "",
       COLUMNAS_LARGAS.has(columna) ? "th-largo" : "",
       COLUMNAS_TEXTO.has(columna) ? "th-texto" : "",

@@ -127,7 +127,9 @@ export function TablaSimple({
   if (!filas.length) return null;
   const fmt = formato ?? ((valor: unknown) => (valor === null || valor === undefined ? "" : String(valor)));
   const columnasCifra = new Set(columnas.filter((columna) => columnaCifra(filas, columna, fmt)));
-  const claseDe = (columna: string): string => (columnasCifra.has(columna) ? "num" : "");
+  const columnasCentro = new Set(columnas.filter((columna) => columnaCentro(filas, columna)));
+  const claseDe = (columna: string): string =>
+    [columnasCifra.has(columna) ? "num" : "", columnasCentro.has(columna) ? "centro" : ""].filter(Boolean).join(" ");
   // El índice que recibe `acciones` siempre es el de la lista que llegó: aunque se ordene,
   // el botón sigue apuntando a la misma fila original (p. ej. la descarga correcta).
   const conIndice = filas.map((fila, indice) => ({ fila, indice }));
@@ -316,6 +318,40 @@ export function tipoColumna(valores: unknown[]): TipoColumna {
   if (llenos.every((valor) => aNumero(valor) !== null)) return "num";
   if (llenos.every((valor) => aFecha(valor) !== null)) return "fecha";
   return "texto";
+}
+
+/** Columnas de códigos cortos que van centradas (convención UI: IDs, fechas, estados). */
+const COLUMNAS_CENTRO = new Set([
+  "NIU",
+  "Ciclo",
+  "Puesto",
+  "Ranking",
+  "Orden en el ciclo",
+  "Estado",
+  "Estado en lista",
+  "Situación",
+  "Nivel de riesgo",
+  "Riesgo",
+  "Nivel",
+  "Prioridad",
+  "Zona",
+  "Zona regional",
+  "Zona del ciclo",
+  "Tipo de lectura",
+  "Confiabilidad",
+  "Grupo de consumo",
+  "Clase",
+  "Tamaño",
+  "Ventana completa",
+  "Observable",
+]);
+
+/** ¿La columna va centrada? Códigos cortos por nombre o fechas (todas leídas como fecha).
+ *  Convención UI: texto a la izquierda, números a la derecha, códigos/fechas al centro y el
+ *  encabezado igual que sus datos. Solo presentación: no toca valores ni columnas. */
+export function columnaCentro(filas: Array<Record<string, unknown>>, columna: string): boolean {
+  if (COLUMNAS_CENTRO.has(columna)) return true;
+  return tipoColumna(filas.map((fila) => fila[columna])) === "fecha";
 }
 
 /** Comparador de celdas: números numéricamente, fechas cronológicamente y texto

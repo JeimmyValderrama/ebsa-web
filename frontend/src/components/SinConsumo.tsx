@@ -272,7 +272,15 @@ export function SinConsumo({ token }: { token?: string | null }) {
               <thead>
                 <tr>
                   {COLUMNAS_RESUMEN(esConsumo).map((columna) => (
-                    <th key={columna} className={["Consumían antes (kWh/mes)", "Facturaban antes ($/mes)"].includes(columna) ? "th-largo" : ""}>
+                    <th
+                      key={columna}
+                      className={[
+                        ["Consumían antes (kWh/mes)", "Facturaban antes ($/mes)"].includes(columna) ? "th-largo" : "",
+                        ["Clientes", "Consumían antes (kWh/mes)", "Facturaban antes ($/mes)"].includes(columna) ? "num" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
                       {etiquetaColumna(columna)}
                     </th>
                   ))}
@@ -283,16 +291,16 @@ export function SinConsumo({ token }: { token?: string | null }) {
                   <tr key={fila.tramo}>
                     <td>{fila.tramo}</td>
                     <td>{QUE_HACER_CERO[fila.tramo]}</td>
-                    <td>{fmtN(fila.clientes)}</td>
+                    <td className="num">{fmtN(fila.clientes)}</td>
                     {esConsumo ? (
                       <>
-                        <td>{fmtN(Math.round(fila.referencia))}</td>
-                        <td>{pesos(Math.round(fila.valor))}</td>
+                        <td className="num">{fmtN(Math.round(fila.referencia))}</td>
+                        <td className="num">{pesos(Math.round(fila.valor))}</td>
                       </>
                     ) : (
                       <>
-                        <td>{pesos(Math.round(fila.valor))}</td>
-                        <td>{fmtN(Math.round(fila.referencia))}</td>
+                        <td className="num">{pesos(Math.round(fila.valor))}</td>
+                        <td className="num">{fmtN(Math.round(fila.referencia))}</td>
                       </>
                     )}
                   </tr>

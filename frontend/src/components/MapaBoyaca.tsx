@@ -7,7 +7,7 @@ import { COLOR_ZONA_SIN_ZONA, GRIS_FUERA, RAMPA_MAPA, ZONA_MAPA_COLOR } from "..
 import { colorRampa, mapaLimitesSpec, type Feature, type FilaMapa } from "../charts/vegaSpec";
 import { Leyenda, Pie, md, useEsMovil } from "../charts/textos";
 import { Multiselect } from "./v2/filtros";
-import { ordenarFilas, ThTabla, useFijadas, useOrdenTabla } from "./v2/ui";
+import { aFecha, ordenarFilas, ThTabla, useFijadas, useOrdenTabla } from "./v2/ui";
 
 /**
  * Mapa de Boyacá por municipio: réplica exacta de dibujar_mapa() + _mapa_limites() del Streamlit.
@@ -500,10 +500,10 @@ export function TablaZonaMapa({ info }: { info: InfoMapa }) {
       <table>
         <thead>
           <tr>
-            <th>Zona</th>
-            <th>Municipios</th>
-            <th>Clientes</th>
-            <th className={["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)", "Caída: valor en riesgo / mes", "Caída: kWh en riesgo / mes"].includes(tabla.nombreValorZona) ? "th-largo" : ""}>
+            <th className="centro">Zona</th>
+            <th className="num">Municipios</th>
+            <th className="num">Clientes</th>
+            <th className={["Consumo que se pierde (kWh/mes)", "Facturación que se pierde ($/mes)", "Caída: valor en riesgo / mes", "Caída: kWh en riesgo / mes"].includes(tabla.nombreValorZona) ? "num th-largo" : "num"}>
               {tabla.nombreValorZona}
             </th>
           </tr>
@@ -511,10 +511,10 @@ export function TablaZonaMapa({ info }: { info: InfoMapa }) {
         <tbody>
           {tabla.filas.map((zona) => (
             <tr key={zona.clave}>
-              <td>{zona.Zona}</td>
-              <td>{fmtN(zona.municipios)}</td>
-              <td>{fmtN(zona.clientes)}</td>
-              <td>{info.enProporcion ? fmtN(zona.valor, 1) : fmtCelda(zona.valor, info.metCol)}</td>
+              <td className="centro">{zona.Zona}</td>
+              <td className="num">{fmtN(zona.municipios)}</td>
+              <td className="num">{fmtN(zona.clientes)}</td>
+              <td className="num">{info.enProporcion ? fmtN(zona.valor, 1) : fmtCelda(zona.valor, info.metCol)}</td>
             </tr>
           ))}
         </tbody>
@@ -538,6 +538,15 @@ export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: st
   const valorDe = (fila: Record<string, unknown>, columna: string): unknown =>
     columna === info.metNombre ? fila._valor : fila[columna];
   const visibles = ordenarFilas(tabla.filas, orden.orden, orden.sentido, valorDe);
+  // Alineación por tipo de dato (convención UI): números a la derecha, fechas al centro,
+  // texto a la izquierda; el encabezado va igual que sus datos.
+  const claseCol = (columna: string): string => {
+    if (columna === info.metNombre) return "num";
+    const muestra = visibles[0]?.[columna];
+    if (typeof muestra === "number") return "num";
+    if (typeof muestra === "string" && aFecha(muestra) !== null) return "centro";
+    return "";
+  };
   return (
     <>
       <div ref={fijadas.contenedorRef} className="table-card tabla-alta">
@@ -555,7 +564,7 @@ export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: st
                   hayScrollX={fijadas.hayScrollX}
                   fijada={fijadas.esFijada(columna)}
                   left={fijadas.izquierda(columna)}
-                  className={columna === info.metNombre ||["Consumo fuga ALTO+MEDIO kWh/mes", "Pérdida esperada fuga $/mes","“Consumo que se está perdiendo por caída de consumo (kWh/mes)"].includes(columna)? "th-largo": ""}
+                  className={[claseCol(columna), columna === info.metNombre || ["Consumo fuga ALTO+MEDIO kWh/mes", "Pérdida esperada fuga $/mes","“Consumo que se está perdiendo por caída de consumo (kWh/mes)"].includes(columna)? "th-largo": ""].filter(Boolean).join(" ")}
                 />
               ))}
             </tr>
@@ -564,11 +573,11 @@ export function TablaMunicipioMapa({ info, corte }: { info: InfoMapa; corte?: st
             {visibles.map((fila, index) => (
               <tr key={index}>
                 {tabla.columnas.map((columna) => (
-                  <td key={columna} {...fijadas.celdaFijada(columna)}>
+                  <td key={columna} {...fijadas.celdaFijada(columna, claseCol(columna))}>
                     {typeof fila[columna] === "string" ? String(fila[columna]) : fmtCelda(fila[columna], columna)}
                   </td>
                 ))}
-                <td {...fijadas.celdaFijada(info.metNombre)}>
+                <td {...fijadas.celdaFijada(info.metNombre, "num")}>
                   {info.enProporcion ? fmtN(Number(fila._valor), 1) : fmtMetrica(Number(fila._valor), info.unidad)}
                 </td>
               </tr>

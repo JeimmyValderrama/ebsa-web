@@ -473,16 +473,16 @@ export function FichaCliente({ token, niu }: { token?: string | null; niu: strin
                 <table>
                   <thead>
                     <tr>
-                      <th>Mes</th>
-                      <th>Pronóstico kWh</th>
+                      <th className="centro">Mes</th>
+                      <th className="num">Pronóstico kWh</th>
                       <th>Modelo</th>
                     </tr>
                   </thead>
                   <tbody>
                     {datos.pronostico.map((fila) => (
                       <tr key={String(fila.horizonte)}>
-                        <td>{String(fila.periodo_pronosticado ?? "").slice(0, 7)}</td>
-                        <td>{fmtN(Number(fila.consumo_pronosticado_kwh ?? 0), decimalesPron)}</td>
+                        <td className="centro">{String(fila.periodo_pronosticado ?? "").slice(0, 7)}</td>
+                        <td className="num">{fmtN(Number(fila.consumo_pronosticado_kwh ?? 0), decimalesPron)}</td>
                         <td>{String(fila.modelo ?? "—")}</td>
                       </tr>
                     ))}
