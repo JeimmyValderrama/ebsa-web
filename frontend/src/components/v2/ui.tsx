@@ -182,16 +182,15 @@ export interface SegmentoBanda {
   color: string;
 }
 
-/** ui.banda(): franja proporcional; el ancho de cada tramo es su peso sobre el total. */
+/** ui.banda(): franja de tramos con el mismo ancho horizontal (pedido de diseño). */
 export function Banda({ segmentos }: { segmentos: SegmentoBanda[] }) {
-  const total = segmentos.reduce((suma, segmento) => suma + Math.max(Number(segmento.peso) || 0, 0), 0) || 1;
   return (
     <div className="v2-banda">
       {segmentos.map((segmento) => (
         <div
           key={segmento.nombre}
           className="v2-seg"
-          style={{ flex: `${Math.max(segmento.peso / total, 0.17).toFixed(4)} 1 0`, background: segmento.color }}
+          style={{ flex: "1 1 0", background: segmento.color }}
         >
           <span className="v2-seg-n">{segmento.nombre}</span>
           <span className="v2-seg-v">
