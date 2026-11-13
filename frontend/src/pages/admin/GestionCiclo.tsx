@@ -308,7 +308,7 @@ export function GestionCiclo({ token }: { token?: string | null }) {
                 .concat(zonas.filter((nombre) => !ZONAS_REGIONALES.includes(nombre)))
                 .map((nombre) => (
                   <option key={nombre} value={nombre}>
-                    {nombre}
+                    {cajaFrase(nombre)}
                   </option>
                 ))}
             </select>
